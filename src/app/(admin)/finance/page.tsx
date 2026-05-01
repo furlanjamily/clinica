@@ -57,7 +57,7 @@ export default function FinancePage() {
       resetConfig(c)
       setLoading(false)
     })
-  }, [mes, tipoFiltro])
+  }, [mes, tipoFiltro, resetConfig])
 
   async function handleSave(data: any) {
     const res = await fetch("/api/finance/transactions", {

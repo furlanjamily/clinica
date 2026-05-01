@@ -45,7 +45,7 @@ export default function UsersPage() {
       setUsers(data.users)
       setLoading(false)
     })
-  }, [session, isSuperAdmin])
+  }, [session, isSuperAdmin, router])
 
   async function handleSave(data: any) {
     if (editing) {
