@@ -45,8 +45,7 @@ export default function SignIn() {
         toast.error("Email ou senha incorretos.")
       } else {
         toast.success("Login realizado com sucesso!")
-        router.push("/dashboard");
-        router.refresh();
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       toast.error("Ocorreu um erro. Tente novamente.")
