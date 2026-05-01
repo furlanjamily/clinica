@@ -9,11 +9,11 @@ datasource db {
 }
 
 model Paciente {
-  id             Int      @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   nome           String
   dataNascimento String?
   sexo           String?
-  cpf            String?  @unique
+  cpf            String?       @unique
   telefone       String?
   email          String?
   endereco       String?
@@ -24,17 +24,15 @@ model Paciente {
   escolaridade   String?
   religiao       String?
   profissao      String?
-  createdAt      DateTime @default(now())
-
-  // 🔗 RELAÇÕES
-  agendamentos Agendamento[]
-  prontuarios  Prontuario[]
+  createdAt      DateTime      @default(now())
+  agendamentos   Agendamento[]
+  prontuarios    Prontuario[]
 
   @@map("pacientes")
 }
 
 model Medico {
-  id             Int      @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   nome           String
   crm            String?
   especialidade  String?
@@ -45,96 +43,78 @@ model Medico {
   email          String?
   endereco       String?
   observacoes    String?
-  ativo          Boolean  @default(true)
+  ativo          Boolean       @default(true)
   turno          String?
-
-  agendamentos Agendamento[]
+  agendamentos   Agendamento[]
 }
 
 model Agendamento {
-  id      Int    @id @default(autoincrement())
-  data    String
-  horario String
-  status  String? @default("Agendado")
-
-  // 🔥 SNAPSHOT (evita perder histórico se alterar paciente/médico)
+  id               Int         @id @default(autoincrement())
+  data             String
+  horario          String
+  status           String?     @default("Agendado")
+  pacienteId       Int
+  medicoId         Int
+  accumulatedTime  Int?
+  endTime          String?
   pacienteNome     String?
+  pausedAt         String?
   profissionalNome String?
+  startTime        String?
   telefone         String?
-
-  // 🔥 CONTROLE DE ATENDIMENTO
-  whatsappSent    Boolean @default(false)
-  startTime       String?
-  endTime         String?
-  accumulatedTime Int?
-  pausedAt        String?
-  createdAt       DateTime @default(now())
-
-  // 🔗 RELAÇÕES
-  paciente   Paciente @relation(fields: [pacienteId], references: [id])
-  pacienteId Int
-
-  medico   Medico @relation(fields: [medicoId], references: [id])
-  medicoId Int
-
-  prontuario Prontuario? @relation("AgendamentoProntuario")
-  transacao  Transacao?
+  whatsappSent     Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  medico           Medico      @relation(fields: [medicoId], references: [id])
+  paciente         Paciente    @relation(fields: [pacienteId], references: [id])
+  prontuario       Prontuario? @relation("AgendamentoProntuario")
+  transacao        Transacao?
 }
 
 model Prontuario {
-  id Int @id @default(autoincrement())
-
-  // 🔥 RELAÇÃO 1:1 COM AGENDAMENTO
-  agendamentoId Int         @unique
-  agendamento   Agendamento @relation("AgendamentoProntuario", fields: [agendamentoId], references: [id])
-
-  // 🔥 RELAÇÃO COM PACIENTE
-  pacienteId Int?
-  paciente   Paciente? @relation(fields: [pacienteId], references: [id])
-
-  // 📄 DADOS
-  patient   String?
-  createdAt DateTime @default(now())
-
+  id                   Int         @id @default(autoincrement())
+  pacienteId           Int?
+  birthDate            String?
+  caregiver            String?
+  clinicalDiagnosis    String?
+  createdAt            DateTime    @default(now())
+  diagnosisReactions   String?
+  education            String?
+  emotionalState       String?
+  familyGuidance       String?
   gender               String?
   maritalStatus        String?
-  birthDate            String?
-  education            String?
-  religion             String?
   occupation           String?
-  caregiver            String?
-  psychologist         String?
-  clinicalDiagnosis    String?
-  diagnosisReactions   String?
-  emotionalState       String?
+  patient              String?
   personalHistory      String?
   psychicExam          String?
   psychologicalConduct String?
-  familyGuidance       String?
+  psychologist         String?
+  religion             String?
+  agendamentoId        Int         @unique
+  agendamento          Agendamento @relation("AgendamentoProntuario", fields: [agendamentoId], references: [id])
+  paciente             Paciente?   @relation(fields: [pacienteId], references: [id])
 
   @@map("prontuarios")
 }
 
 model Transacao {
-  id             Int      @id @default(autoincrement())
+  id             Int         @id @default(autoincrement())
   tipo           String
   categoria      String
   descricao      String
   valor          Float
   data           String
   formaPagamento String?
-  status         String   @default("Confirmado")
-  createdAt      DateTime @default(now())
-
-  // 🔥 RELAÇÃO 1:1
-  agendamentoId Int         @unique
-  agendamento   Agendamento @relation(fields: [agendamentoId], references: [id])
+  status         String      @default("Confirmado")
+  agendamentoId  Int         @unique
+  createdAt      DateTime    @default(now())
+  agendamento    Agendamento @relation(fields: [agendamentoId], references: [id])
 
   @@map("transacoes")
 }
 
 model ConfiguracaoFinanceira {
-  id             Int @id @default(autoincrement())
+  id             Int   @id @default(autoincrement())
   valorConsulta  Float
   valorRetorno   Float
   comissaoMedico Float

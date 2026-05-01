@@ -48,7 +48,13 @@ export default function SignIn() {
         router.push("/dashboard");
         router.refresh();
       }
-    } catch (error) {}
+    } catch (error) {
+      toast.error("Ocorreu um erro. Tente novamente.")
+    }
+  };
+
+  const onError = () => {
+    // erros de validação já são exibidos inline nos campos
   };
 
   return (
@@ -67,7 +73,7 @@ export default function SignIn() {
         </div>
 
         <div>
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[350px] flex flex-col gap-2">
+        <form onSubmit={handleSubmit(onSubmit, onError)} className="w-full max-w-[350px] flex flex-col gap-2">
           <FormProvider {...singInForm}>
             <Input
               id="email"
