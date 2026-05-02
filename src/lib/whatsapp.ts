@@ -1,11 +1,13 @@
 import twilio from "twilio"
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!
-)
+type TwilioMessage = Awaited<ReturnType<ReturnType<typeof twilio>["messages"]["create"]>>
 
-type TwilioMessage = Awaited<ReturnType<typeof client.messages.create>>
+function getClient() {
+  return twilio(
+    process.env.TWILIO_ACCOUNT_SID!,
+    process.env.TWILIO_AUTH_TOKEN!
+  )
+}
 
 /**
  * Converte número armazenado (só dígitos, com DDD, etc.) em E.164 para Twilio (`whatsapp:+55...`).
@@ -40,7 +42,7 @@ export async function sendConfirmationWhatsApp({
   const [year, month, day] = data.split("-")
   const dataFormatada = `${day}/${month}/${year}`
 
-  return client.messages.create({
+  return getClient().messages.create({
     from: process.env.TWILIO_WHATSAPP_FROM!,
     to: `whatsapp:${e164}`,
     contentSid: "HX9646bbd89582afee6c2b12ab781e6f99",
@@ -65,7 +67,7 @@ export async function sendConfirmedWhatsApp({
   const [year, month, day] = data.split("-")
   const dataFormatada = `${day}/${month}/${year}`
 
-  return client.messages.create({
+  return getClient().messages.create({
     from: process.env.TWILIO_WHATSAPP_FROM!,
     to: `whatsapp:${e164}`,
     contentSid: "HXa11a616c65c91fe723d55e440f2dff46",
@@ -83,7 +85,7 @@ export async function sendCancelledWhatsApp({
   const e164 = toWhatsAppE164(to)
   if (!e164) throw new Error("Telefone de destino vazio ou inválido para WhatsApp.")
 
-  return client.messages.create({
+  return getClient().messages.create({
     from: process.env.TWILIO_WHATSAPP_FROM!,
     to: `whatsapp:${e164}`,
     contentSid: "HX6e6f3fa19c57002d3154f8b469260549",
