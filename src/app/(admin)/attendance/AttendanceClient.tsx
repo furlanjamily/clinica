@@ -22,10 +22,14 @@ function formatMs(ms: number) {
 }
 
 async function fetchSchedule(): Promise<Atendimento[]> {
-  const res = await fetch(absoluteUrl("/api/schedule"))
-  if (!res.ok) throw new Error("Erro ao buscar agendamentos")
-  const data = await res.json()
-  return Array.isArray(data) ? data : (data?.agendamentos ?? [])
+  try {
+    const res = await fetch(absoluteUrl("/api/schedule"))
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : (data?.agendamentos ?? [])
+  } catch {
+    return []
+  }
 }
 
 export function AttendanceClient() {

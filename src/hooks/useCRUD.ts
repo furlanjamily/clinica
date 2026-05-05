@@ -16,7 +16,15 @@ export function useCRUD<T extends WithId>(endpoint: string) {
 
   const { data: items } = useSuspenseQuery<T[]>({
     queryKey: makeQueryKey(endpoint),
-    queryFn: () => fetch(absoluteUrl(endpoint)).then((r) => r.json()),
+    queryFn: async () => {
+      try {
+        const res = await fetch(absoluteUrl(endpoint))
+        const payload: unknown = await res.json()
+        return Array.isArray(payload) ? (payload as T[]) : []
+      } catch {
+        return []
+      }
+    },
   })
 
   function setItems(updater: (prev: T[]) => T[]) {

@@ -24,7 +24,15 @@ function MedicalRecordsTable({
 }) {
   const { data: records } = useSuspenseQuery<MedicalRecord[]>({
     queryKey: QUERY_KEY,
-    queryFn: () => fetch(absoluteUrl("/api/medical-record")).then((r) => r.json()),
+    queryFn: async () => {
+      try {
+        const res = await fetch(absoluteUrl("/api/medical-record"))
+        const payload: unknown = await res.json()
+        return Array.isArray(payload) ? (payload as MedicalRecord[]) : []
+      } catch {
+        return []
+      }
+    },
   })
 
   if (records.length === 0) {

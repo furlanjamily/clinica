@@ -42,10 +42,21 @@ function UsersTable({
 }) {
   const { data: users } = useSuspenseQuery<UserType[]>({
     queryKey: QUERY_KEY,
-    queryFn: () =>
-      fetch(absoluteUrl("/api/user"))
-        .then((r) => r.json())
-        .then((d) => d.users ?? d),
+    queryFn: async () => {
+      const res = await fetch(absoluteUrl("/api/user"))
+      const payload: unknown = await res.json()
+      const raw = Array.isArray(payload) ? payload : (payload as { users?: unknown })?.users
+      if (!Array.isArray(raw)) return []
+      return raw.map((u) => {
+        const row = u as { id: string; name?: string; username?: string; email: string; role: UserRoleType }
+        return {
+          id: row.id,
+          username: row.username ?? row.name ?? "",
+          email: row.email,
+          role: row.role,
+        }
+      })
+    },
   })
 
   if (users.length === 0) {
