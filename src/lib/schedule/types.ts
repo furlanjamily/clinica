@@ -1,26 +1,27 @@
-import { MedicalRecord } from "@/types"
+import type { MedicalRecord } from "@/types"
 
-export type Patient = {
+/** Paciente embutido no agendamento (include/select da API). */
+export type AtendimentoPaciente = {
   id: number
   nome: string
   telefone?: string | null
 }
 
+/**
+ * Agendamento exposto pela API (`toAppointment`) e usado na UI como `Atendimento`.
+ */
 export type Appointment = {
   id: number
-
-  paciente: {
-    id: number
-    nome: string
-  }
-
-  pacienteId?: number
-
-  profissionalNome: string
-
   data: string
   horario: string
   status: string
+
+  paciente: AtendimentoPaciente
+  pacienteId?: number
+  /** Denormalizado no banco; útil quando `paciente` não veio no payload. */
+  pacienteNome?: string | null
+
+  profissionalNome: string
 
   startTime?: string
   endTime?: string
@@ -28,4 +29,13 @@ export type Appointment = {
   pausedAt?: string
 
   prontuario?: MedicalRecord | null
+
+  /** Receita vinculada (quando existir). */
+  transacao?: {
+    id: number
+    valor: number
+    categoria: string
+    tipo: string
+    status: string
+  } | null
 }

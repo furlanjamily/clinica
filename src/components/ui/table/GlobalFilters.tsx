@@ -1,5 +1,6 @@
 "use client"
 
+import type { ChangeEvent } from "react"
 import Select from "../Select"
 import { Input } from "@/components/ui/Input"
 
@@ -32,59 +33,58 @@ export function GlobalFilters({
     })
   }
   return (
-    <div className="flex items-center gap-3 flex-wrap">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2">
+      <span className="text-xs font-medium text-gray-500 sm:text-sm">Filtrar por</span>
 
-      <span className="text-sm text-gray-500 font-medium">
-        Filtrar por
-      </span>
+      <div className="flex w-full flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2">
+        {filters.map((filter) => {
+          if (filter.type === "select") {
+            return (
+              <div key={filter.name} className="min-w-0 w-full sm:w-auto sm:min-w-[11rem]">
+                <Select
+                  value={values[filter.name]}
+                  onChange={(value) => onChange(filter.name, value)}
+                  options={filter.options || []}
+                />
+              </div>
+            )
+          }
 
-      {filters.map((filter) => {
+          if (filter.type === "input") {
+            return (
+              <Input
+                key={filter.name}
+                value={values[filter.name] || ""}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(filter.name, e.target.value)}
+                placeholder={filter.placeholder ?? "Buscar..."}
+                className="min-w-0 w-full sm:w-auto sm:min-w-[10rem]"
+              />
+            )
+          }
 
-        if (filter.type === "select") {
-          return (
-            <Select
-              key={filter.name}
-              value={values[filter.name]}
-              onChange={(value) => onChange(filter.name, value)}
-              options={filter.options || []}
-            />
-          )
-        }
+          if (filter.type === "date") {
+            return (
+              <Input
+                key={filter.name}
+                type="date"
+                value={values[filter.name] || ""}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(filter.name, e.target.value)}
+                className="w-full min-w-0 sm:w-auto"
+              />
+            )
+          }
 
-        if (filter.type === "input") {
-          return (
-            <Input
-              key={filter.name}
-              value={values[filter.name] || ""}
-              onChange={(e) => onChange(filter.name, e.target.value)}
-              placeholder={filter.placeholder ?? "Buscar..."}
-              className="min-w-[160px]"
-            />
-          )
-        }
+          return null
+        })}
 
-        if (filter.type === "date") {
-          return (
-            <Input
-              key={filter.name}
-              type="date"
-              value={values[filter.name] || ""}
-              onChange={(e) => onChange(filter.name, e.target.value)}
-              className="w-auto"
-            />
-          )
-        }
-
-        return null
-      })}
-
-      <button
-        onClick={clearFilters}
-        className="ml-2 px-3 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-md"
-      >
-        Limpar
-      </button>
-
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="w-full rounded-md bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300 sm:ml-0 sm:w-auto sm:shrink-0"
+        >
+          Limpar filtros
+        </button>
+      </div>
     </div>
   )
 }

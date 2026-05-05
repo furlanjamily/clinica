@@ -4,9 +4,9 @@ import { useAuth } from "@/hooks/useAuth"
 import type { Atendimento } from "@/types/types"
 import { AttendanceTable } from "./AttendanceTable"
 import { MedicalRecord } from "@/types"
-import { Header } from "@/components/ui/PageHeader"
-import { useScheduleQuery } from "@/hooks/useScheduleQuery"
-import { TableSkeleton } from "@/components/ui/TableSkeleton"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { absoluteUrl } from "@/lib/absolute-url"
 
 type HistoryItem = Atendimento & {
   duracao?: string
@@ -16,11 +16,16 @@ type HistoryItem = Atendimento & {
 function formatMs(ms: number) {
   const totalSec = Math.floor(ms / 1000)
   const h = Math.floor(totalSec / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-    .toString()
-    .padStart(2, "0")
+  const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, "0")
   const s = (totalSec % 60).toString().padStart(2, "0")
   return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`
+}
+
+async function fetchSchedule(): Promise<Atendimento[]> {
+  const res = await fetch(absoluteUrl("/api/schedule"))
+  if (!res.ok) throw new Error("Erro ao buscar agendamentos")
+  const data = await res.json()
+  return Array.isArray(data) ? data : (data?.agendamentos ?? [])
 }
 
 export function AttendanceClient() {
@@ -28,13 +33,13 @@ export function AttendanceClient() {
   const username = session?.user?.name ?? ""
   const role = session?.user?.role ?? ""
 
-  const { data: allData, isLoading } = useScheduleQuery()
+  const { data: allData } = useSuspenseQuery<Atendimento[]>({
+    queryKey: SCHEDULE_QUERY_KEY,
+    queryFn: fetchSchedule,
+  })
 
-  const active: Atendimento[] = (allData ?? []).filter(
-    (item) => item.status === "Em Atendimento"
-  )
-
-  const completed = (allData ?? []).filter((item) => item.status === "Concluido")
+  const active: Atendimento[] = allData.filter((item) => item.status === "Em Atendimento")
+  const completed = allData.filter((item) => item.status === "Concluido")
 
   const history: HistoryItem[] = (
     isSuperAdmin
@@ -50,18 +55,12 @@ export function AttendanceClient() {
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-6">
-      <Header title="Atendimentos" />
-
-      {isLoading ? (
-        <TableSkeleton cols={5} rows={4} />
-      ) : (
-        <AttendanceTable
-          data={active}
-          history={history}
-          loadingHistory={false}
-          isSuperAdmin={role === "SUPER_ADMIN"}
-        />
-      )}
+      <AttendanceTable
+        data={active}
+        history={history}
+        loadingHistory={false}
+        isSuperAdmin={role === "SUPER_ADMIN"}
+      />
     </div>
   )
 }

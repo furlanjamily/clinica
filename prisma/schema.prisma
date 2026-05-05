@@ -1,11 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model Paciente {
@@ -16,7 +15,13 @@ model Paciente {
   cpf            String?       @unique
   telefone       String?
   email          String?
-  endereco       String?
+  cep            String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  uf             String?
   convenio       String?
   numeroConvenio String?
   observacoes    String?
@@ -41,7 +46,13 @@ model Medico {
   dataNascimento String?
   telefone       String?
   email          String?
-  endereco       String?
+  cep            String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  uf             String?
   observacoes    String?
   ativo          Boolean       @default(true)
   turno          String?
@@ -98,17 +109,17 @@ model Prontuario {
 }
 
 model Transacao {
-  id             Int         @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   tipo           String
   categoria      String
   descricao      String
   valor          Float
   data           String
   formaPagamento String?
-  status         String      @default("Confirmado")
-  agendamentoId  Int         @unique
-  createdAt      DateTime    @default(now())
-  agendamento    Agendamento @relation(fields: [agendamentoId], references: [id])
+  status         String       @default("Confirmado")
+  agendamentoId  Int?         @unique
+  createdAt      DateTime     @default(now())
+  agendamento    Agendamento? @relation(fields: [agendamentoId], references: [id])
 
   @@map("transacoes")
 }

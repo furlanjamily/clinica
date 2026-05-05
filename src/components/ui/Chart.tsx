@@ -1,91 +1,90 @@
-"use client";
-import { useState } from "react";
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+"use client"
 
-export function Chart() {
-  const [selectedYear, setSelectedYear] = useState("2024");
-  const data: {
-    [key: string]: { month: string; received: number; sent: number }[];
-  } = {
-    2023: [
-      { month: "Jan", received: 400, sent: 240 },
-      { month: "Fev", received: 300, sent: 180 },
-      { month: "Mar", received: 500, sent: 320 },
-      { month: "Abr", received: 350, sent: 200 },
-      { month: "Mai", received: 600, sent: 410 },
-      { month: "Jun", received: 550, sent: 380 },
-      { month: "Jul", received: 620, sent: 420 },
-      { month: "Ago", received: 700, sent: 480 },
-      { month: "Set", received: 680, sent: 460 },
-      { month: "Out", received: 720, sent: 500 },
-      { month: "Nov", received: 760, sent: 520 },
-      { month: "Dez", received: 800, sent: 560 },
-    ],
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts"
 
-    2024: [
-      { month: "Jan", received: 500, sent: 320 },
-      { month: "Fev", received: 450, sent: 280 },
-      { month: "Mar", received: 650, sent: 420 },
-      { month: "Abr", received: 480, sent: 310 },
-      { month: "Mai", received: 700, sent: 500 },
-      { month: "Jun", received: 720, sent: 520 },
-      { month: "Jul", received: 760, sent: 540 },
-      { month: "Ago", received: 820, sent: 600 },
-      { month: "Set", received: 790, sent: 570 },
-      { month: "Out", received: 850, sent: 620 },
-      { month: "Nov", received: 880, sent: 640 },
-      { month: "Dez", received: 920, sent: 700 },
-    ],
+export type FinanceMonthPoint = { mes: string; receitas: number; despesas: number }
 
-    2025: [
-      { month: "Jan", received: 650, sent: 420 },
-      { month: "Fev", received: 600, sent: 380 },
-      { month: "Mar", received: 720, sent: 500 },
-      { month: "Abr", received: 690, sent: 470 },
-      { month: "Mai", received: 820, sent: 600 },
-      { month: "Jun", received: 900, sent: 680 },
-      { month: "Jul", received: 950, sent: 720 },
-      { month: "Ago", received: 1000, sent: 780 },
-      { month: "Set", received: 970, sent: 740 },
-      { month: "Out", received: 1050, sent: 820 },
-      { month: "Nov", received: 1100, sent: 860 },
-      { month: "Dez", received: 1200, sent: 920 },
-    ],
-  };
+const fmtBrl = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
+
+type Props = {
+  data: FinanceMonthPoint[]
+  years: number[]
+  selectedYear: number
+  onYearChange: (year: number) => void
+  loading?: boolean
+}
+
+export function Chart({ data, years, selectedYear, onYearChange, loading }: Props) {
+  if (loading) {
+    return (
+      <div className="flex h-[320px] w-full items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+        Carregando gráfico…
+      </div>
+    )
+  }
+
   return (
     <>
-      <select
-        value={selectedYear}
-        onChange={(e) => setSelectedYear(e.target.value)}
-        className="mb-4 rounded-md border px-3 py-2"
-      >
-        <option value="2023">2023</option>
-        <option value="2024">2024</option>
-        <option value="2025">2025</option>
-      </select>
+      <label className="mb-3 flex items-center gap-2 text-sm text-slate-600">
+        <span className="font-medium">Ano</span>
+        <select
+          value={selectedYear}
+          onChange={(e) => onYearChange(Number(e.target.value))}
+          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-800 shadow-sm"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data[selectedYear]}>
-          <XAxis dataKey="month" padding={{ left: 20, right: 20 }} />{" "}
-          <Tooltip />
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <XAxis dataKey="mes" padding={{ left: 12, right: 12 }} tick={{ fontSize: 12 }} />
+          <YAxis
+            tick={{ fontSize: 11 }}
+            tickFormatter={(v) =>
+              Number(v).toLocaleString("pt-BR", { notation: "compact", maximumFractionDigits: 1 })
+            }
+          />
+          <Tooltip
+            formatter={(value) => {
+              const n = typeof value === "number" ? value : Number(value ?? 0)
+              return fmtBrl(Number.isFinite(n) ? n : 0)
+            }}
+          />
+          <Legend />
           <Line
             type="monotone"
-            dataKey="received"
+            name="Receitas"
+            dataKey="receitas"
             stroke="#9747FF"
-            strokeWidth={4}
+            strokeWidth={2}
             dot={false}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 6 }}
           />
           <Line
             type="monotone"
-            dataKey="sent"
+            name="Despesas"
+            dataKey="despesas"
             stroke="#624DE3"
-            strokeWidth={4}
+            strokeWidth={2}
             dot={false}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>
     </>
-  );
+  )
 }

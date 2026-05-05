@@ -27,12 +27,14 @@ export function filterSchedules(data: Atendimento[], date: Date, view: ViewMode,
 
     const matchStatus = filters.status ? item.status === filters.status : true
 
+    const pacienteNome = (item.paciente?.nome ?? item.pacienteNome ?? "").toLowerCase()
+
     const matchPaciente = filters.paciente
-      ? item.paciente.nome.toLowerCase().includes(filters.paciente.toLowerCase())
+      ? pacienteNome.includes(filters.paciente.toLowerCase())
       : true
 
     const matchProfissional = filters.profissional
-      ? item.profissionalNome.toLowerCase().includes(filters.profissional.toLowerCase())
+      ? (item.profissionalNome ?? "").toLowerCase().includes(filters.profissional.toLowerCase())
       : true
 
     const matchAtendimento = filters.atendimentoId !== undefined

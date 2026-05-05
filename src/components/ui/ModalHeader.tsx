@@ -8,9 +8,11 @@ type Props = {
 
 export function ModalHeader({ title, onClose }: Props) {
   return (
-    <div className="flex items-center justify-between mb-5">
-      <h2 className="text-lg font-semibold text-primary">{title}</h2>
-      <Button variant="ghost" size="icon" onClick={onClose}>
+    <div className="mb-4 flex items-start justify-between gap-3 sm:mb-5">
+      <h2 className="min-w-0 flex-1 text-base font-semibold leading-snug text-primary sm:text-lg">
+        {title}
+      </h2>
+      <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose} aria-label="Fechar">
         <X size={18} />
       </Button>
     </div>

@@ -6,7 +6,7 @@ import { db } from "./db";
 import type { UserRoleType } from "@/types/auth";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(db as Parameters<typeof PrismaAdapter>[0]),
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",

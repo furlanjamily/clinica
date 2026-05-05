@@ -1,5 +1,6 @@
 "use client"
 
+import type { ChangeEvent } from "react"
 import Select from "@/components/ui/Select"
 import { Input } from "@/components/ui/Input"
 
@@ -50,7 +51,7 @@ export function ScheduleFormFields({
         type="date"
         value={form.data}
         min={minDate}
-        onChange={(e) => onDateChange(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => onDateChange(e.target.value)}
       />
 
       <Select

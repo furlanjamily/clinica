@@ -1,7 +1,8 @@
-import { forwardRef } from "react"
-import { type VariantProps, tv } from "tailwind-variants"
+"use client"
 
-// ─── Variants ────────────────────────────────────────────────────────────────
+import { forwardRef, useEffect, useMemo } from "react"
+import { useIMask } from "react-imask"
+import { type VariantProps, tv } from "tailwind-variants"
 
 export const inputContainerVariants = tv({
   base: "flex flex-col gap-1",
@@ -41,20 +42,92 @@ export const inputErrorVariants = tv({
   base: "text-xs text-destructive mt-0.5",
 })
 
-// ─── Input ───────────────────────────────────────────────────────────────────
+export const MASKS = {
+  cpf: { mask: "000.000.000-00" },
+  cnpj: { mask: "00.000.000/0000-00" },
+  telefone: { mask: [{ mask: "(00) 0000-0000" }, { mask: "(00) 00000-0000" }] },
+  cep: { mask: "00000-000" },
+  data: { mask: "00/00/0000" },
+  moeda: {
+    mask: "R$ num",
+    blocks: {
+      num: {
+        mask: Number,
+        thousandsSeparator: ".",
+        radix: ",",
+        scale: 2,
+        padFractionalZeros: true,
+      },
+    },
+  },
+} as const
+
+export type MaskPreset = keyof typeof MASKS
+
+function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined | null>): React.RefCallback<T> {
+  return (instance) => {
+    for (const ref of refs) {
+      if (ref == null) continue
+      if (typeof ref === "function") ref(instance)
+      else (ref as React.MutableRefObject<T | null>).current = instance
+    }
+  }
+}
 
 export interface InputProps
-  extends Omit<React.ComponentProps<"input">, "size" | "disabled">,
+  extends Omit<React.ComponentProps<"input">, "size" | "disabled" | "onChange" | "value">,
     Omit<VariantProps<typeof inputWrapperVariants>, "error"> {
   label?: string
   error?: string
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
+  mask?: MaskPreset
+  value?: React.ComponentProps<"input">["value"] | null
+  onChange?: React.ChangeEventHandler<HTMLInputElement> | ((value: string) => void)
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, size, disabled, readOnly, className, id, leftIcon, rightIcon, ...props }, ref) => {
+type InputPropsWithRef = InputProps & { ref?: React.Ref<HTMLInputElement | null> }
+
+const InputMasked = forwardRef<HTMLInputElement, InputProps & { mask: MaskPreset }>(
+  (
+    {
+      mask,
+      label,
+      error,
+      size,
+      disabled,
+      readOnly,
+      className,
+      id,
+      leftIcon,
+      rightIcon,
+      value: valueProp,
+      onChange,
+      onBlur,
+      name,
+      placeholder,
+      defaultValue: _ignoredDefault,
+      ...rest
+    },
+    forwardedRef
+  ) => {
+    const value =
+      valueProp == null ? "" : typeof valueProp === "string" ? valueProp : String(valueProp)
+    const maskOpts = MASKS[mask] as object
+    const { ref: imaskRef, setValue: setMaskValue } = useIMask(maskOpts, {
+      onAccept: (val) => (onChange as ((v: string) => void) | undefined)?.(val),
+    })
+
+    useEffect(() => {
+      setMaskValue(value)
+    }, [value, setMaskValue])
+
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-")
+    const mergedRef = useMemo(
+      () => mergeRefs(imaskRef as React.Ref<HTMLInputElement>, forwardedRef),
+      [imaskRef, forwardedRef]
+    )
+
     return (
       <div className={inputContainerVariants({ className })}>
         {label && (
@@ -65,12 +138,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className={inputWrapperVariants({ size, disabled, readOnly: readOnly as boolean, error: !!error })}>
           {leftIcon && <span className="text-muted-foreground shrink-0">{leftIcon}</span>}
           <input
-            ref={ref}
+            ref={mergedRef}
             id={inputId}
+            name={name}
             disabled={disabled as boolean}
             readOnly={readOnly}
+            onBlur={onBlur}
+            placeholder={placeholder}
             className={inputFieldVariants()}
-            {...props}
+            {...rest}
           />
           {rightIcon && <span className="text-muted-foreground shrink-0">{rightIcon}</span>}
         </div>
@@ -79,9 +155,61 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     )
   }
 )
-Input.displayName = "Input"
+InputMasked.displayName = "InputMasked"
 
-// ─── Textarea ────────────────────────────────────────────────────────────────
+export const Input = forwardRef<HTMLInputElement, InputProps>((props, ref) => {
+  const { ref: rhfRef, ...rest } = props as InputPropsWithRef
+  const mergedRef = useMemo(() => mergeRefs(ref, rhfRef), [ref, rhfRef])
+
+  if (rest.mask) {
+    return <InputMasked ref={mergedRef} {...(rest as InputProps & { mask: MaskPreset })} />
+  }
+
+  const {
+    label,
+    error,
+    size,
+    disabled,
+    readOnly,
+    className,
+    id,
+    leftIcon,
+    rightIcon,
+    mask: _mask,
+    onChange,
+    value,
+    ...inputProps
+  } = rest
+  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-")
+  const valueProps: { value?: Exclude<InputProps["value"], null> } =
+    value !== undefined ? { value: value === null ? undefined : value } : {}
+
+  return (
+    <div className={inputContainerVariants({ className })}>
+      {label && (
+        <label htmlFor={inputId} className={inputLabelVariants()}>
+          {label}
+        </label>
+      )}
+      <div className={inputWrapperVariants({ size, disabled, readOnly: readOnly as boolean, error: !!error })}>
+        {leftIcon && <span className="text-muted-foreground shrink-0">{leftIcon}</span>}
+        <input
+          ref={mergedRef}
+          id={inputId}
+          disabled={disabled as boolean}
+          readOnly={readOnly}
+          className={inputFieldVariants()}
+          {...valueProps}
+          onChange={onChange as React.ChangeEventHandler<HTMLInputElement> | undefined}
+          {...inputProps}
+        />
+        {rightIcon && <span className="text-muted-foreground shrink-0">{rightIcon}</span>}
+      </div>
+      {error && <p className={inputErrorVariants()}>{error}</p>}
+    </div>
+  )
+})
+Input.displayName = "Input"
 
 export interface TextareaProps
   extends Omit<React.ComponentProps<"textarea">, "disabled">,
@@ -118,8 +246,6 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   }
 )
 Textarea.displayName = "Textarea"
-
-// ─── FormSelect ──────────────────────────────────────────────────────────────
 
 export interface FormSelectProps
   extends Omit<React.ComponentProps<"select">, "size" | "disabled">,

@@ -1,22 +1,32 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { absoluteUrl } from "@/lib/absolute-url"
 
 type WithId = { id: number | string }
 
-export function useCRUD<T extends WithId>(endpoint: string) {
-  const [items, setItems] = useState<T[]>([])
-  const [loading, setLoading] = useState(true)
+function makeQueryKey(endpoint: string) {
+  return ["crud", endpoint] as const
+}
 
-  useEffect(() => {
-    fetch(endpoint)
-      .then((r) => r.json())
-      .then((data) => { setItems(data); setLoading(false) })
-  }, [endpoint])
+export function useCRUD<T extends WithId>(endpoint: string) {
+  const queryClient = useQueryClient()
+
+  const { data: items } = useSuspenseQuery<T[]>({
+    queryKey: makeQueryKey(endpoint),
+    queryFn: () => fetch(absoluteUrl(endpoint)).then((r) => r.json()),
+  })
+
+  function setItems(updater: (prev: T[]) => T[]) {
+    queryClient.setQueryData<T[]>(makeQueryKey(endpoint), (prev) =>
+      updater(prev ?? [])
+    )
+  }
 
   async function create(data: Omit<T, "id">, successMsg = "Criado com sucesso!") {
-    const res = await fetch(endpoint, {
+    const res = await fetch(absoluteUrl(endpoint), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -33,7 +43,7 @@ export function useCRUD<T extends WithId>(endpoint: string) {
   }
 
   async function update(id: T["id"], data: Partial<T>, successMsg = "Atualizado com sucesso!") {
-    const res = await fetch(endpoint, {
+    const res = await fetch(absoluteUrl(endpoint), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...data }),
@@ -45,7 +55,7 @@ export function useCRUD<T extends WithId>(endpoint: string) {
   }
 
   async function remove(id: T["id"], successMsg = "Removido com sucesso!") {
-    await fetch(endpoint, {
+    await fetch(absoluteUrl(endpoint), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
@@ -54,5 +64,5 @@ export function useCRUD<T extends WithId>(endpoint: string) {
     toast.success(successMsg)
   }
 
-  return { items, setItems, loading, create, update, remove }
+  return { items, create, update, remove }
 }

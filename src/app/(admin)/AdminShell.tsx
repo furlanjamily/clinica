@@ -14,7 +14,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-10 w-full flex items-center pt-4 md:pt-6 pb-2 bg-white/80 backdrop-blur-md">
           <UserHeader onMenuClick={() => setDrawerOpen(true)} />
         </header>
-        <div className="flex-1 min-h-0 px-4 md:px-12 pb-6 md:pb-12 overflow-hidden">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-3 pb-4 sm:px-6 sm:pb-6 md:px-12 md:pb-12">
           {children}
         </div>
       </main>

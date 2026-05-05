@@ -76,13 +76,6 @@ export function ScheduleView({ data, setData }: Props) {
     })
   })
 
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-accent text-sm">
-        Sem agendamento
-      </div>
-    )
-  }
 
   return (
     <div className="h-full min-h-0 overflow-auto">

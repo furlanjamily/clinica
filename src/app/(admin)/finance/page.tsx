@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ChangeEvent } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { Plus, Trash2, Settings, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Input, FormSelect } from "@/components/ui/Input"
+import { DESPESA_CATEGORIAS, RECEITA_CATEGORIAS } from "@/lib/finance/categories"
 
 type Transacao = {
   id: number
@@ -27,9 +28,7 @@ type Config = {
   comissaoMedico: number
 }
 
-const CATEGORIAS_RECEITA = ["Consulta", "Retorno", "Outros"]
-const CATEGORIAS_DESPESA = ["Aluguel", "Material", "Salário", "Equipamento", "Marketing", "Outros"]
-const FORMAS_PAGAMENTO = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência"]
+const FORMAS_PAGAMENTO = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência", "Boleto", "Não aplicável"]
 
 export default function FinancePage() {
   const [transacoes, setTransacoes] = useState<Transacao[]>([])
@@ -41,7 +40,15 @@ export default function FinancePage() {
   const [tipoFiltro, setTipoFiltro] = useState("")
 
   const { register, handleSubmit, reset, watch } = useForm<Omit<Transacao, "id">>({
-    defaultValues: { tipo: "Receita", status: "Confirmado" }
+    defaultValues: {
+      tipo: "Receita",
+      status: "Confirmado",
+      data: new Date().toISOString().slice(0, 10),
+      categoria: "",
+      descricao: "",
+      valor: 0,
+      formaPagamento: "",
+    },
   })
   const { register: regConfig, handleSubmit: handleConfig, reset: resetConfig } = useForm<Config>()
 
@@ -59,17 +66,30 @@ export default function FinancePage() {
     })
   }, [mes, tipoFiltro, resetConfig])
 
-  async function handleSave(data: any) {
+  async function handleSave(data: Omit<Transacao, "id">) {
     const res = await fetch("/api/finance/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
-    const nova = await res.json()
-    setTransacoes(prev => [nova, ...prev])
+    const body = await res.json()
+    if (!res.ok) {
+      toast.error(body?.message ?? "Não foi possível registrar.")
+      return
+    }
+    const nova = body.transacao ?? body
+    setTransacoes((prev) => [nova, ...prev])
     toast.success("Transação registrada!")
     setShowModal(false)
-    reset()
+    reset({
+      tipo: "Receita",
+      status: "Confirmado",
+      data: new Date().toISOString().slice(0, 10),
+      categoria: "",
+      descricao: "",
+      valor: 0,
+      formaPagamento: "",
+    })
   }
 
   async function handleDelete(id: number) {
@@ -109,7 +129,21 @@ export default function FinancePage() {
         <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
           <Settings size={15} /> Configurações
         </Button>
-        <Button size="md" onClick={() => { reset(); setShowModal(true) }}>
+        <Button
+          size="md"
+          onClick={() => {
+            reset({
+              tipo: "Receita",
+              status: "Confirmado",
+              data: new Date().toISOString().slice(0, 10),
+              categoria: "",
+              descricao: "",
+              valor: 0,
+              formaPagamento: "",
+            })
+            setShowModal(true)
+          }}
+        >
           <Plus size={16} /> Nova transação
         </Button>
       </Header>
@@ -153,7 +187,7 @@ export default function FinancePage() {
         <Input
           type="month"
           value={mes}
-          onChange={(e) => setMes(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setMes(e.target.value)}
           className="w-auto"
         />
         <FormSelect
@@ -214,30 +248,36 @@ export default function FinancePage() {
 
       {/* Modal nova transação */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Nova transação" onClose={() => { setShowModal(false); reset() }} />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormSelect label="Tipo" {...register("tipo")}>
                   <option value="Receita">Receita</option>
                   <option value="Despesa">Despesa</option>
                 </FormSelect>
-                <FormSelect label="Categoria" {...register("categoria", { required: true })}>
-                  <option value="">Selecione</option>
-                  {(tipoWatch === "Receita" ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA).map(c => (
-                    <option key={c} value={c}>{c}</option>
+                <FormSelect
+                  key={tipoWatch}
+                  label="Categoria"
+                  {...register("categoria", { required: true })}
+                >
+                  <option value="">Selecione a categoria</option>
+                  {(tipoWatch === "Receita" ? RECEITA_CATEGORIAS : DESPESA_CATEGORIAS).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </FormSelect>
               </div>
               <Input label="Descrição" {...register("descricao", { required: true })} placeholder="Descrição da transação" />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Input label="Valor (R$)" type="number" step="0.01" {...register("valor", { required: true, valueAsNumber: true })} placeholder="0,00" />
                 <Input label="Data" type="date" {...register("data", { required: true })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <FormSelect label="Forma de pagamento" {...register("formaPagamento")}>
-                  <option value="">Selecione</option>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormSelect label="Forma de pagamento (opcional em despesas)" {...register("formaPagamento")}>
+                  <option value="">Não informado</option>
                   {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
                 </FormSelect>
                 <FormSelect label="Status" {...register("status")}>
@@ -245,7 +285,7 @@ export default function FinancePage() {
                   <option value="Pendente">Pendente</option>
                 </FormSelect>
               </div>
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <Button type="button" variant="ghost" onClick={() => { setShowModal(false); reset() }}>Cancelar</Button>
                 <Button type="submit" size="md">
                   Registrar
@@ -258,14 +298,14 @@ export default function FinancePage() {
 
       {/* Modal configurações */}
       {showConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[min(92vh,32rem)] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
             <form onSubmit={handleConfig(handleSaveConfig)} className="flex flex-col gap-4">
               <Input label="Valor da consulta (R$)" type="number" step="0.01" {...regConfig("valorConsulta", { valueAsNumber: true })} />
               <Input label="Valor do retorno (R$)" type="number" step="0.01" {...regConfig("valorRetorno", { valueAsNumber: true })} />
               <Input label="Comissão médico (%)" type="number" step="0.1" {...regConfig("comissaoMedico", { valueAsNumber: true })} />
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <Button type="button" variant="ghost" onClick={() => setShowConfig(false)}>Cancelar</Button>
                 <Button type="submit" size="md">
                   Salvar

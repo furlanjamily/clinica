@@ -3,12 +3,9 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { findAgendamentoConflict } from "@/lib/schedule/conflicts"
 import { toAppointment } from "@/lib/schedule/map-atendimento"
-import { sendConfirmationWhatsApp } from "@/lib/whatsapp"
-import { normalizePhoneDigits } from "@/lib/whatsapp-utils"
 import { CreateAppointmentSchema } from "@/lib/validations/schedule"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
-import logger from "@/lib/logging/logger"
 
 export type { Appointment as Atendimento } from "@/lib/schedule/types"
 
@@ -106,6 +103,15 @@ export async function GET(req: Request) {
                   horario: true,
                 },
               },
+            },
+          },
+          transacao: {
+            select: {
+              id: true,
+              valor: true,
+              categoria: true,
+              tipo: true,
+              status: true,
             },
           },
         },
@@ -211,7 +217,7 @@ export async function POST(req: Request) {
       data: {
         data: data.data,
         horario: data.horario,
-        status: telefone ? "AguardandoConfirmacao" : "Agendado",
+        status: "Agendado",
 
         pacienteNome: paciente.nome,
         profissionalNome: medico.nome,
@@ -225,20 +231,6 @@ export async function POST(req: Request) {
         medico: true,
       },
     })
-
-    if (telefone) {
-      try {
-        await sendConfirmationWhatsApp({
-          to: normalizePhoneDigits(telefone),
-          paciente: paciente.nome,
-          data: agendamento.data,
-          horario: agendamento.horario,
-          profissional: medico.nome,
-        })
-      } catch (e) {
-        logger.error("Erro WhatsApp", e)
-      }
-    }
 
     return NextResponse.json(toAppointment(agendamento))
   } catch (err) {
@@ -279,6 +271,15 @@ export async function PATCH(req: Request) {
       }
     }
 
+    if (body.status === "Pago" && atual.status === "RegistrarChegada") {
+      const vinculo = await db.transacao.findUnique({ where: { agendamentoId: body.id } })
+      if (!vinculo) {
+        throw new ValidationError(
+          "Para marcar como pago, registre antes a receita vinculada a este agendamento (modal «Confirmar pagamento» na agenda)."
+        )
+      }
+    }
+
     const updated = await db.agendamento.update({
       where: { id: body.id },
       data: {
@@ -293,6 +294,7 @@ export async function PATCH(req: Request) {
       include: {
         paciente: true,
         medico: true,
+        transacao: true,
         prontuario: {
           include: {
             paciente: true,

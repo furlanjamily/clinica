@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import type { Atendimento } from "@/types/types"
 import { RowType } from "@/types/rowType"
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
+import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
 import { Button } from "@/components/ui/button"
 import { useQueryClient } from "@tanstack/react-query"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
@@ -72,39 +73,38 @@ type TableProps = {
 
 const columnHelper = createColumnHelper<RowType>()
 
-function ActionCell({ original, updateItem, onReschedule }: {
+function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
   original: Atendimento
   updateItem: (id: number, changes: Partial<Atendimento>) => Promise<void>
   onReschedule: (item: Atendimento) => void
+  onOpenPayment: (item: Atendimento) => void
 }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const today = isToday(original.data)
   const [loading, setLoading] = useState(false)
 
-  // No dia + Confirmado → Registrar chegada
   if (today && original.status === "Confirmado") {
     return (
-      <Button variant="teal" onClick={() => updateItem(original.id, { status: "RegistrarChegada" })}>
+      <Button variant="teal" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "RegistrarChegada" })}>
         Registrar chegada
       </Button>
     )
   }
 
-  // RegistrarChegada → Confirmar pagamento
   if (today && original.status === "RegistrarChegada") {
     return (
-      <Button variant="teal" onClick={() => updateItem(original.id, { status: "Pago" })}>
+      <Button variant="teal" className="text-xs sm:text-sm" onClick={() => onOpenPayment(original)}>
         Confirmar pagamento
       </Button>
     )
   }
 
-  // Pago → Atender: aguarda PATCH, atualiza cache e navega
   if (today && original.status === "Pago") {
     return (
       <Button
         variant="purple"
+        className="text-xs sm:text-sm"
         disabled={loading}
         onClick={async () => {
           setLoading(true)
@@ -120,7 +120,6 @@ function ActionCell({ original, updateItem, onReschedule }: {
             })
             const updated = await res.json()
 
-            // Atualiza o cache antes de navegar — a página de atendimento já vai ver o dado
             queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
               prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item)) ?? []
             )
@@ -136,21 +135,23 @@ function ActionCell({ original, updateItem, onReschedule }: {
     )
   }
 
-  // Em Atendimento → botão desabilitado
   if (original.status === "Em Atendimento") {
-    return <Button variant="purple" disabled>Atender</Button>
+    return <Button variant="purple" className="text-xs sm:text-sm" disabled>Atender</Button>
   }
 
-  // Concluído ou Cancelado → sem ação
   if (original.status === "Concluido" || original.status === "Cancelado") return null
 
-  // Qualquer outro status → Reagendar + Cancelar
   return (
-    <div className="flex items-center gap-3">
-      <Button variant="ghost" onClick={() => onReschedule(original)}>
+    <div className="flex flex-wrap items-center gap-3">
+      {(original.status === "Agendado" || original.status === "AguardandoConfirmacao") && (
+        <Button variant="teal" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "Confirmado" })}>
+          Confirmar consulta
+        </Button>
+      )}
+      <Button variant="ghost" className="text-xs sm:text-sm" onClick={() => onReschedule(original)}>
         <Calendar size={12} /> Reagendar
       </Button>
-      <Button variant="ghost-danger" onClick={() => updateItem(original.id, { status: "Cancelado" })}>
+      <Button variant="ghost-danger" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "Cancelado" })}>
         Cancelar
       </Button>
     </div>
@@ -159,6 +160,7 @@ function ActionCell({ original, updateItem, onReschedule }: {
 
 export function Table({ rows, setData }: TableProps) {
   const [selected, setSelected] = useState<Atendimento | null>(null)
+  const [paymentFor, setPaymentFor] = useState<Atendimento | null>(null)
   const queryClient = useQueryClient()
 
   const updateItem = async (id: number, changes: Partial<Atendimento>) => {
@@ -169,10 +171,8 @@ export function Table({ rows, setData }: TableProps) {
     })
     const updated = await res.json()
 
-    // Atualiza o estado local da agenda
     setData((prev) => prev.map((item) => item.id === id ? { ...item, ...updated } : item))
 
-    // Mantém o cache do React Query sincronizado
     queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
       prev?.map((item) => (item.id === id ? { ...item, ...updated } : item)) ?? []
     )
@@ -188,8 +188,10 @@ export function Table({ rows, setData }: TableProps) {
         const original = row.original
         if (!isDataRow(original)) return null
         return (
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusStyle[original.status] ?? ""}`}>
-            {statusLabel[original.status] ?? original.status}
+          <span
+            className={`inline-block max-w-[9rem] rounded-lg px-2 py-1 text-center text-[11px] font-medium leading-snug sm:max-w-none sm:text-xs ${statusStyle[original.status] ?? ""}`}
+          >
+            <span className="line-clamp-2 break-words">{statusLabel[original.status] ?? original.status}</span>
           </span>
         )
       },
@@ -200,17 +202,42 @@ export function Table({ rows, setData }: TableProps) {
       cell: ({ row }) => {
         const original = row.original
         if (!isDataRow(original)) return null
-        return original.paciente.nome
+        const nome = original.paciente?.nome ?? original.pacienteNome ?? "—"
+        return (
+          <span className="block max-w-[7rem] truncate sm:max-w-[10rem] md:max-w-[14rem]" title={nome}>
+            {nome}
+          </span>
+        )
       }
     }),
-    columnHelper.accessor((row) => (isDataRow(row) ? (row.profissionalNome ?? "") : ""), { id: "profissional", header: "Médico" }),
+    columnHelper.display({
+      id: "profissional",
+      header: "Médico",
+      cell: ({ row }) => {
+        const original = row.original
+        if (!isDataRow(original)) return null
+        const n = original.profissionalNome ?? "—"
+        return (
+          <span className="block max-w-[6rem] truncate sm:max-w-[9rem] md:max-w-[12rem]" title={n}>
+            {n}
+          </span>
+        )
+      },
+    }),
     columnHelper.display({
       id: "actions",
       header: "Ações",
       cell: ({ row }) => {
         const original = row.original
         if (!isDataRow(original)) return null
-        return <ActionCell original={original} updateItem={updateItem} onReschedule={setSelected} />
+        return (
+          <ActionCell
+            original={original}
+            updateItem={updateItem}
+            onReschedule={setSelected}
+            onOpenPayment={setPaymentFor}
+          />
+        )
       },
     }),
   ]
@@ -218,13 +245,13 @@ export function Table({ rows, setData }: TableProps) {
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
 
   return (
-    <div className="h-full overflow-auto">
-      <table className="w-full border-separate border-spacing-y-2">
+    <div className="h-full overflow-x-auto overflow-y-auto [-webkit-overflow-scrolling:touch]">
+      <table className="w-full min-w-[20rem] border-separate border-spacing-y-2 sm:min-w-0">
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
               {hg.headers.map((header) => (
-                <th key={header.id} className="text-left text-xs px-2">
+                <th key={header.id} className="whitespace-nowrap px-2 py-1 text-left text-[11px] font-medium text-gray-500 sm:px-2 sm:text-xs">
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
@@ -232,26 +259,34 @@ export function Table({ rows, setData }: TableProps) {
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const original = row.original
+          {table.getRowModel().rows.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="text-center text-sm text-accent py-8">
+                Sem agendamento
+              </td>
+            </tr>
+          ) : (
+            table.getRowModel().rows.map((row) => {
+              const original = row.original
 
-            if (original.type === "day") {
+              if (original.type === "day") {
+                return (
+                  <tr key={row.id}>
+                    <td colSpan={6} className="pt-3 text-sm capitalize leading-snug text-gray-500">{original.label}</td>
+                  </tr>
+                )
+              }
               return (
-                <tr key={row.id}>
-                  <td colSpan={5} className="pt-2 text-sm text-gray-500 capitalize">{original.label}</td>
+                <tr key={row.id} className={`rounded-md bg-white shadow-sm ${isDataRow(original) && original.status === "Cancelado" ? "opacity-40" : ""}`}>
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="p-1.5 align-middle sm:p-2">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               )
-            }
-            return (
-              <tr key={row.id} className={`bg-white shadow-sm rounded-md ${isDataRow(original) && original.status === "Cancelado" ? "opacity-40" : ""}`}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="p-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            )
-          })}
+            })
+          )}
         </tbody>
       </table>
 
@@ -263,6 +298,19 @@ export function Table({ rows, setData }: TableProps) {
           onSuccess={(updated) => {
             setData((prev) => prev.map((item) => item.id === updated.id ? updated : item))
             setSelected(null)
+          }}
+        />
+      )}
+
+      {paymentFor && (
+        <PaymentConfirmModal
+          item={paymentFor}
+          onClose={() => setPaymentFor(null)}
+          onSuccess={(updated) => {
+            setData((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
+            queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+              prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)) ?? []
+            )
           }}
         />
       )}

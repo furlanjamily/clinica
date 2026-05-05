@@ -1,6 +1,4 @@
-import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { AdminShell } from "./AdminShell"
-import { Suspense } from "react"
 
 export default function AdminLayout({
   children,
@@ -9,9 +7,7 @@ export default function AdminLayout({
 }) {
   return (
     <AdminShell>
-      {/* <Suspense fallback={<TableSkeleton />}> */}
-        {children}
-      {/* </Suspense> */}
+      {children}
     </AdminShell>
   )
 }

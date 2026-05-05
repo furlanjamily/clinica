@@ -28,7 +28,7 @@ export function UserHeader({ onMenuClick }: Props) {
   }, []);
 
   return (
-    <div className="flex items-center justify-between w-full px-4 md:px-7">
+    <div className="flex w-full items-center justify-between gap-2 px-3 sm:px-4 md:px-7">
       {/* Toggle mobile — esquerda */}
       <Button
         variant="ghost"
@@ -58,7 +58,7 @@ export function UserHeader({ onMenuClick }: Props) {
               height={24}
               className="w-6 h-6 rounded-[7px] object-cover"
             />
-            <span className="font-bold text-[10px] pl-2">
+            <span className="max-w-[7rem] truncate pl-2 text-left text-[10px] font-bold sm:max-w-[10rem] md:max-w-none">
               {displayName}
             </span>
             <ChevronDown className="ml-4" size={16} />

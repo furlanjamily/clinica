@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Prisma 7 — gerado em `npm install` / `prisma generate`
+/src/generated/prisma

@@ -45,34 +45,28 @@ export default function SignIn() {
         toast.error("Email ou senha incorretos.")
       } else {
         toast.success("Login realizado com sucesso!")
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
+        router.refresh();
       }
-    } catch (error) {
-      toast.error("Ocorreu um erro. Tente novamente.")
-    }
-  };
-
-  const onError = () => {
-    // erros de validação já são exibidos inline nos campos
+    } catch (error) {}
   };
 
   return (
-    <div className="flex w-screen bg-gray-100 justify-between">
+    <div className="flex w-screen h-screen bg-gray-100 justify-between overflow-hidden">
       
 
-      <div className="flex flex-col justify-center items-start px-[68px] pt-[107px]">
+      <div className="flex flex-col justify-center items-start px-[68px]">
 <Image src="/logo.svg" alt="Logo" width={139} height={27} className="absolute top-9 left-10 w-[139px] h-[27px]" />
 
         <div>
         <h1 className="text-2xl font-bold text-secondary pb-1">Faça login</h1>
         <div className="pb-4">
         <p className="font-medium text-xs text-accent ">Acesso apenas para administradores</p>
-        <p className="font-medium text-xs text-accent">Consulte sua conta com seu diretor</p>
         </div>
         </div>
 
         <div>
-        <form onSubmit={handleSubmit(onSubmit, onError)} className="w-full max-w-[350px] flex flex-col gap-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[350px] flex flex-col gap-2">
           <FormProvider {...singInForm}>
             <Input
               id="email"
@@ -93,13 +87,6 @@ export default function SignIn() {
             <button type="submit" className="w-[280px] h-[32px] bg-primary text-white rounded-md justify-center items-center font-bold size-[10px]">
               Entrar
             </button>
-
-            <p className="text-xs text-accent text-center">
-              Não tem conta?{" "}
-              <a href="/sign-up" className="text-primary font-medium hover:underline">
-                Cadastre-se
-              </a>
-            </p>
             </div>
 
           </FormProvider>
@@ -107,8 +94,8 @@ export default function SignIn() {
         </div>
       </div>
 
-      <div className="w-[810px] justify-end flex overflow-hidden">
-        <Image src="/ImageSignIn.png" alt="Imagem de Login" width={400} height={300} className="" />
+      <div className="w-[810px] flex-shrink-0 justify-end flex overflow-hidden">
+        <Image src="/ImageSignIn.png" alt="Imagem de Login" width={810} height={1080} className="h-full w-full object-cover" />
       </div>
     </div>
   );

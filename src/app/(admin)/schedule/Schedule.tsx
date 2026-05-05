@@ -1,6 +1,7 @@
 "use client"
 
 import { GlobalFilters, FilterField } from "@/components/ui/table/GlobalFilters"
+import { Collapse } from "@/components/ui/Collapse"
 import { useSchedule } from "@/hooks/useSchedule"
 import type { Atendimento } from "@/types/types"
 import { ScheduleNavigator } from "./components/ScheduleNavigator"
@@ -19,7 +20,7 @@ const FILTER_CONFIG = [
     options: [
       { value: "", label: "Todos os status" },
       { value: "Agendado", label: "Agendado" },
-      { value: "AguardandoConfirmacao", label: "Aguardando Confirmação" },
+      { value: "AguardandoConfirmacao", label: "Aguardando confirmação (legado)" },
       { value: "Confirmado", label: "Confirmado" },
       { value: "Em Atendimento", label: "Em Atendimento" },
       { value: "Reagendado", label: "Reagendado" },
@@ -65,11 +66,11 @@ export default function Schedule({ data, onChangeData }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex flex-col gap-6">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <Header title="Agenda" />
 
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <ScheduleNavigator
             date={date}
             view={view}
@@ -78,14 +79,16 @@ export default function Schedule({ data, onChangeData }: Props) {
           />
         </div>
 
-        <GlobalFilters
-          values={filters}
-          onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
-          filters={FILTER_CONFIG}
-        />
+        <Collapse label="Filtros">
+          <GlobalFilters
+            values={filters}
+            onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
+            filters={FILTER_CONFIG}
+          />
+        </Collapse>
       </div>
 
-      <main className="flex-1 min-h-0 overflow-hidden mt-4">
+      <main className="mt-3 min-h-0 flex-1 overflow-hidden sm:mt-4">
         <ScheduleView
           data={filteredData}
           setData={onChangeData}

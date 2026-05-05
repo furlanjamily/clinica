@@ -25,8 +25,18 @@ export type MedicalRecord = {
   agendamento?: {
     data?: string
     horario?: string
-    profissionalNome?: string
+    profissionalNome?: string | null
   }
+}
+
+export type StreetAddress = {
+  cep?: string | null
+  logradouro?: string | null
+  numero?: string | null
+  complemento?: string | null
+  bairro?: string | null
+  cidade?: string | null
+  uf?: string | null
 }
 
 export type Patient = {
@@ -38,7 +48,7 @@ export type Patient = {
   cpf?: string | null
   telefone?: string | null
   email?: string | null
-  endereco?: string | null
+} & StreetAddress & {
   convenio?: string | null
   numeroConvenio?: string | null
   observacoes?: string | null
@@ -59,9 +69,8 @@ export type Doctor = {
   cpf?: string | null
   dataNascimento?: string | null
   sexo?: string | null
-  endereco?: string | null
   turno?: string | null
   observacoes?: string | null
 
   ativo: boolean
-}
+} & StreetAddress
