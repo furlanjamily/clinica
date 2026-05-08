@@ -143,11 +143,6 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {(original.status === "Agendado" || original.status === "AguardandoConfirmacao") && (
-        <Button variant="teal" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "Confirmado" })}>
-          Confirmar consulta
-        </Button>
-      )}
       <Button variant="ghost" className="text-xs sm:text-sm" onClick={() => onReschedule(original)}>
         <Calendar size={12} /> Reagendar
       </Button>

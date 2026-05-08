@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/cancel-unconfirmed",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
+
