@@ -32,14 +32,6 @@ function isToday(dateStr: string) {
   )
 }
 
-function elapsed(isoTime?: string) {
-  if (!isoTime) return "00:00"
-  const diff = Math.floor((Date.now() - new Date(isoTime).getTime()) / 1000)
-  const m = Math.floor(diff / 60).toString().padStart(2, "0")
-  const s = (diff % 60).toString().padStart(2, "0")
-  return `${m}:${s}`
-}
-
 const statusStyle: Record<string, string> = {
   Agendado: "bg-yellow-100 text-yellow-700",
   AguardandoConfirmacao: "bg-orange-100 text-orange-700",
@@ -141,8 +133,20 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
 
   if (original.status === "Concluido" || original.status === "Cancelado") return null
 
+  const showConfirmConsulta =
+    original.status === "Agendado" || original.status === "AguardandoConfirmacao"
+
   return (
     <div className="flex flex-wrap items-center gap-3">
+      {showConfirmConsulta && (
+        <Button
+          variant="teal"
+          className="text-xs sm:text-sm"
+          onClick={() => updateItem(original.id, { status: "Confirmado" })}
+        >
+          Confirmar consulta
+        </Button>
+      )}
       <Button variant="ghost" className="text-xs sm:text-sm" onClick={() => onReschedule(original)}>
         <Calendar size={12} /> Reagendar
       </Button>

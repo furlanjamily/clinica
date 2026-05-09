@@ -6,7 +6,6 @@ import { toAppointment } from "@/lib/schedule/map-atendimento"
 import { CreateAppointmentSchema } from "@/lib/validations/schedule"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
-import { sendAppointmentConfirmationEmail } from "@/lib/schedule/send-confirmation-email"
 
 export type { Appointment as Atendimento } from "@/lib/schedule/types"
 
@@ -232,10 +231,6 @@ export async function POST(req: Request) {
         medico: true,
       },
     })
-
-    // Envia automaticamente o e-mail de confirmação ao criar (se houver e-mail do paciente).
-    // Não bloqueia a criação se o envio falhar.
-    await sendAppointmentConfirmationEmail(agendamento.id)
 
     return NextResponse.json(toAppointment(agendamento))
   } catch (err) {

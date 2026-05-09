@@ -176,6 +176,7 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
 
       const saved = await res.json()
       toast.success("Agendamento salvo!")
+
       onSuccess(saved)
       onClose()
     } finally {

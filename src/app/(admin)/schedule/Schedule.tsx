@@ -20,7 +20,7 @@ const FILTER_CONFIG = [
     options: [
       { value: "", label: "Todos os status" },
       { value: "Agendado", label: "Agendado" },
-      { value: "AguardandoConfirmacao", label: "Aguardando confirmação (legado)" },
+      { value: "AguardandoConfirmacao", label: "Aguardando confirmação" },
       { value: "Confirmado", label: "Confirmado" },
       { value: "Em Atendimento", label: "Em Atendimento" },
       { value: "Reagendado", label: "Reagendado" },

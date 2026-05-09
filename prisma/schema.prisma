@@ -79,21 +79,6 @@ model Agendamento {
   paciente         Paciente    @relation(fields: [pacienteId], references: [id])
   prontuario       Prontuario? @relation("AgendamentoProntuario")
   transacao        Transacao?
-  confirmacaoEmail ConfirmacaoAgendamentoEmail?
-}
-
-model ConfirmacaoAgendamentoEmail {
-  id           Int         @id @default(autoincrement())
-  agendamentoId Int        @unique
-  tokenHash    String      @unique
-  expiresAt    DateTime
-  usedAt       DateTime?
-  sentToEmail  String?
-  createdAt    DateTime    @default(now())
-
-  agendamento  Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
-
-  @@map("confirmacoes_agendamento_email")
 }
 
 model Prontuario {
