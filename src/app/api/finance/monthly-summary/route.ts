@@ -2,92 +2,92 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { handleApiError } from "@/lib/errors/error-handler"
 
-const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"] as const
+const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"] as const
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
-    const anoParam = searchParams.get("ano")
+    const yearParam = searchParams.get("ano")
 
     const now = new Date()
     const currentYear = now.getFullYear()
     const currentMonthPrefix = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
-    const datesRows = await db.transacao.findMany({
+    const datesRows = await db.transaction.findMany({
       where: { status: "Confirmado" },
-      select: { data: true },
+      select: { date: true },
     })
 
     const yearSet = new Set<number>()
-    for (const { data } of datesRows) {
-      const y = parseInt(data.slice(0, 4), 10)
+    for (const { date } of datesRows) {
+      const y = parseInt(date.slice(0, 4), 10)
       if (!Number.isNaN(y)) yearSet.add(y)
     }
 
-    let anosDisponiveis = [...yearSet].sort((a, b) => b - a)
-    if (!anosDisponiveis.includes(currentYear)) {
-      anosDisponiveis = [currentYear, ...anosDisponiveis].sort((a, b) => b - a)
+    let availableYears = [...yearSet].sort((a, b) => b - a)
+    if (!availableYears.includes(currentYear)) {
+      availableYears = [currentYear, ...availableYears].sort((a, b) => b - a)
     }
-    if (anosDisponiveis.length === 0) {
-      anosDisponiveis = [currentYear]
+    if (availableYears.length === 0) {
+      availableYears = [currentYear]
     }
 
-    let ano = currentYear
-    if (anoParam) {
-      const parsed = parseInt(anoParam, 10)
+    let year = currentYear
+    if (yearParam) {
+      const parsed = parseInt(yearParam, 10)
       if (!Number.isNaN(parsed) && parsed >= 1900 && parsed <= 2100) {
-        ano = parsed
+        year = parsed
       }
     }
 
-    if (!anosDisponiveis.includes(ano)) {
-      anosDisponiveis = [...new Set([ano, ...anosDisponiveis])].sort((a, b) => b - a)
+    if (!availableYears.includes(year)) {
+      availableYears = [...new Set([year, ...availableYears])].sort((a, b) => b - a)
     }
 
     const [yearTxs, monthTxs] = await Promise.all([
-      db.transacao.findMany({
-        where: { status: "Confirmado", data: { startsWith: `${ano}-` } },
-        select: { data: true, tipo: true, valor: true },
+      db.transaction.findMany({
+        where: { status: "Confirmado", date: { startsWith: `${year}-` } },
+        select: { date: true, type: true, amount: true },
       }),
-      db.transacao.findMany({
-        where: { status: "Confirmado", data: { startsWith: currentMonthPrefix } },
-        select: { tipo: true, valor: true },
+      db.transaction.findMany({
+        where: { status: "Confirmado", date: { startsWith: currentMonthPrefix } },
+        select: { type: true, amount: true },
       }),
     ])
 
-    const meses = MESES.map((mes) => ({ mes, receitas: 0, despesas: 0 }))
+    const months = MONTH_LABELS.map((label) => ({ mes: label, receitas: 0, despesas: 0 }))
 
     for (const t of yearTxs) {
-      const m = parseInt(t.data.slice(5, 7), 10) - 1
+      const m = parseInt(t.date.slice(5, 7), 10) - 1
       if (m < 0 || m > 11) continue
-      if (t.tipo === "Receita") meses[m].receitas += t.valor
-      else if (t.tipo === "Despesa") meses[m].despesas += t.valor
+      if (t.type === "Receita") months[m].receitas += t.amount
+      else if (t.type === "Despesa") months[m].despesas += t.amount
     }
 
-    let receitasMes = 0
-    let despesasMes = 0
+    let monthRevenue = 0
+    let monthExpense = 0
     for (const t of monthTxs) {
-      if (t.tipo === "Receita") receitasMes += t.valor
-      else if (t.tipo === "Despesa") despesasMes += t.valor
+      if (t.type === "Receita") monthRevenue += t.amount
+      else if (t.type === "Despesa") monthExpense += t.amount
     }
 
-    const totalReceitasAno = meses.reduce((acc, m) => acc + m.receitas, 0)
-    const totalDespesasAno = meses.reduce((acc, m) => acc + m.despesas, 0)
+    const totalRevenueYear = months.reduce((acc, m) => acc + m.receitas, 0)
+    const totalExpenseYear = months.reduce((acc, m) => acc + m.despesas, 0)
 
     return NextResponse.json({
-      ano,
-      anosDisponiveis,
-      meses,
+      ano: year,
+      anosDisponiveis: availableYears,
+      meses: months,
       resumoMesAtual: {
-        receitas: receitasMes,
-        despesas: despesasMes,
-        saldo: receitasMes - despesasMes,
+        receitas: monthRevenue,
+        despesas: monthExpense,
+        saldo: monthRevenue - monthExpense,
         periodo: currentMonthPrefix,
       },
       totaisAno: {
-        receitas: totalReceitasAno,
-        despesas: totalDespesasAno,
-        saldo: totalReceitasAno - totalDespesasAno,
+        receitas: totalRevenueYear,
+        despesas: totalExpenseYear,
+        saldo: totalRevenueYear - totalExpenseYear,
       },
     })
   } catch (err) {

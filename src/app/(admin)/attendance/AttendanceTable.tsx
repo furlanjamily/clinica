@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, memo, useMemo } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTableFilters } from "@/hooks/useTableFilters"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { Pause, Play, FileText, Download, Pencil } from "lucide-react"
 import { MedicalRecordModal } from "@/components/medical-record/MedicalRecordModal"
 import type { MedicalRecord } from "@/types"
@@ -19,11 +19,11 @@ import type { ViewMode } from "@/hooks/useSchedule"
 import { ScheduleNavigator } from "@/app/(admin)/schedule/components/ScheduleNavigator"
 import type { RowType } from "@/types/rowType"
 
-function getPatientName(item: Atendimento) {
-  return item.paciente?.nome ?? item.pacienteNome ?? "Sem paciente"
+function getPatientName(item: Appointment) {
+  return item.patient?.name ?? item.patientName ?? "Sem paciente"
 }
 
-function calcElapsedMs(item: Atendimento): number {
+function calcElapsedMs(item: Appointment): number {
   const accumulated = item.accumulatedTime ?? 0
   if (item.pausedAt) return accumulated
   if (!item.startTime) return accumulated
@@ -46,15 +46,14 @@ function normalizeDate(date: string | number | Date) {
   return new Date(year, month - 1, day)
 }
 
-function sortByTime(a: Atendimento, b: Atendimento) {
-  return a.horario.localeCompare(b.horario)
+function sortByTime(a: Appointment, b: Appointment) {
+  return a.slotTime.localeCompare(b.slotTime)
 }
 
-/** Same grouping as schedule: day label row, then rows with time only in the first column. */
-function flattenHistoryByDay(items: Atendimento[]): RowType[] {
-  const grouped = items.reduce<Record<string, Record<string, Atendimento[]>>>(
+function flattenHistoryByDay(items: Appointment[]): RowType[] {
+  const grouped = items.reduce<Record<string, Record<string, Appointment[]>>>(
     (acc, item) => {
-      const date = normalizeDate(item.data)
+      const date = normalizeDate(item.date)
       const month = date.toLocaleDateString("pt-BR", {
         month: "long",
         year: "numeric",
@@ -72,8 +71,8 @@ function flattenHistoryByDay(items: Atendimento[]): RowType[] {
   )
 
   const sortedMonths = Object.entries(grouped).sort((a, b) => {
-    const dateA = new Date(a[1][Object.keys(a[1])[0]][0].data)
-    const dateB = new Date(b[1][Object.keys(b[1])[0]][0].data)
+    const dateA = new Date(a[1][Object.keys(a[1])[0]][0].date)
+    const dateB = new Date(b[1][Object.keys(b[1])[0]][0].date)
     return dateA.getTime() - dateB.getTime()
   })
 
@@ -81,8 +80,8 @@ function flattenHistoryByDay(items: Atendimento[]): RowType[] {
 
   sortedMonths.forEach(([_month, days]) => {
     const sortedDays = Object.entries(days).sort((a, b) => {
-      const dateA = new Date(a[1][0].data)
-      const dateB = new Date(b[1][0].data)
+      const dateA = new Date(a[1][0].date)
+      const dateB = new Date(b[1][0].date)
       return dateA.getTime() - dateB.getTime()
     })
 
@@ -98,7 +97,7 @@ function flattenHistoryByDay(items: Atendimento[]): RowType[] {
   return flattened
 }
 
-function TimerCell({ item }: { item: Atendimento }) {
+function TimerCell({ item }: { item: Appointment }) {
   const [mounted, setMounted] = useState(false)
   const [, setTick] = useState(0)
 
@@ -120,8 +119,8 @@ function TimerCell({ item }: { item: Atendimento }) {
 }
 
 type Props = {
-  data: Atendimento[]
-  history: Atendimento[]
+  data: Appointment[]
+  history: Appointment[]
   loadingHistory?: boolean
   isSuperAdmin?: boolean
   date: Date
@@ -141,49 +140,49 @@ export function AttendanceTableComponent({
   onChangeView,
 }: Props) {
   const queryClient = useQueryClient()
-  const [modalItem, setModalItem] = useState<Atendimento | null>(null)
+  const [modalItem, setModalItem] = useState<Appointment | null>(null)
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | undefined>()
 
   const { filters, handleFilterChange } = useTableFilters({
-    paciente: "",
-    profissional: "",
-    data: "",
+    patient: "",
+    professional: "",
+    visitDate: "",
   })
 
   const FILTER_CONFIG: FilterField[] = [
-    { name: "paciente", type: "input", placeholder: "Paciente..." },
+    { name: "patient", type: "input", placeholder: "Paciente..." },
     ...(isSuperAdmin
-      ? [{ name: "profissional", type: "input" as const, placeholder: "Médico..." }]
+      ? [{ name: "professional", type: "input" as const, placeholder: "Médico..." }]
       : []),
-    { name: "data", type: "date" as const },
+    { name: "visitDate", type: "date" as const },
   ]
 
-  const setScheduleDataFromQuery: React.Dispatch<React.SetStateAction<Atendimento[]>> = useCallback(
+  const setScheduleDataFromQuery: React.Dispatch<React.SetStateAction<Appointment[]>> = useCallback(
     (updater) => {
-      queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) => {
+      queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) => {
         const list = prev ?? []
-        return typeof updater === "function" ? (updater as (p: Atendimento[]) => Atendimento[])(list) : updater
+        return typeof updater === "function" ? (updater as (p: Appointment[]) => Appointment[])(list) : updater
       })
     },
     [queryClient]
   )
 
   const filteredHistory = history.filter((item) => {
-    const pacienteNome = getPatientName(item).toLowerCase()
-    const matchPaciente = filters.paciente ? pacienteNome.includes(filters.paciente.toLowerCase()) : true
-    const matchProfissional = filters.profissional
-      ? (item.profissionalNome ?? "").toLowerCase().includes(filters.profissional.toLowerCase())
+    const patientLower = getPatientName(item).toLowerCase()
+    const matchPatient = filters.patient ? patientLower.includes(filters.patient.toLowerCase()) : true
+    const matchProfessional = filters.professional
+      ? (item.professionalName ?? "").toLowerCase().includes(filters.professional.toLowerCase())
       : true
-    const matchData = filters.data ? item.data === filters.data : true
-    return matchPaciente && matchProfissional && matchData
+    const matchVisitDate = filters.visitDate ? item.date === filters.visitDate : true
+    return matchPatient && matchProfessional && matchVisitDate
   })
 
   const historyRows = useMemo(() => flattenHistoryByDay(filteredHistory), [filteredHistory])
 
   const historyColCount = isSuperAdmin ? 5 : 4
 
-  const updateItem = useCallback(async (id: number, changes: Partial<Atendimento>) => {
-    queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+  const updateItem = useCallback(async (id: number, changes: Partial<Appointment>) => {
+    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
       prev?.map((item) =>
         item.id === id
           ? {
@@ -202,8 +201,8 @@ export function AttendanceTableComponent({
     })
   }, [queryClient])
 
-  const finalize = useCallback(async (item: Atendimento) => {
-    if (!item.prontuario) {
+  const finalize = useCallback(async (item: Appointment) => {
+    if (!item.clinicalChart) {
       toast.error("Preencha o prontuário antes de finalizar.")
       return
     }
@@ -211,7 +210,7 @@ export function AttendanceTableComponent({
     const endTime = new Date().toISOString()
     const accumulatedTime = calcElapsedMs(item)
 
-    queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
       prev?.map((i) =>
         i.id === item.id ? { ...i, status: "Concluido", endTime, accumulatedTime } : i
       ) ?? []
@@ -234,19 +233,19 @@ export function AttendanceTableComponent({
     }
   }, [queryClient])
 
-  const pause = useCallback((item: Atendimento) => {
+  const pause = useCallback((item: Appointment) => {
     updateItem(item.id, { pausedAt: new Date().toISOString(), accumulatedTime: calcElapsedMs(item) })
   }, [updateItem])
 
-  const resume = useCallback((item: Atendimento) => {
+  const resume = useCallback((item: Appointment) => {
     updateItem(item.id, { pausedAt: null as any, startTime: new Date().toISOString() })
   }, [updateItem])
 
-  const restart = useCallback((item: Atendimento) => {
+  const restart = useCallback((item: Appointment) => {
     updateItem(item.id, { pausedAt: null as any, startTime: new Date().toISOString(), accumulatedTime: 0 })
   }, [updateItem])
 
-  async function handleSaveProntuario(formData: Partial<MedicalRecord> & { atendimentoId: number }) {
+  async function handleSaveClinicalChart(formData: Partial<MedicalRecord> & { appointmentId: number }) {
     if (!modalItem) return
 
     const method = editingRecord ? "PATCH" : "POST"
@@ -256,15 +255,15 @@ export function AttendanceTableComponent({
       body: JSON.stringify(
         editingRecord
           ? { ...formData, id: editingRecord.id }
-          : { ...formData, agendamentoId: formData.atendimentoId }
+          : formData
       ),
     })
 
     const saved = await res.json()
 
-    queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
       prev?.map((item) =>
-        item.id === modalItem.id ? { ...item, prontuario: saved } : item
+        item.id === modalItem.id ? { ...item, clinicalChart: saved } : item
       ) ?? []
     )
 
@@ -273,22 +272,22 @@ export function AttendanceTableComponent({
     setEditingRecord(undefined)
   }
 
-  async function downloadPDF(record: MedicalRecord, item?: Atendimento) {
+  async function downloadPDF(record: MedicalRecord, item?: Appointment) {
     const completeRecord: MedicalRecord = {
       ...record,
-      agendamento: record.agendamento || (item ? {
-        data: item.data,
-        horario: item.horario,
-        profissionalNome: item.profissionalNome,
+      appointment: record.appointment || (item ? {
+        date: item.date,
+        slotTime: item.slotTime,
+        professionalName: item.professionalName,
       } : undefined),
-      paciente: record.paciente || item?.paciente,
+      patientDetails: record.patientDetails || item?.patient,
     }
 
     const blob = await pdf(<MedicalRecordPDF data={completeRecord} />).toBlob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    const patientName = (completeRecord.paciente?.nome ?? "paciente").replace(/\s+/g, "-").toLowerCase()
+    const patientName = (completeRecord.patientDetails?.name ?? "paciente").replace(/\s+/g, "-").toLowerCase()
     a.download = `prontuario-${patientName}.pdf`
     a.click()
     URL.revokeObjectURL(url)
@@ -296,9 +295,8 @@ export function AttendanceTableComponent({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-auto sm:gap-8">
-
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <section className="flex shrink-0 flex-col gap-3">
         {data.length === 0 ? (
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Em andamento</p>
         ) : (
@@ -314,7 +312,7 @@ export function AttendanceTableComponent({
         ) : (
           <div className="flex flex-col gap-3">
             {data.map((item) => {
-              const hasProntuario = !!item.prontuario
+              const hasProntuario = !!item.clinicalChart
               const nome = getPatientName(item)
               return (
                 <div
@@ -326,11 +324,11 @@ export function AttendanceTableComponent({
                       {nome}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-                      <span>{item.data}</span>
+                      <span>{item.date}</span>
                       <span className="text-gray-300" aria-hidden>
                         ·
                       </span>
-                      <span>às {item.horario}</span>
+                      <span>às {item.slotTime}</span>
                       <TimerCell item={item} />
                     </div>
                   </div>
@@ -339,7 +337,7 @@ export function AttendanceTableComponent({
                       className="text-xs sm:text-sm"
                       onClick={() => {
                         setModalItem(item)
-                        setEditingRecord(item.prontuario ?? undefined)
+                        setEditingRecord(item.clinicalChart ?? undefined)
                       }}
                     >
                       <FileText size={12} className="shrink-0" />
@@ -362,7 +360,7 @@ export function AttendanceTableComponent({
                     <Button
                       variant="success"
                       className="text-xs sm:text-sm"
-                      disabled={!item.prontuario}
+                      disabled={!item.clinicalChart}
                       onClick={() => finalize(item)}
                     >
                       Finalizar
@@ -373,136 +371,141 @@ export function AttendanceTableComponent({
             })}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <ScheduleNavigator
-            date={date}
-            view={view}
-            onChangeDate={onChangeDate}
-            onChangeView={onChangeView}
-          />
+      <section className="flex flex-col gap-3">
+        <div className="flex shrink-0 flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <ScheduleNavigator
+              date={date}
+              view={view}
+              onChangeDate={onChangeDate}
+              onChangeView={onChangeView}
+            />
+          </div>
+          <Collapse label="Filtros" unboundedPanel>
+            <GlobalFilters
+              values={filters}
+              onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
+              filters={FILTER_CONFIG}
+            />
+          </Collapse>
         </div>
-        <Collapse label="Filtros">
-          <GlobalFilters
-            values={filters}
-            onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
-            filters={FILTER_CONFIG}
-          />
-        </Collapse>
 
-        {loadingHistory ? (
-          <TableSkeleton cols={historyColCount} rows={4} />
-        ) : filteredHistory.length === 0 ? (
-          <table className="min-w-[min(100%,36rem)] w-full border-separate border-spacing-y-2 sm:min-w-[600px]">
-            <thead>
-              <tr>
-                {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
-                  <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td
-                  colSpan={historyColCount}
-                  className="px-3 py-8 text-center text-sm leading-relaxed text-gray-400"
-                >
-                  Nenhum atendimento concluído
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="max-h-[min(58dvh,calc(100dvh-13rem))] overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:max-h-[min(70vh,36rem)]">
+            {loadingHistory ? (
+              <div className="p-2 sm:p-3">
+                <TableSkeleton cols={historyColCount} rows={4} />
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <table className="w-full min-w-[min(100%,36rem)] border-separate border-spacing-y-2 sm:min-w-[600px]">
+                <thead className="bg-white">
+                  <tr>
+                    {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
+                      <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td
+                      colSpan={historyColCount}
+                      className="px-3 py-8 text-center text-sm leading-relaxed text-gray-400"
+                    >
+                      Nenhum atendimento concluído
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-        ) : (
-          <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:px-0">
-            <table className="min-w-[min(100%,36rem)] w-full border-separate border-spacing-y-2 sm:min-w-[600px]">
-              <thead>
-                <tr>
-                  {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
-                    <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {historyRows.map((row, rowIndex) => {
-                  if (row.type === "day") {
+            ) : (
+              <table className="w-full min-w-[min(100%,36rem)] border-separate border-spacing-y-2 sm:min-w-[600px]">
+                <thead className="border-b border-gray-200 bg-white">
+                  <tr>
+                    {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
+                      <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRows.map((row, rowIndex) => {
+                    if (row.type === "day") {
+                      return (
+                        <tr key={`day-${rowIndex}-${row.label}`}>
+                          <td
+                            colSpan={historyColCount}
+                            className="pt-3 text-sm capitalize leading-snug text-gray-500"
+                          >
+                            {row.label}
+                          </td>
+                        </tr>
+                      )
+                    }
+                    if (row.type !== "data") return null
+                    const item = row
+                    const pn = getPatientName(item)
                     return (
-                      <tr key={`day-${rowIndex}-${row.label}`}>
-                        <td
-                          colSpan={historyColCount}
-                          className="pt-3 text-sm capitalize leading-snug text-gray-500"
-                        >
-                          {row.label}
+                      <tr key={item.id} className="bg-white shadow-sm">
+                        <td className="whitespace-nowrap p-2 text-xs sm:p-3 sm:text-sm">{item.slotTime}</td>
+                        <td className="max-w-[10rem] p-2 text-xs font-medium sm:max-w-[14rem] sm:p-3 sm:text-sm">
+                          <span className="line-clamp-2 break-words sm:line-clamp-none" title={pn}>
+                            {pn}
+                          </span>
+                        </td>
+                        {isSuperAdmin && (
+                          <td className="max-w-[8rem] p-2 text-xs text-gray-600 sm:max-w-[12rem] sm:p-3 sm:text-sm">
+                            <span className="line-clamp-2 break-words">
+                              {item.professionalName}
+                            </span>
+                          </td>
+                        )}
+                        <td className="whitespace-nowrap p-2 font-mono text-xs text-gray-600 sm:p-3 sm:text-sm">
+                          {item.accumulatedTime ? formatMs(item.accumulatedTime) : "—"}
+                        </td>
+                        <td className="p-2 sm:p-3">
+                          {item.clinicalChart ? (
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                              <Button variant="ghost-blue" size="icon" className="text-xs sm:text-sm" onClick={() => downloadPDF(item.clinicalChart!, item)}>
+                                <Download size={13} /> PDF
+                              </Button>
+                              <Button variant="ghost" size="icon" className="text-xs sm:text-sm" onClick={() => { setModalItem(item); setEditingRecord(item.clinicalChart ?? undefined) }}>
+                                <Pencil size={13} /> Editar
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button className="text-xs sm:text-sm" onClick={() => { setEditingRecord(undefined); setModalItem(item) }}>
+                              <FileText size={12} /> Criar
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     )
-                  }
-                  if (row.type !== "data") return null
-                  const item = row
-                  const pn = getPatientName(item)
-                  return (
-                    <tr key={item.id} className="bg-white shadow-sm">
-                      <td className="whitespace-nowrap p-2 text-xs sm:p-3 sm:text-sm">{item.horario}</td>
-                      <td className="max-w-[10rem] p-2 text-xs font-medium sm:max-w-[14rem] sm:p-3 sm:text-sm">
-                        <span className="line-clamp-2 break-words sm:line-clamp-none" title={pn}>
-                          {pn}
-                        </span>
-                      </td>
-                      {isSuperAdmin && (
-                        <td className="max-w-[8rem] p-2 text-xs text-gray-600 sm:max-w-[12rem] sm:p-3 sm:text-sm">
-                          <span className="line-clamp-2 break-words">
-                            {item.profissionalNome}
-                          </span>
-                        </td>
-                      )}
-                      <td className="whitespace-nowrap p-2 font-mono text-xs text-gray-600 sm:p-3 sm:text-sm">
-                        {item.accumulatedTime ? formatMs(item.accumulatedTime) : "—"}
-                      </td>
-                      <td className="p-2 sm:p-3">
-                        {item.prontuario ? (
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <Button variant="ghost-blue" size="icon" className="text-xs sm:text-sm" onClick={() => downloadPDF(item.prontuario!, item)}>
-                              <Download size={13} /> PDF
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-xs sm:text-sm" onClick={() => { setModalItem(item); setEditingRecord(item.prontuario ?? undefined) }}>
-                              <Pencil size={13} /> Editar
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button className="text-xs sm:text-sm" onClick={() => { setEditingRecord(undefined); setModalItem(item) }}>
-                            <FileText size={12} /> Criar
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
-        )}
-
-      </div>
+        </div>
+      </section>
 
       {modalItem && (
         <MedicalRecordModal
-          atendimento={{
+          visit={{
             id: modalItem.id,
-            data: modalItem.data,
-            pacienteNome: getPatientName(modalItem),
-            profissionalNome: modalItem.profissionalNome,
-            horario: modalItem.horario,
+            date: modalItem.date,
+            patientName: getPatientName(modalItem),
+            professionalName: modalItem.professionalName,
+            slotTime: modalItem.slotTime,
           }}
           data={editingRecord}
           onClose={() => { setModalItem(null); setEditingRecord(undefined) }}
-          onSave={handleSaveProntuario}
+          onSave={handleSaveClinicalChart}
         />
       )}
     </div>

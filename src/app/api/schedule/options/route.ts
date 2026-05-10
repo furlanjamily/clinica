@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 
-// Simple in-memory rate limiter (for demo; use Redis or similar in production)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
-const RATE_LIMIT_MAX = 10 // Max requests per window
+const RATE_LIMIT_WINDOW = 60 * 1000
+const RATE_LIMIT_MAX = 10
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
@@ -32,13 +31,13 @@ function isAuthorized(req: Request) {
   return bearer === configuredSecret
 }
 
-function validatePacienteData(data: any) {
-  if (!data || typeof data !== "object") return { valid: false, error: "Invalid data" }
-  if (!data.nome || typeof data.nome !== "string" || data.nome.trim().length === 0) {
-    return { valid: false, error: "Nome is required and must be a non-empty string" }
+function validatePatientPayload(data: Record<string, unknown>) {
+  if (!data || typeof data !== "object") return { valid: false as const, error: "Invalid data" }
+  const name = data.name
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
+    return { valid: false as const, error: "name is required and must be a non-empty string" }
   }
-  // Add more validations as needed (e.g., email, phone)
-  return { valid: true }
+  return { valid: true as const }
 }
 
 export async function GET(req: Request) {
@@ -57,22 +56,22 @@ export async function GET(req: Request) {
     const limit = parseInt(url.searchParams.get("limit") || "50", 10)
     const offset = parseInt(url.searchParams.get("offset") || "0", 10)
 
-    const [medicosDb, pacientes] = await Promise.all([
-      db.medico.findMany({
-        where: { ativo: true },
-        orderBy: { nome: "asc" },
+    const [doctorsRaw, patients] = await Promise.all([
+      db.doctor.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
         take: limit,
         skip: offset,
       }),
-      db.paciente.findMany({
-        orderBy: { nome: "asc" },
+      db.patient.findMany({
+        orderBy: { name: "asc" },
         take: limit,
         skip: offset,
       }),
     ])
 
-    const medicos = medicosDb.map((m: any) => ({ id: m.id, nome: m.nome, turno: m.turno }))
-    return NextResponse.json({ medicos, pacientes })
+    const doctors = doctorsRaw.map((m) => ({ id: m.id, name: m.name, shift: m.shift }))
+    return NextResponse.json({ doctors, patients })
   } catch (error) {
     console.error("Error fetching schedule options:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
@@ -92,15 +91,18 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const validation = validatePacienteData(body)
+    const validation = validatePatientPayload(body)
     if (!validation.valid) {
       return NextResponse.json({ success: false, error: validation.error }, { status: 400 })
     }
 
-    const novo = await db.paciente.create({ data: { nome: body.nome.trim(), ...body } })
-    return NextResponse.json(novo, { status: 201 })
+    const { name: _n, ...rest } = body as Record<string, unknown>
+    const created = await db.patient.create({
+      data: { name: String(body.name).trim(), ...(rest as object) },
+    })
+    return NextResponse.json(created, { status: 201 })
   } catch (error) {
-    console.error("Error creating paciente:", error)
+    console.error("Error creating patient:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

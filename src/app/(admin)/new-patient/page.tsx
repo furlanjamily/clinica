@@ -20,33 +20,33 @@ function trimToNull(v: string | undefined | null): string | null {
 function normalizePatientPayload(data: Omit<Patient, "id">): Omit<Patient, "id"> {
   return {
     ...data,
-    convenio: trimToNull(data.convenio),
-    numeroConvenio: trimToNull(data.numeroConvenio),
+    insurancePlan: trimToNull(data.insurancePlan),
+    insuranceNumber: trimToNull(data.insuranceNumber),
   }
 }
 
 function patientFormEmpty(): Omit<Patient, "id"> {
   return {
-    nome: "",
-    dataNascimento: "",
-    sexo: "",
+    name: "",
+    birthDate: "",
+    gender: "",
     cpf: "",
-    telefone: "",
+    phone: "",
     email: "",
-    cep: "",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    cidade: "",
-    uf: "",
-    convenio: "",
-    numeroConvenio: "",
-    observacoes: "",
-    estadoCivil: "",
-    escolaridade: "",
-    religiao: "",
-    profissao: "",
+    zipCode: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    insurancePlan: "",
+    insuranceNumber: "",
+    notes: "",
+    maritalStatus: "",
+    education: "",
+    religion: "",
+    profession: "",
   }
 }
 
@@ -80,10 +80,10 @@ function PatientsTable({
         <tbody>
           {patients.map((p) => (
             <tr key={p.id} className="bg-white shadow-sm">
-              <td className="p-3 text-sm font-medium">{p.nome}</td>
+              <td className="p-3 text-sm font-medium">{p.name}</td>
               <td className="p-3 text-sm text-gray-600">{p.cpf ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{p.telefone ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{p.convenio ?? "—"}</td>
+              <td className="p-3 text-sm text-gray-600">{p.phone ?? "—"}</td>
+              <td className="p-3 text-sm text-gray-600">{p.insurancePlan ?? "—"}</td>
               <td className="p-3">
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" onClick={() => onEdit(p)}><Pencil size={14} /> Editar</Button>
@@ -155,10 +155,10 @@ export default function PatientsPage() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dados pessoais</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-full">
-                  <Input label="Nome completo" {...register("nome", { required: true })} placeholder="Nome do paciente" />
+                  <Input label="Nome completo" {...register("name", { required: true })} placeholder="Nome do paciente" />
                 </div>
-                <Input label="Data de nascimento" type="date" {...register("dataNascimento")} />
-                <FormSelect label="Sexo" {...register("sexo")}>
+                <Input label="Data de nascimento" type="date" {...register("birthDate")} />
+                <FormSelect label="Sexo" {...register("gender")}>
                   <option value="">Selecione</option>
                   <option>Masculino</option><option>Feminino</option><option>Outro</option>
                 </FormSelect>
@@ -170,7 +170,7 @@ export default function PatientsPage() {
                   )}
                 />
                 <Controller
-                  name="telefone"
+                  name="phone"
                   control={control}
                   render={({ field }) => (
                     <Input mask="telefone" label="Telefone" placeholder="(00) 00000-0000" {...field} />
@@ -189,11 +189,11 @@ export default function PatientsPage() {
               />
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Convênio (opcional)</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Plano / convênio" {...register("convenio")} placeholder="Deixe em branco se particular" />
-                <Input label="Nº da carteirinha" {...register("numeroConvenio")} placeholder="Opcional" />
+                <Input label="Plano / convênio" {...register("insurancePlan")} placeholder="Deixe em branco se particular" />
+                <Input label="Nº da carteirinha" {...register("insuranceNumber")} placeholder="Opcional" />
               </div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Observações</p>
-              <Textarea rows={3} {...register("observacoes")} placeholder="Alergias, condições pré-existentes, etc." />
+              <Textarea rows={3} {...register("notes")} placeholder="Alergias, condições pré-existentes, etc." />
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
                 <Button type="submit" size="md" disabled={isSubmitting}>

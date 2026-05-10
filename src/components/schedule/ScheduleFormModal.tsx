@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useScheduleOptions } from "@/hooks/useScheduleOptions"
@@ -10,75 +10,69 @@ import { ScheduleFormFields } from "@/components/schedule/ScheduleFormFields"
 import { formatDateToInput, isDateDisabled, filterAvailableSlots } from "@/lib/schedule/form-utils"
 
 type Props = {
-  item?: Atendimento
+  item?: Appointment
   mode: "create" | "reschedule"
   onClose: () => void
-  onSuccess: (item: Atendimento) => void
+  onSuccess: (item: Appointment) => void
 }
 
 export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
   const { doctors = [], patients = [] } = useScheduleOptions()
 
-  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([])
-  const [loadingHorarios, setLoadingHorarios] = useState(false)
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const isReschedule = mode === "reschedule" && !!item
 
   const [form, setForm] = useState({
-    pacienteId: item?.paciente?.id ? String(item.paciente.id) : "",
-    medicoId: "",
-    data: formatDateToInput(item?.data),
-    horario: item?.horario ?? "",
+    patientId: item?.patient?.id ? String(item.patient.id) : "",
+    doctorId: "",
+    date: formatDateToInput(item?.date),
+    slotTime: item?.slotTime ?? "",
   })
 
-  const hoje = new Date().toISOString().split("T")[0]
-  const agora = new Date().toTimeString().slice(0, 5)
+  const todayIso = new Date().toISOString().split("T")[0]
+  const nowTime = new Date().toTimeString().slice(0, 5)
 
-  const medicoSelecionado = useMemo(
-    () => doctors.find((d) => String(d.id) === form.medicoId),
-    [doctors, form.medicoId]
+  const selectedDoctor = useMemo(
+    () => doctors.find((d) => String(d.id) === form.doctorId),
+    [doctors, form.doctorId]
   )
 
-  /* =========================
-     🔥 BUSCA HORÁRIOS
-  ========================= */
   useEffect(() => {
-    if (!medicoSelecionado || !form.data) {
-      setHorariosDisponiveis([])
+    if (!selectedDoctor || !form.date) {
+      setAvailableSlots([])
       return
     }
 
-    setLoadingHorarios(true)
+    setLoadingSlots(true)
 
     fetch(
-      `/api/schedule/availability?medicoNome=${encodeURIComponent(
-        medicoSelecionado.nome
-      )}&data=${form.data}`
+      `/api/schedule/availability?doctorName=${encodeURIComponent(
+        selectedDoctor.name
+      )}&date=${form.date}`
     )
       .then((r) => r.json())
       .then((data) => {
         const slots = data?.availableTimes ?? []
 
         const filtered = Array.isArray(slots)
-          ? filterAvailableSlots(slots, form.data, hoje, agora)
+          ? filterAvailableSlots(slots, form.date, todayIso, nowTime)
           : []
 
-        setHorariosDisponiveis(filtered)
+        setAvailableSlots(filtered)
       })
-      .catch(() => setHorariosDisponiveis([]))
-      .finally(() => setLoadingHorarios(false))
-  }, [medicoSelecionado, form.data, hoje, agora])
+      .catch(() => setAvailableSlots([]))
+      .finally(() => setLoadingSlots(false))
+  }, [selectedDoctor, form.date, todayIso, nowTime])
 
-  /* =========================
-     OPTIONS
-  ========================= */
   const patientOptions = useMemo(
     () => [
       { value: "", label: "Selecione um paciente" },
       ...patients.map((p) => ({
         value: String(p.id),
-        label: p.nome,
+        label: p.name,
       })),
     ],
     [patients]
@@ -89,58 +83,55 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
       { value: "", label: "Selecione um médico" },
       ...doctors.map((d) => ({
         value: String(d.id),
-        label: d.nome,
+        label: d.name,
       })),
     ],
     [doctors]
   )
 
-  const horarioOptions = useMemo(
+  const slotOptions = useMemo(
     () => [
       {
         value: "",
         label:
-          medicoSelecionado && form.data
-            ? loadingHorarios
+          selectedDoctor && form.date
+            ? loadingSlots
               ? "Carregando horários..."
-              : horariosDisponiveis.length > 0
+              : availableSlots.length > 0
               ? "Selecione um horário"
               : "Nenhum horário disponível"
             : "Selecione médico e data primeiro",
       },
-      ...horariosDisponiveis.map((h) => ({
+      ...availableSlots.map((h) => ({
         value: h,
         label: h,
       })),
     ],
-    [medicoSelecionado, form.data, horariosDisponiveis, loadingHorarios]
+    [selectedDoctor, form.date, availableSlots, loadingSlots]
   )
 
-  /* =========================
-     SUBMIT
-  ========================= */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!form.pacienteId || !form.medicoId || !form.data || !form.horario) {
+    if (!form.patientId || !form.doctorId || !form.date || !form.slotTime) {
       toast.error("Preencha todos os campos")
       return
     }
 
-    if (isDateDisabled(form.data)) {
+    if (isDateDisabled(form.date)) {
       toast.error("Não é possível agendar no domingo")
       return
     }
 
-    const pacienteSelecionado = patients.find(
-      (p) => String(p.id) === form.pacienteId
+    const selectedPatient = patients.find(
+      (p) => String(p.id) === form.patientId
     )
 
-    const medicoSelecionado = doctors.find(
-      (d) => String(d.id) === form.medicoId
+    const doctorForSubmit = doctors.find(
+      (d) => String(d.id) === form.doctorId
     )
 
-    if (!pacienteSelecionado || !medicoSelecionado) {
+    if (!selectedPatient || !doctorForSubmit) {
       toast.error("Paciente ou médico inválido")
       return
     }
@@ -153,17 +144,17 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: item?.id,
-          data: form.data,
-          horario: form.horario,
+          date: form.date,
+          slotTime: form.slotTime,
 
-          paciente: {
-            id: pacienteSelecionado.id,
-            nome: pacienteSelecionado.nome,
+          patient: {
+            id: selectedPatient.id,
+            name: selectedPatient.name,
           },
 
-          profissional: {
-            id: medicoSelecionado.id,
-            nome: medicoSelecionado.nome,
+          professional: {
+            id: doctorForSubmit.id,
+            name: doctorForSubmit.name,
           },
         }),
       })
@@ -197,15 +188,15 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
             form={form}
             patientOptions={patientOptions}
             doctorOptions={doctorOptions}
-            horarioOptions={horarioOptions}
-            minDate={hoje}
+            slotOptions={slotOptions}
+            minDate={todayIso}
             onFieldChange={(name, value) => setForm((p) => ({ ...p, [name]: value }))}
             onDateChange={(selectedDate) => {
               if (isDateDisabled(selectedDate)) {
                 toast.error("Clínica fechada no domingo")
                 return
               }
-              setForm((p) => ({ ...p, data: selectedDate }))
+              setForm((p) => ({ ...p, date: selectedDate }))
             }}
           />
 

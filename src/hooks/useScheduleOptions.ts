@@ -2,27 +2,27 @@
 
 import { useEffect, useState } from "react"
 
-type Doctor = {
+type ScheduleDoctor = {
   id: number
-  nome: string
-  turno?: string
+  name: string
+  shift?: string | null
 }
 
-type Patient = {
+type SchedulePatient = {
   id: number
-  nome: string
-  telefone?: string
-  email?: string
-  dataNascimento?: string
-  estadoCivil?: string
-  escolaridade?: string
-  religiao?: string
-  profissao?: string
+  name: string
+  phone?: string | null
+  email?: string | null
+  birthDate?: string | null
+  maritalStatus?: string | null
+  education?: string | null
+  religion?: string | null
+  profession?: string | null
 }
 
 export function useScheduleOptions() {
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [patients, setPatients] = useState<Patient[]>([])
+  const [doctors, setDoctors] = useState<ScheduleDoctor[]>([])
+  const [patients, setPatients] = useState<SchedulePatient[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,10 +31,8 @@ export function useScheduleOptions() {
         const res = await fetch("/api/schedule/options")
         const data = await res.json()
 
-        console.log("OPTIONS:", data)
-
-        setDoctors(data?.medicos ?? [])
-        setPatients(data?.pacientes ?? [])
+        setDoctors(data?.doctors ?? [])
+        setPatients(data?.patients ?? [])
       } catch (err) {
         console.error("Erro ao carregar opções:", err)
       } finally {

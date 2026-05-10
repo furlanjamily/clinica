@@ -26,8 +26,8 @@ export const buttonVariants = tv({
     size: {
       icon: "p-2 text-xs sm:p-1.5",
       sm:   "py-1 px-2 text-xs sm:py-1.5 sm:px-3",
-      md:   "py-1.5 px-2.5 text-sm sm:py-2 sm:px-4",
-      lg:   "py-2 px-3 text-sm sm:py-2.5 sm:px-5 lg:py-3.5 lg:px-6",
+      md:   "py-1.5 px-2.5 text-sm sm:py-2 sm:px-3",
+      lg:   "py-2 px-3 text-sm sm:py-2.5 sm:px-4 lg:py-2 lg:px-3",
     },
     disabled: {
       true: "opacity-40 pointer-events-none",

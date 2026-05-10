@@ -1,42 +1,44 @@
 import { z } from "zod"
 
-const categoriasReceitaAgendamento = ["Consulta", "Retorno"] as const
+const consultOrFollowUpCategories = ["Consulta", "Retorno"] as const
 
-export const CreateTransacaoSchema = z.object({
-  tipo: z.enum(["Receita", "Despesa"]),
-  categoria: z.string().trim().min(1).max(120),
-  descricao: z.string().min(1).max(500),
-  valor: z.number().positive(),
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  formaPagamento: z
+export const CreateTransactionSchema = z.object({
+  type: z.enum(["Receita", "Despesa"]),
+  category: z.string().trim().min(1).max(120),
+  description: z.string().min(1).max(500),
+  amount: z.number().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  paymentMethod: z
     .string()
     .max(80)
     .optional()
     .nullable()
     .transform((s) => (s?.trim() ? s.trim() : undefined)),
   status: z.string().default("Confirmado"),
-  agendamentoId: z.number().int().positive().optional(),
+  appointmentId: z.number().int().positive().optional(),
 })
 
-export type CreateTransacaoInput = z.infer<typeof CreateTransacaoSchema>
+export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>
 
-export function isReceitaConsultaOuRetorno(categoria: string): boolean {
-  return categoriasReceitaAgendamento.includes(categoria as (typeof categoriasReceitaAgendamento)[number])
+export function isConsultOrFollowUpCategory(category: string): boolean {
+  return consultOrFollowUpCategories.includes(
+    category as (typeof consultOrFollowUpCategories)[number]
+  )
 }
 
-export function valorCoerenteComTabela(
-  categoria: string,
-  valor: number,
-  valorConsulta: number,
-  valorRetorno: number
+export function amountMatchesFeeTable(
+  category: string,
+  amount: number,
+  consultationFee: number,
+  followUpFee: number
 ): { ok: true } | { ok: false; message: string } {
-  const esperado = categoria === "Retorno" ? valorRetorno : valorConsulta
-  const min = Math.max(esperado * 0.85, 1)
-  const max = esperado * 1.15
-  if (valor < min || valor > max) {
+  const expected = category === "Retorno" ? followUpFee : consultationFee
+  const min = Math.max(expected * 0.85, 1)
+  const max = expected * 1.15
+  if (amount < min || amount > max) {
     return {
       ok: false,
-      message: `Valor fora da faixa coerente com a tabela (${categoria}: entre ${min.toFixed(2)} e ${max.toFixed(2)} reais; referência ${esperado.toFixed(2)}). Ajuste o valor ou a categoria em Configurações financeiras.`,
+      message: `Valor fora da faixa coerente com a tabela (${category}: entre ${min.toFixed(2)} e ${max.toFixed(2)} reais; referência ${expected.toFixed(2)}). Ajuste o valor ou a categoria em Configurações financeiras.`,
     }
   }
   return { ok: true }

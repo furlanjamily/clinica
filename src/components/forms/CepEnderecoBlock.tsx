@@ -34,7 +34,7 @@ export function CepEnderecoBlock<T extends WithStructuredAddress>({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <Controller
-        name={"cep" as Path<T>}
+        name={"zipCode" as Path<T>}
         control={control}
         render={({ field }) => (
           <Input
@@ -55,15 +55,15 @@ export function CepEnderecoBlock<T extends WithStructuredAddress>({
                   return
                 }
                 const patch = viaCepAddressAutoFill(r.data, digits)
-                setValue("cep" as Path<T>, patch.cep as never, opts)
-                setValue("logradouro" as Path<T>, patch.logradouro as never, opts)
-                setValue("bairro" as Path<T>, patch.bairro as never, opts)
-                setValue("cidade" as Path<T>, patch.cidade as never, opts)
-                setValue("uf" as Path<T>, patch.uf as never, opts)
+                setValue("zipCode" as Path<T>, patch.zipCode as never, opts)
+                setValue("street" as Path<T>, patch.street as never, opts)
+                setValue("neighborhood" as Path<T>, patch.neighborhood as never, opts)
+                setValue("city" as Path<T>, patch.city as never, opts)
+                setValue("state" as Path<T>, patch.state as never, opts)
                 if (r.data.complemento) {
-                  const cur = getValues("complemento" as Path<T>)
+                  const cur = getValues("complement" as Path<T>)
                   if (cur == null || String(cur).trim() === "") {
-                    setValue("complemento" as Path<T>, r.data.complemento as never, opts)
+                    setValue("complement" as Path<T>, r.data.complemento as never, opts)
                   }
                 }
                 toast.success("Endereço preenchido pelo CEP.")
@@ -73,13 +73,13 @@ export function CepEnderecoBlock<T extends WithStructuredAddress>({
         )}
       />
       <div className="sm:col-span-2">
-        <Input label="Logradouro" {...register("logradouro" as Path<T>)} placeholder="Rua, avenida..." />
+        <Input label="Logradouro" {...register("street" as Path<T>)} placeholder="Rua, avenida..." />
       </div>
-      <Input label="Número" {...register("numero" as Path<T>)} placeholder="Nº" />
-      <Input label="Complemento" {...register("complemento" as Path<T>)} placeholder="Apto, bloco, sala..." />
-      <Input label="Bairro" {...register("bairro" as Path<T>)} placeholder="Bairro" />
-      <Input label="Cidade" {...register("cidade" as Path<T>)} placeholder="Cidade" />
-      <Input label="UF" maxLength={2} {...register("uf" as Path<T>)} placeholder="SP" />
+      <Input label="Número" {...register("number" as Path<T>)} placeholder="Nº" />
+      <Input label="Complemento" {...register("complement" as Path<T>)} placeholder="Apto, bloco, sala..." />
+      <Input label="Bairro" {...register("neighborhood" as Path<T>)} placeholder="Bairro" />
+      <Input label="Cidade" {...register("city" as Path<T>)} placeholder="Cidade" />
+      <Input label="UF" maxLength={2} {...register("state" as Path<T>)} placeholder="SP" />
     </div>
   )
 }

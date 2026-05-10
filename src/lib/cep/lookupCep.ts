@@ -18,14 +18,14 @@ export function formatCepMaskedFromDigits(digits: string): string {
   return `${d.slice(0, 5)}-${d.slice(5)}`
 }
 
-/** Campos preenchíveis automaticamente pelo ViaCEP (número e complemento ficam manuais). */
+/** Fillable fields from ViaCEP (house number and complement stay manual). */
 export function viaCepAddressAutoFill(data: ViaCepSuccess, digits8: string) {
   return {
-    cep: formatCepMaskedFromDigits(digits8),
-    logradouro: data.logradouro ?? "",
-    bairro: data.bairro ?? "",
-    cidade: data.localidade ?? "",
-    uf: (data.uf ?? "").toUpperCase().slice(0, 2),
+    zipCode: formatCepMaskedFromDigits(digits8),
+    street: data.logradouro ?? "",
+    neighborhood: data.bairro ?? "",
+    city: data.localidade ?? "",
+    state: (data.uf ?? "").toUpperCase().slice(0, 2),
   }
 }
 

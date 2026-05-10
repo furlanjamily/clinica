@@ -3,56 +3,56 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
 
-type Config = {
-  valorConsulta: number
-  valorRetorno: number
-  comissaoMedico: number
+type FeeConfig = {
+  consultationFee: number
+  followUpFee: number
+  doctorCommissionRate: number
 }
 
-const FORMAS = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência"]
+const PAYMENT_METHODS = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência"]
 
-type Form = {
-  categoria: string
-  valor: number
-  descricao: string
-  data: string
-  formaPagamento: string
+type PaymentForm = {
+  category: string
+  amount: number
+  description: string
+  date: string
+  paymentMethod: string
 }
 
 type Props = {
-  item: Atendimento
+  item: Appointment
   onClose: () => void
-  onSuccess: (updated: Atendimento) => void
+  onSuccess: (updated: Appointment) => void
 }
 
 export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
-  const [config, setConfig] = useState<Config | null>(null)
+  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, reset, watch, setValue } = useForm<Form>({
+  const { register, handleSubmit, reset, watch, setValue } = useForm<PaymentForm>({
     defaultValues: {
-      categoria: "Consulta",
-      valor: 0,
-      descricao: "",
-      data: new Date().toISOString().slice(0, 10),
-      formaPagamento: "",
+      category: "Consulta",
+      amount: 0,
+      description: "",
+      date: new Date().toISOString().slice(0, 10),
+      paymentMethod: "",
     },
   })
 
-  const categoria = watch("categoria")
+  const category = watch("category")
 
   useEffect(() => {
     let cancelled = false
     fetch("/api/finance/config")
       .then((r) => r.json())
-      .then((c: Config) => {
+      .then((c: FeeConfig) => {
         if (cancelled) return
-        setConfig(c)
+        setFeeConfig(c)
       })
       .catch(() => toast.error("Não foi possível carregar a tabela de valores."))
     return () => {
@@ -61,37 +61,37 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!config) return
-    const nome = item.paciente?.nome ?? item.pacienteNome ?? "Paciente"
+    if (!feeConfig) return
+    const patientLabel = item.patient?.name ?? item.patientName ?? "Paciente"
     reset({
-      categoria: "Consulta",
-      valor: config.valorConsulta,
-      descricao: `Receita — ${nome} (${item.data} ${item.horario})`,
-      data: new Date().toISOString().slice(0, 10),
-      formaPagamento: "",
+      category: "Consulta",
+      amount: feeConfig.consultationFee,
+      description: `Receita — ${patientLabel} (${item.date} ${item.slotTime})`,
+      date: new Date().toISOString().slice(0, 10),
+      paymentMethod: "",
     })
-  }, [item.id, item.data, item.horario, item.paciente?.nome ?? "", item.pacienteNome ?? "", config, reset])
+  }, [item.id, item.date, item.slotTime, item.patient?.name ?? "", item.patientName ?? "", feeConfig, reset])
 
   useEffect(() => {
-    if (!config) return
-    setValue("valor", categoria === "Retorno" ? config.valorRetorno : config.valorConsulta)
-  }, [categoria, config, setValue])
+    if (!feeConfig) return
+    setValue("amount", category === "Retorno" ? feeConfig.followUpFee : feeConfig.consultationFee)
+  }, [category, feeConfig, setValue])
 
-  async function onSubmit(data: Form) {
+  async function onSubmit(data: PaymentForm) {
     setLoading(true)
     try {
       const res = await fetch("/api/finance/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo: "Receita",
-          categoria: data.categoria,
-          descricao: data.descricao.trim(),
-          valor: data.valor,
-          data: data.data,
-          formaPagamento: data.formaPagamento,
+          type: "Receita",
+          category: data.category,
+          description: data.description.trim(),
+          amount: data.amount,
+          date: data.date,
+          paymentMethod: data.paymentMethod,
           status: "Confirmado",
-          agendamentoId: item.id,
+          appointmentId: item.id,
         }),
       })
 
@@ -101,7 +101,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
         return
       }
 
-      const updated = body.agendamento as Atendimento
+      const updated = body.appointment as Appointment
       toast.success("Pagamento registrado. Status atualizado para pago.")
       onSuccess(updated)
       onClose()
@@ -118,14 +118,14 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
           Registre a receita vinculada a este agendamento. O valor deve estar na faixa de ±15% da tabela da clínica
           (consulta ou retorno) e o status da transação será <strong>Confirmado</strong>, liberando a etapa «Atender».
         </p>
-        {config && (
+        {feeConfig && (
           <p className="mb-4 text-xs text-gray-500">
-            Referência: consulta {config.valorConsulta.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} ·
-            retorno {config.valorRetorno.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            Referência: consulta {feeConfig.consultationFee.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} ·
+            retorno {feeConfig.followUpFee.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </p>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <FormSelect label="Tipo de atendimento" {...register("categoria")}>
+          <FormSelect label="Tipo de atendimento" {...register("category")}>
             <option value="Consulta">Consulta</option>
             <option value="Retorno">Retorno</option>
           </FormSelect>
@@ -133,13 +133,13 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
             label="Valor (R$)"
             type="number"
             step="0.01"
-            {...register("valor", { valueAsNumber: true, required: true })}
+            {...register("amount", { valueAsNumber: true, required: true })}
           />
-          <Input label="Descrição" {...register("descricao", { required: true })} />
-          <Input label="Data da transação" type="date" {...register("data", { required: true })} />
-          <FormSelect label="Forma de pagamento" {...register("formaPagamento", { required: true })}>
+          <Input label="Descrição" {...register("description", { required: true })} />
+          <Input label="Data da transação" type="date" {...register("date", { required: true })} />
+          <FormSelect label="Forma de pagamento" {...register("paymentMethod", { required: true })}>
             <option value="">Selecione</option>
-            {FORMAS.map((f) => (
+            {PAYMENT_METHODS.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
@@ -149,7 +149,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !config}>
+            <Button type="submit" disabled={loading || !feeConfig}>
               {loading ? "Salvando..." : "Registrar e marcar como pago"}
             </Button>
           </div>

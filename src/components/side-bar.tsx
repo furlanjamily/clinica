@@ -19,7 +19,7 @@ import Logo from "../../public/logo.svg";
 import { LinkSideBar } from "./link-side-bar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import type { Atendimento } from "@/types/types";
+import type { Appointment } from "@/types/types";
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal";
 
 interface LinkItem {
@@ -29,7 +29,7 @@ interface LinkItem {
 }
 
 type Props = {
-  onCreate?: (item: Atendimento) => void
+  onCreate?: (item: Appointment) => void
   drawerOpen?: boolean
   onDrawerClose?: () => void
 };

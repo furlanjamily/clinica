@@ -1,42 +1,42 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { toAppointment } from "@/lib/schedule/map-atendimento"
+import { toAppointment } from "@/lib/schedule/map-appointment"
 import {
-  CreateTransacaoSchema,
-  isReceitaConsultaOuRetorno,
-  valorCoerenteComTabela,
+  CreateTransactionSchema,
+  isConsultOrFollowUpCategory,
+  amountMatchesFeeTable,
 } from "@/lib/validations/finance-transaction"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
 
-const agendamentoInclude = {
-  paciente: true,
-  medico: true,
-  prontuario: {
+const appointmentWithRelations = {
+  patient: true,
+  doctor: true,
+  clinicalChart: {
     include: {
-      paciente: true,
-      agendamento: true,
+      patient: true,
+      appointment: true,
     },
   },
-  transacao: true,
+  transaction: true,
 } as const
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
-    const mes = searchParams.get("mes")
-    const tipo = searchParams.get("tipo")
+    const month = searchParams.get("mes")
+    const type = searchParams.get("tipo")
 
     const where: Record<string, unknown> = {}
-    if (mes) where.data = { startsWith: mes }
-    if (tipo) where.tipo = tipo
+    if (month) where.date = { startsWith: month }
+    if (type) where.type = type
 
-    const transacoes = await db.transacao.findMany({
+    const transactions = await db.transaction.findMany({
       where,
-      orderBy: { data: "desc" },
-      include: { agendamento: true },
+      orderBy: { date: "desc" },
+      include: { appointment: true },
     })
-    return NextResponse.json(transacoes)
+    return NextResponse.json(transactions)
   } catch (err) {
     return handleApiError(err)
   }
@@ -45,107 +45,107 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const raw = await req.json()
-    const parsed = CreateTransacaoSchema.safeParse(raw)
+    const parsed = CreateTransactionSchema.safeParse(raw)
     if (!parsed.success) {
       throw new ValidationError("Dados inválidos", parsed.error.issues)
     }
 
     const body = parsed.data
 
-    if (body.agendamentoId == null) {
-      const transacao = await db.transacao.create({
+    if (body.appointmentId == null) {
+      const transaction = await db.transaction.create({
         data: {
-          tipo: body.tipo,
-          categoria: body.categoria,
-          descricao: body.descricao,
-          valor: body.valor,
-          data: body.data,
-          formaPagamento: body.formaPagamento ?? undefined,
+          type: body.type,
+          category: body.category,
+          description: body.description,
+          amount: body.amount,
+          date: body.date,
+          paymentMethod: body.paymentMethod ?? undefined,
           status: body.status,
         },
       })
-      return NextResponse.json(transacao, { status: 201 })
+      return NextResponse.json(transaction, { status: 201 })
     }
 
-    const agendamentoId = body.agendamentoId
+    const appointmentId = body.appointmentId
 
     const result = await db.$transaction(async (tx) => {
-      const ag = await tx.agendamento.findUnique({
-        where: { id: agendamentoId },
-        include: { transacao: true },
+      const appt = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { transaction: true },
       })
 
-      if (!ag) {
+      if (!appt) {
         throw new ValidationError("Agendamento não encontrado.")
       }
 
-      if (ag.status !== "RegistrarChegada") {
+      if (appt.status !== "RegistrarChegada") {
         throw new ValidationError(
           "Só é possível registrar pagamento vinculado quando o agendamento está em «Registrar chegada»."
         )
       }
 
-      if (ag.transacao) {
+      if (appt.transaction) {
         throw new ConflictError("Este agendamento já possui transação vinculada.")
       }
 
-      if (body.tipo !== "Receita") {
+      if (body.type !== "Receita") {
         throw new ValidationError("O pagamento da consulta deve ser uma receita.")
       }
 
-      if (!isReceitaConsultaOuRetorno(body.categoria)) {
+      if (!isConsultOrFollowUpCategory(body.category)) {
         throw new ValidationError("Para pagamento de consulta, a categoria deve ser Consulta ou Retorno.")
       }
 
       if (body.status !== "Confirmado") {
-        throw new ValidationError("Para liberar o atendimento, o status da transação deve ser Confirmado.")
+        throw new ValidationError("Para liberar o Appointment, o status da transação deve ser Confirmado.")
       }
 
-      if (!body.formaPagamento?.trim()) {
+      if (!body.paymentMethod?.trim()) {
         throw new ValidationError("Informe a forma de pagamento.")
       }
 
-      const config = await tx.configuracaoFinanceira.findFirst()
+      const config = await tx.financialConfig.findFirst()
       if (!config) {
         throw new ValidationError("Configure valores de consulta/retorno em Financeiro antes de registrar o pagamento.")
       }
 
-      const coerente = valorCoerenteComTabela(
-        body.categoria,
-        body.valor,
-        config.valorConsulta,
-        config.valorRetorno
+      const coherent = amountMatchesFeeTable(
+        body.category,
+        body.amount,
+        config.consultationFee,
+        config.followUpFee
       )
-      if (!coerente.ok) {
-        throw new ValidationError(coerente.message)
+      if (!coherent.ok) {
+        throw new ValidationError(coherent.message)
       }
 
-      const transacao = await tx.transacao.create({
+      const transaction = await tx.transaction.create({
         data: {
-          tipo: body.tipo,
-          categoria: body.categoria,
-          descricao: body.descricao,
-          valor: body.valor,
-          data: body.data,
-          formaPagamento: body.formaPagamento,
+          type: body.type,
+          category: body.category,
+          description: body.description,
+          amount: body.amount,
+          date: body.date,
+          paymentMethod: body.paymentMethod,
           status: body.status,
-          agendamentoId,
+          appointmentId,
         },
       })
 
-      const atualizado = await tx.agendamento.update({
-        where: { id: agendamentoId },
+      const updatedAppointment = await tx.appointment.update({
+        where: { id: appointmentId },
         data: { status: "Pago" },
-        include: agendamentoInclude,
+        include: appointmentWithRelations,
       })
 
-      return { transacao, agendamento: atualizado }
+      return { transaction, appointment: updatedAppointment }
     })
 
     return NextResponse.json(
       {
-        transacao: result.transacao,
-        agendamento: toAppointment(result.agendamento),
+        transaction: result.transaction,
+        appointment: toAppointment(result.appointment),
       },
       { status: 201 }
     )
@@ -157,8 +157,8 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const { id, ...data } = await req.json()
-    const transacao = await db.transacao.update({ where: { id }, data })
-    return NextResponse.json(transacao)
+    const transaction = await db.transaction.update({ where: { id }, data })
+    return NextResponse.json(transaction)
   } catch (err) {
     return handleApiError(err)
   }
@@ -167,7 +167,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const { id } = await req.json()
-    await db.transacao.delete({ where: { id } })
+    await db.transaction.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (err) {
     return handleApiError(err)

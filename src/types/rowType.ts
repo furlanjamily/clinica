@@ -1,4 +1,4 @@
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 
 export type RowMonth = {
   type: "month"
@@ -10,7 +10,7 @@ export type RowDay = {
   label: string
 }
 
-export type RowData = Atendimento & {
+export type RowData = Appointment & {
   type: "data"
   arrived?: boolean
   checkInTime?: string

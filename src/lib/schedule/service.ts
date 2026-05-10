@@ -1,16 +1,16 @@
 import { db } from "@/lib/db"
-import { toAppointment } from "./map-atendimento"
+import { toAppointment } from "./map-appointment"
 import type { Appointment } from "./types"
 
 export async function getAppointments(): Promise<Appointment[]> {
-  const rows = await db.agendamento.findMany({
+  const rows = await db.appointment.findMany({
     include: {
-      paciente: true,
-      medico: true,
-      prontuario: true,
-      transacao: true,
+      patient: true,
+      doctor: true,
+      clinicalChart: true,
+      transaction: true,
     },
-    orderBy: [{ data: "asc" }, { horario: "asc" }],
+    orderBy: [{ date: "asc" }, { slotTime: "asc" }],
   })
   return rows.map(toAppointment)
 }

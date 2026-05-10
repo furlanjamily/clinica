@@ -1,17 +1,13 @@
 import { NextResponse } from "next/server"
-import { z } from "zod"
 import { db } from "@/lib/db"
-import { findAgendamentoConflict } from "@/lib/schedule/conflicts"
-import { toAppointment } from "@/lib/schedule/map-atendimento"
+import { findAppointmentConflict } from "@/lib/schedule/conflicts"
+import { toAppointment } from "@/lib/schedule/map-appointment"
 import { CreateAppointmentSchema } from "@/lib/validations/schedule"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
 
-export type { Appointment as Atendimento } from "@/lib/schedule/types"
+export type { Appointment } from "@/lib/schedule/types"
 
-/* =========================
-   RATE LIMIT
-========================= */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
 const RATE_LIMIT_WINDOW = 60 * 1000
 const RATE_LIMIT_MAX = 50
@@ -36,9 +32,6 @@ function rateLimit(ip: string) {
   return false
 }
 
-/* =========================
-   AUTH
-========================= */
 function isAuthorized(req: Request) {
   const secret = process.env.SCHEDULE_API_SECRET?.trim()
   if (!secret) return true
@@ -47,9 +40,6 @@ function isAuthorized(req: Request) {
   return auth === `Bearer ${secret}`
 }
 
-/* =========================
-   GET
-========================= */
 export async function GET(req: Request) {
   try {
     const ip = getClientIp(req)
@@ -61,123 +51,117 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const [agendamentos, medicos, pacientes] = await Promise.all([
-      db.agendamento.findMany({
+    const [appointments, doctors, patients] = await Promise.all([
+      db.appointment.findMany({
         select: {
           id: true,
-          data: true,
-          horario: true,
+          date: true,
+          slotTime: true,
           status: true,
-          pacienteId: true,
-          medicoId: true,
+          patientId: true,
+          doctorId: true,
           startTime: true,
           endTime: true,
           pausedAt: true,
           accumulatedTime: true,
-          paciente: {
+          patient: {
             select: {
               id: true,
-              nome: true,
-              telefone: true,
+              name: true,
+              phone: true,
             },
           },
-          medico: {
+          doctor: {
             select: {
               id: true,
-              nome: true,
+              name: true,
             },
           },
-          prontuario: {
-            select: {
-              id: true,
-              paciente: {
+          clinicalChart: {
+            include: {
+              patient: true,
+              appointment: {
                 select: {
                   id: true,
-                  nome: true,
-                },
-              },
-              agendamento: {
-                select: {
-                  id: true,
-                  data: true,
-                  horario: true,
+                  date: true,
+                  slotTime: true,
+                  professionalName: true,
+                  patientName: true,
+                  patientId: true,
                 },
               },
             },
           },
-          transacao: {
+          transaction: {
             select: {
               id: true,
-              valor: true,
-              categoria: true,
-              tipo: true,
+              amount: true,
+              category: true,
+              type: true,
               status: true,
             },
           },
         },
-        orderBy: [{ data: "asc" }, { horario: "asc" }],
+        orderBy: [{ date: "asc" }, { slotTime: "asc" }],
       }),
-      db.medico.findMany({
+      db.doctor.findMany({
         select: {
           id: true,
-          nome: true,
+          name: true,
         },
-        where: { ativo: true },
-        orderBy: { nome: "asc" }
+        where: { active: true },
+        orderBy: { name: "asc" },
       }),
-      db.paciente.findMany({
+      db.patient.findMany({
         select: {
           id: true,
-          nome: true,
-          telefone: true,
+          name: true,
+          phone: true,
         },
-        orderBy: { nome: "asc" }
+        orderBy: { name: "asc" },
       }),
     ])
 
     return NextResponse.json({
-      agendamentos: agendamentos.map(toAppointment),
-      medicos,
-      pacientes,
+      appointments: appointments.map(toAppointment),
+      doctors,
+      patients,
     })
   } catch (err) {
     return handleApiError(err)
   }
 }
 
-async function resolvePaciente(pacienteInput: any) {
-  if (typeof pacienteInput === "object" && pacienteInput.id) {
-    const p = await db.paciente.findUnique({ where: { id: pacienteInput.id } })
+async function resolvePatient(patientInput: { id?: number; name?: string } | string) {
+  if (typeof patientInput === "object" && patientInput.id) {
+    const p = await db.patient.findUnique({ where: { id: patientInput.id } })
     if (!p) throw new ValidationError("Paciente não encontrado")
     return p
   }
 
-  const p = await db.paciente.findFirst({
-    where: { nome: String(pacienteInput) },
+  const p = await db.patient.findFirst({
+    where: { name: String(patientInput) },
   })
 
   if (!p) throw new ValidationError("Paciente não encontrado")
   return p
 }
 
-async function resolveMedico(medicoInput: any) {
-  if (typeof medicoInput === "object" && medicoInput.id) {
-    const m = await db.medico.findUnique({ where: { id: medicoInput.id } })
+async function resolveDoctor(doctorInput: { id?: number; name?: string } | string) {
+  if (typeof doctorInput === "object" && doctorInput.id) {
+    const m = await db.doctor.findUnique({ where: { id: doctorInput.id } })
     if (!m) throw new ValidationError("Médico não encontrado")
     return m
   }
 
-  const m = await db.medico.findFirst({
-    where: { nome: String(medicoInput) },
+  const m = await db.doctor.findFirst({
+    where: { name: String(doctorInput) },
   })
 
   if (!m) throw new ValidationError("Médico não encontrado")
   return m
 }
 
-/* =========================
-   POST
-========================= */
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req)
@@ -198,49 +182,46 @@ export async function POST(req: Request) {
 
     const data = parsed.data
 
-    const paciente = await resolvePaciente(data.paciente)
-    const medico = await resolveMedico(data.profissional)
+    const patient = await resolvePatient(data.patient)
+    const doctor = await resolveDoctor(data.professional)
 
-    const telefone = paciente.telefone ?? ""
+    const phone = patient.phone ?? ""
 
-    const conflito = await findAgendamentoConflict(
-      medico.id,
-      data.data,
-      data.horario
+    const conflict = await findAppointmentConflict(
+      doctor.id,
+      data.date,
+      data.slotTime
     )
 
-    if (conflito) {
+    if (conflict) {
       throw new ConflictError("Horário já ocupado")
     }
 
-    const agendamento = await db.agendamento.create({
+    const appointment = await db.appointment.create({
       data: {
-        data: data.data,
-        horario: data.horario,
+        date: data.date,
+        slotTime: data.slotTime,
         status: "Agendado",
 
-        pacienteNome: paciente.nome,
-        profissionalNome: medico.nome,
-        telefone,
+        patientName: patient.name,
+        professionalName: doctor.name,
+        phone,
 
-        paciente: { connect: { id: paciente.id } },
-        medico: { connect: { id: medico.id } },
+        patient: { connect: { id: patient.id } },
+        doctor: { connect: { id: doctor.id } },
       },
       include: {
-        paciente: true,
-        medico: true,
+        patient: true,
+        doctor: true,
       },
     })
 
-    return NextResponse.json(toAppointment(agendamento))
+    return NextResponse.json(toAppointment(appointment))
   } catch (err) {
     return handleApiError(err)
   }
 }
 
-/* =========================
-   PATCH (SEM exigir ID no front)
-========================= */
 export async function PATCH(req: Request) {
   try {
     const body = await req.json()
@@ -249,42 +230,50 @@ export async function PATCH(req: Request) {
       throw new ValidationError("ID obrigatório")
     }
 
-    const atual = await db.agendamento.findUnique({
+    const current = await db.appointment.findUnique({
       where: { id: body.id },
-      include: { paciente: true, medico: true },
+      include: { patient: true, doctor: true },
     })
 
-    if (!atual) {
+    if (!current) {
       throw new ValidationError("Agendamento não encontrado")
     }
 
-    if (body.data || body.horario) {
-      const conflito = await findAgendamentoConflict(
-        atual.medico.id,
-        body.data || atual.data,
-        body.horario || atual.horario,
+    if (body.date || body.slotTime || body.data || body.horario) {
+      const nextDate = body.date ?? body.data ?? current.date
+      const nextSlot = body.slotTime ?? body.horario ?? current.slotTime
+      const conflict = await findAppointmentConflict(
+        current.doctor.id,
+        nextDate,
+        nextSlot,
         body.id
       )
 
-      if (conflito) {
+      if (conflict) {
         throw new ConflictError("Horário já ocupado")
       }
     }
 
-    if (body.status === "Pago" && atual.status === "RegistrarChegada") {
-      const vinculo = await db.transacao.findUnique({ where: { agendamentoId: body.id } })
-      if (!vinculo) {
+    if (body.status === "Pago" && current.status === "RegistrarChegada") {
+      const linked = await db.transaction.findUnique({
+        where: { appointmentId: body.id },
+      })
+      if (!linked) {
         throw new ValidationError(
           "Para marcar como pago, registre antes a receita vinculada a este agendamento (modal «Confirmar pagamento» na agenda)."
         )
       }
     }
 
-    const updated = await db.agendamento.update({
+    const updated = await db.appointment.update({
       where: { id: body.id },
       data: {
-        ...(body.data && { data: body.data }),
-        ...(body.horario && { horario: body.horario }),
+        ...(body.date || body.data
+          ? { date: (body.date ?? body.data) as string }
+          : {}),
+        ...(body.slotTime || body.horario
+          ? { slotTime: (body.slotTime ?? body.horario) as string }
+          : {}),
         ...(body.status && { status: body.status }),
         ...(body.startTime !== undefined && { startTime: body.startTime }),
         ...(body.endTime !== undefined && { endTime: body.endTime }),
@@ -292,13 +281,13 @@ export async function PATCH(req: Request) {
         ...(body.pausedAt !== undefined && { pausedAt: body.pausedAt }),
       },
       include: {
-        paciente: true,
-        medico: true,
-        transacao: true,
-        prontuario: {
+        patient: true,
+        doctor: true,
+        transaction: true,
+        clinicalChart: {
           include: {
-            paciente: true,
-            agendamento: true,
+            patient: true,
+            appointment: true,
           },
         },
       },

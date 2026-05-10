@@ -7,87 +7,91 @@ datasource db {
   provider = "postgresql"
 }
 
-model Paciente {
-  id             Int           @id @default(autoincrement())
-  nome           String
-  dataNascimento String?
-  sexo           String?
-  cpf            String?       @unique
-  telefone       String?
-  email          String?
-  cep            String?
-  logradouro     String?
-  numero         String?
-  complemento    String?
-  bairro         String?
-  cidade         String?
-  uf             String?
-  convenio       String?
-  numeroConvenio String?
-  observacoes    String?
-  estadoCivil    String?
-  escolaridade   String?
-  religiao       String?
-  profissao      String?
-  createdAt      DateTime      @default(now())
-  agendamentos   Agendamento[]
-  prontuarios    Prontuario[]
+model Patient {
+  id              Int             @id @default(autoincrement())
+  name            String          @map("nome")
+  birthDate       String?         @map("dataNascimento")
+  gender          String?         @map("sexo")
+  cpf             String?         @unique
+  phone           String?         @map("telefone")
+  email           String?
+  zipCode         String?         @map("cep")
+  street          String?         @map("logradouro")
+  number          String?         @map("numero")
+  complement      String?         @map("complemento")
+  neighborhood    String?         @map("bairro")
+  city            String?         @map("cidade")
+  state           String?         @map("uf")
+  insurancePlan   String?         @map("convenio")
+  insuranceNumber String?         @map("numeroConvenio")
+  notes           String?         @map("observacoes")
+  maritalStatus   String?         @map("estadoCivil")
+  education       String?         @map("escolaridade")
+  religion        String?         @map("religiao")
+  profession      String?         @map("profissao")
+  createdAt       DateTime        @default(now())
+  appointments    Appointment[]
+  clinicalCharts  ClinicalChart[]
 
   @@map("pacientes")
 }
 
-model Medico {
+model Doctor {
   id             Int           @id @default(autoincrement())
-  nome           String
+  name           String        @map("nome")
   crm            String?
-  especialidade  String?
-  sexo           String?
+  specialty      String?       @map("especialidade")
+  gender         String?       @map("sexo")
   cpf            String?
-  dataNascimento String?
-  telefone       String?
+  birthDate      String?       @map("dataNascimento")
+  phone          String?       @map("telefone")
   email          String?
-  cep            String?
-  logradouro     String?
-  numero         String?
-  complemento    String?
-  bairro         String?
-  cidade         String?
-  uf             String?
-  observacoes    String?
-  ativo          Boolean       @default(true)
-  turno          String?
-  agendamentos   Agendamento[]
+  zipCode        String?       @map("cep")
+  street         String?       @map("logradouro")
+  number         String?       @map("numero")
+  complement     String?       @map("complemento")
+  neighborhood   String?       @map("bairro")
+  city           String?       @map("cidade")
+  state          String?       @map("uf")
+  notes          String?       @map("observacoes")
+  active         Boolean       @default(true) @map("ativo")
+  shift          String?       @map("turno")
+  appointments   Appointment[]
+
+  @@map("Medico")
 }
 
-model Agendamento {
-  id               Int         @id @default(autoincrement())
-  data             String
-  horario          String
-  status           String?     @default("Agendado")
-  pacienteId       Int
-  medicoId         Int
+model Appointment {
+  id               Int             @id @default(autoincrement())
+  date             String          @map("data")
+  slotTime         String          @map("horario")
+  status           String?         @default("Agendado")
+  patientId        Int             @map("pacienteId")
+  doctorId         Int             @map("medicoId")
   accumulatedTime  Int?
   endTime          String?
-  pacienteNome     String?
+  patientName      String?         @map("pacienteNome")
   pausedAt         String?
-  profissionalNome String?
+  professionalName String?         @map("profissionalNome")
   startTime        String?
-  telefone         String?
-  whatsappSent     Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  medico           Medico      @relation(fields: [medicoId], references: [id])
-  paciente         Paciente    @relation(fields: [pacienteId], references: [id])
-  prontuario       Prontuario? @relation("AgendamentoProntuario")
-  transacao        Transacao?
+  phone            String?         @map("telefone")
+  whatsappSent     Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  doctor           Doctor          @relation(fields: [doctorId], references: [id])
+  patient          Patient         @relation(fields: [patientId], references: [id])
+  clinicalChart    ClinicalChart?  @relation("AppointmentClinicalChart")
+  transaction      Transaction?
+
+  @@map("Agendamento")
 }
 
-model Prontuario {
-  id                   Int         @id @default(autoincrement())
-  pacienteId           Int?
+model ClinicalChart {
+  id                   Int          @id @default(autoincrement())
+  patientId            Int?         @map("pacienteId")
   birthDate            String?
   caregiver            String?
   clinicalDiagnosis    String?
-  createdAt            DateTime    @default(now())
+  createdAt            DateTime     @default(now())
   diagnosisReactions   String?
   education            String?
   emotionalState       String?
@@ -95,45 +99,44 @@ model Prontuario {
   gender               String?
   maritalStatus        String?
   occupation           String?
-  patient              String?
+  patientLabel         String?      @map("patient")
   personalHistory      String?
   psychicExam          String?
   psychologicalConduct String?
   psychologist         String?
   religion             String?
-  agendamentoId        Int         @unique
-  agendamento          Agendamento @relation("AgendamentoProntuario", fields: [agendamentoId], references: [id])
-  paciente             Paciente?   @relation(fields: [pacienteId], references: [id])
+  appointmentId        Int          @unique @map("agendamentoId")
+  appointment          Appointment  @relation("AppointmentClinicalChart", fields: [appointmentId], references: [id])
+  patient              Patient?     @relation(fields: [patientId], references: [id])
 
   @@map("prontuarios")
 }
 
-model Transacao {
+model Transaction {
   id             Int          @id @default(autoincrement())
-  tipo           String
-  categoria      String
-  descricao      String
-  valor          Float
-  data           String
-  formaPagamento String?
+  type           String       @map("tipo")
+  category       String       @map("categoria")
+  description    String       @map("descricao")
+  amount         Float        @map("valor")
+  date           String       @map("data")
+  paymentMethod  String?      @map("formaPagamento")
   status         String       @default("Confirmado")
-  agendamentoId  Int?         @unique
+  appointmentId  Int?         @unique @map("agendamentoId")
   createdAt      DateTime     @default(now())
-  agendamento    Agendamento? @relation(fields: [agendamentoId], references: [id])
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id])
 
   @@map("transacoes")
 }
 
-model ConfiguracaoFinanceira {
-  id             Int   @id @default(autoincrement())
-  valorConsulta  Float
-  valorRetorno   Float
-  comissaoMedico Float
+model FinancialConfig {
+  id                   Int   @id @default(autoincrement())
+  consultationFee      Float @map("valorConsulta")
+  followUpFee          Float @map("valorRetorno")
+  doctorCommissionRate Float @map("comissaoMedico")
 
   @@map("configuracao_financeira")
 }
 
-// NextAuth.js Models
 model User {
   id            String    @id @default(cuid())
   name          String?

@@ -53,7 +53,6 @@ export default function SignIn() {
 
   return (
     <div className="flex w-screen h-screen bg-gray-100 justify-between overflow-hidden">
-      
 
       <div className="flex flex-col justify-center items-start px-[68px]">
 <Image src="/logo.svg" alt="Logo" width={139} height={27} className="absolute top-9 left-10 w-[139px] h-[27px]" />
@@ -99,4 +98,4 @@ export default function SignIn() {
       </div>
     </div>
   );
-}  
+}

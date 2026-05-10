@@ -9,7 +9,7 @@ import {
 import { Calendar } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { RowType } from "@/types/rowType"
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { useQueryClient } from "@tanstack/react-query"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 
-function isDataRow(row: RowType): row is { type: "data" } & Atendimento {
+function isDataRow(row: RowType): row is { type: "data" } & Appointment {
   return row.type === "data"
 }
 
@@ -60,7 +60,7 @@ const statusLabel: Record<string, string> = {
 
 type TableProps = {
   rows: RowType[]
-  setData: React.Dispatch<React.SetStateAction<Atendimento[]>>
+  setData: React.Dispatch<React.SetStateAction<Appointment[]>>
 }
 
 const COLUMN_COUNT = 5
@@ -68,14 +68,14 @@ const COLUMN_COUNT = 5
 const columnHelper = createColumnHelper<RowType>()
 
 function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
-  original: Atendimento
-  updateItem: (id: number, changes: Partial<Atendimento>) => Promise<void>
-  onReschedule: (item: Atendimento) => void
-  onOpenPayment: (item: Atendimento) => void
+  original: Appointment
+  updateItem: (id: number, changes: Partial<Appointment>) => Promise<void>
+  onReschedule: (item: Appointment) => void
+  onOpenPayment: (item: Appointment) => void
 }) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const today = isToday(original.data)
+  const today = isToday(original.date)
   const [loading, setLoading] = useState(false)
 
   if (today && original.status === "Confirmado") {
@@ -114,7 +114,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
             })
             const updated = await res.json()
 
-            queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+            queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
               prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item)) ?? []
             )
 
@@ -160,11 +160,11 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
 }
 
 export function Table({ rows, setData }: TableProps) {
-  const [selected, setSelected] = useState<Atendimento | null>(null)
-  const [paymentFor, setPaymentFor] = useState<Atendimento | null>(null)
+  const [selected, setSelected] = useState<Appointment | null>(null)
+  const [paymentFor, setPaymentFor] = useState<Appointment | null>(null)
   const queryClient = useQueryClient()
 
-  const updateItem = async (id: number, changes: Partial<Atendimento>) => {
+  const updateItem = async (id: number, changes: Partial<Appointment>) => {
     const res = await fetch("/api/schedule", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -174,14 +174,14 @@ export function Table({ rows, setData }: TableProps) {
 
     setData((prev) => prev.map((item) => item.id === id ? { ...item, ...updated } : item))
 
-    queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
       prev?.map((item) => (item.id === id ? { ...item, ...updated } : item)) ?? []
     )
   }
 
   const columns = [
-    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.horario : ""), {
-      id: "horario",
+    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.slotTime : ""), {
+      id: "slotTime",
       header: "Horário",
     }),
     columnHelper.display({
@@ -205,7 +205,7 @@ export function Table({ rows, setData }: TableProps) {
       cell: ({ row }) => {
         const original = row.original
         if (!isDataRow(original)) return null
-        const nome = original.paciente?.nome ?? original.pacienteNome ?? "—"
+        const nome = original.patient?.name ?? original.patientName ?? "—"
         return (
           <span className="block max-w-[7rem] truncate sm:max-w-[10rem] md:max-w-[14rem]" title={nome}>
             {nome}
@@ -219,7 +219,7 @@ export function Table({ rows, setData }: TableProps) {
       cell: ({ row }) => {
         const original = row.original
         if (!isDataRow(original)) return null
-        const n = original.profissionalNome ?? "—"
+        const n = original.professionalName ?? "—"
         return (
           <span className="block max-w-[6rem] truncate sm:max-w-[9rem] md:max-w-[12rem]" title={n}>
             {n}
@@ -311,7 +311,7 @@ export function Table({ rows, setData }: TableProps) {
           onClose={() => setPaymentFor(null)}
           onSuccess={(updated) => {
             setData((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
-            queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
+            queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
               prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)) ?? []
             )
           }}

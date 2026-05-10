@@ -1,8 +1,8 @@
 export type MedicalRecord = {
   id?: number
-  agendamentoId: number
+  appointmentId: number
 
-  patient: string
+  patientLabel: string
   createdAt?: string
 
   gender?: string
@@ -21,56 +21,56 @@ export type MedicalRecord = {
   psychologicalConduct?: string
   familyGuidance?: string
 
-  paciente?: Patient
-  agendamento?: {
-    data?: string
-    horario?: string
-    profissionalNome?: string | null
+  patientDetails?: Patient
+  appointment?: {
+    date?: string
+    slotTime?: string
+    professionalName?: string | null
   }
 }
 
 export type StreetAddress = {
-  cep?: string | null
-  logradouro?: string | null
-  numero?: string | null
-  complemento?: string | null
-  bairro?: string | null
-  cidade?: string | null
-  uf?: string | null
+  zipCode?: string | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
 }
 
 export type Patient = {
   id: number
-  nome: string
+  name: string
 
-  dataNascimento?: string | null
-  sexo?: string | null
+  birthDate?: string | null
+  gender?: string | null
   cpf?: string | null
-  telefone?: string | null
+  phone?: string | null
   email?: string | null
 } & StreetAddress & {
-  convenio?: string | null
-  numeroConvenio?: string | null
-  observacoes?: string | null
-  estadoCivil?: string | null
-  escolaridade?: string | null
-  religiao?: string | null
-  profissao?: string | null
+  insurancePlan?: string | null
+  insuranceNumber?: string | null
+  notes?: string | null
+  maritalStatus?: string | null
+  education?: string | null
+  religion?: string | null
+  profession?: string | null
 }
 
 export type Doctor = {
   id: number
-  nome: string
+  name: string
   crm: string
-  especialidade: string
+  specialty: string
 
-  telefone?: string | null
+  phone?: string | null
   email?: string | null
   cpf?: string | null
-  dataNascimento?: string | null
-  sexo?: string | null
-  turno?: string | null
-  observacoes?: string | null
+  birthDate?: string | null
+  gender?: string | null
+  shift?: string | null
+  notes?: string | null
 
-  ativo: boolean
+  active: boolean
 } & StreetAddress

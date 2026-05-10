@@ -8,37 +8,37 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { useTableFilters } from "@/hooks/useTableFilters"
 
 type Filters = {
   status?: string
-  paciente?: string
-  profissional?: string
-  atendimentoId?: number
+  patient?: string
+  professional?: string
+  appointmentId?: number
 }
 
-export type ViewMode = "dia" | "semana" | "mes" | "lista" 
+export type ViewMode = "dia" | "semana" | "mes" | "lista"
 
-export function filterSchedules(data: Atendimento[], date: Date, view: ViewMode, filters: Filters): Atendimento[] {
+export function filterSchedules(data: Appointment[], date: Date, view: ViewMode, filters: Filters): Appointment[] {
   return data.filter((item) => {
-    const [y, m, d] = item.data.split("-").map(Number)
+    const [y, m, d] = item.date.split("-").map(Number)
     const itemDate = new Date(y, m - 1, d)
 
     const matchStatus = filters.status ? item.status === filters.status : true
 
-    const pacienteNome = (item.paciente?.nome ?? item.pacienteNome ?? "").toLowerCase()
+    const patientName = (item.patient?.name ?? item.patientName ?? "").toLowerCase()
 
-    const matchPaciente = filters.paciente
-      ? pacienteNome.includes(filters.paciente.toLowerCase())
+    const matchPatient = filters.patient
+      ? patientName.includes(filters.patient.toLowerCase())
       : true
 
-    const matchProfissional = filters.profissional
-      ? (item.profissionalNome ?? "").toLowerCase().includes(filters.profissional.toLowerCase())
+    const matchProfessional = filters.professional
+      ? (item.professionalName ?? "").toLowerCase().includes(filters.professional.toLowerCase())
       : true
 
-    const matchAtendimento = filters.atendimentoId !== undefined
-      ? item.id === filters.atendimentoId
+    const matchAppointment = filters.appointmentId !== undefined
+      ? item.id === filters.appointmentId
       : true
 
     let matchDate = true
@@ -51,11 +51,11 @@ export function filterSchedules(data: Atendimento[], date: Date, view: ViewMode,
       matchDate = isSameMonth(itemDate, date)
     }
 
-    return matchStatus && matchPaciente && matchProfissional && matchAtendimento && matchDate
+    return matchStatus && matchPatient && matchProfessional && matchAppointment && matchDate
   })
 }
 
-export function useSchedule(data: Atendimento[]) {
+export function useSchedule(data: Appointment[]) {
   const [date, setDate] = useState(new Date())
   const [view, setView] = useState<ViewMode>("dia")
   const { filters, setFilters, handleFilterChange } = useTableFilters<Filters>({})
@@ -75,4 +75,3 @@ export function useSchedule(data: Atendimento[]) {
     filteredData,
   }
 }
-

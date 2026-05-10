@@ -18,11 +18,9 @@ export async function GET(req: Request) {
 
     const today = getTodayYYYYMMDD()
 
-    // Regra: se chegou no dia da consulta e ainda não confirmou, cancela.
-    // (equivalente a "até o dia anterior": ao virar o dia, cancela pendentes)
-    const result = await db.agendamento.updateMany({
+    const result = await db.appointment.updateMany({
       where: {
-        data: { lte: today },
+        date: { lte: today },
         status: { in: ["Agendado", "AguardandoConfirmacao"] },
       },
       data: { status: "Cancelado" },
@@ -33,4 +31,3 @@ export async function GET(req: Request) {
     return handleApiError(err)
   }
 }
-

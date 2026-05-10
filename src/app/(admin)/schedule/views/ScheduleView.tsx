@@ -1,12 +1,12 @@
 "use client"
 
 import { RowType } from "@/types/rowType"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { Table } from "@/components/ui/table/table"
 
 type Props = {
-  data: Atendimento[]
-  setData: React.Dispatch<React.SetStateAction<Atendimento[]>>
+  data: Appointment[]
+  setData: React.Dispatch<React.SetStateAction<Appointment[]>>
 }
 
 function normalizeDate(date: string | number | Date) {
@@ -18,14 +18,14 @@ function normalizeDate(date: string | number | Date) {
 
   return new Date(year, month - 1, day)
 }
-function sortByTime(a: Atendimento, b: Atendimento) {
-  return a.horario.localeCompare(b.horario)
+function sortByTime(a: Appointment, b: Appointment) {
+  return a.slotTime.localeCompare(b.slotTime)
 }
 
 export function ScheduleView({ data, setData }: Props) {
-  const grouped = data.reduce<Record<string, Record<string, Atendimento[]>>>(
+  const grouped = data.reduce<Record<string, Record<string, Appointment[]>>>(
     (acc, item) => {
-      const date = normalizeDate(item.data)
+      const date = normalizeDate(item.date)
 
       const month = date.toLocaleDateString("pt-BR", {
         month: "long",
@@ -48,8 +48,8 @@ export function ScheduleView({ data, setData }: Props) {
   )
 
   const sortedMonths = Object.entries(grouped).sort((a, b) => {
-    const dateA = new Date(a[1][Object.keys(a[1])[0]][0].data)
-    const dateB = new Date(b[1][Object.keys(b[1])[0]][0].data)
+    const dateA = new Date(a[1][Object.keys(a[1])[0]][0].date)
+    const dateB = new Date(b[1][Object.keys(b[1])[0]][0].date)
     return dateA.getTime() - dateB.getTime()
   })
 
@@ -57,8 +57,8 @@ export function ScheduleView({ data, setData }: Props) {
 
   sortedMonths.forEach(([_month, days]) => {
     const sortedDays = Object.entries(days).sort((a, b) => {
-      const dateA = new Date(a[1][0].data)
-      const dateB = new Date(b[1][0].data)
+      const dateA = new Date(a[1][0].date)
+      const dateB = new Date(b[1][0].date)
       return dateA.getTime() - dateB.getTime()
     })
 

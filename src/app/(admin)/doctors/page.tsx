@@ -26,25 +26,25 @@ function normalizeDoctorNameOnCreateInput(value: string): string {
   return DOCTOR_NAME_PREFIX + rest
 }
 
-function doctorFormEmpty(): Omit<Doctor, "id" | "ativo"> {
+function doctorFormEmpty(): Omit<Doctor, "id" | "active"> {
   return {
-    nome: "",
+    name: "",
     crm: "",
-    especialidade: "",
-    turno: "",
-    sexo: "",
+    specialty: "",
+    shift: "",
+    gender: "",
     cpf: "",
-    dataNascimento: "",
-    telefone: "",
+    birthDate: "",
+    phone: "",
     email: "",
-    cep: "",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    cidade: "",
-    uf: "",
-    observacoes: "",
+    zipCode: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    notes: "",
   }
 }
 
@@ -57,7 +57,6 @@ function DoctorsTable({
   onEdit: (d: Doctor) => void
   onRemove: (id: number, successMsg?: string) => void
 }) {
-
   if (doctors.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-accent text-sm">
@@ -78,12 +77,12 @@ function DoctorsTable({
         </thead>
         <tbody>
           {doctors.map((d) => (
-            <tr key={d.id} className={`bg-white shadow-sm ${!d.ativo ? "opacity-40" : ""}`}>
-              <td className="p-3 text-sm font-medium">{d.nome}</td>
+            <tr key={d.id} className={`bg-white shadow-sm ${!d.active ? "opacity-40" : ""}`}>
+              <td className="p-3 text-sm font-medium">{d.name}</td>
               <td className="p-3 text-sm text-gray-600">{d.crm}</td>
-              <td className="p-3 text-sm text-gray-600">{d.especialidade}</td>
-              <td className="p-3 text-sm text-gray-600">{d.turno ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{d.telefone ?? d.email ?? "—"}</td>
+              <td className="p-3 text-sm text-gray-600">{d.specialty}</td>
+              <td className="p-3 text-sm text-gray-600">{d.shift ?? "—"}</td>
+              <td className="p-3 text-sm text-gray-600">{d.phone ?? d.email ?? "—"}</td>
               <td className="p-3">
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" onClick={() => onEdit(d)}><Pencil size={14} /> Editar</Button>
@@ -101,18 +100,18 @@ function DoctorsTable({
 export default function DoctorsPage() {
   const { items: doctors, remove, create, update, isPending } = useCRUD<Doctor>("/api/doctor")
   const [modal, setModal] = useState<{ open: boolean; editing: Doctor | null }>({ open: false, editing: null })
-  type DoctorForm = Omit<Doctor, "id" | "ativo">
+  type DoctorForm = Omit<Doctor, "id" | "active">
   const { register, handleSubmit, reset, setValue, control, getValues, formState: { isSubmitting } } =
     useForm<DoctorForm>({ defaultValues: doctorFormEmpty() })
 
   function openCreate() {
-    reset({ ...doctorFormEmpty(), nome: DOCTOR_NAME_PREFIX })
+    reset({ ...doctorFormEmpty(), name: DOCTOR_NAME_PREFIX })
     setModal({ open: true, editing: null })
   }
   function openEdit(d: Doctor) {
     reset(doctorFormEmpty())
     Object.entries(d)
-      .filter(([k]) => k !== "id" && k !== "ativo")
+      .filter(([k]) => k !== "id" && k !== "active")
       .forEach(([k, v]) => setValue(k as keyof DoctorForm, (v ?? "") as never))
     setModal({ open: true, editing: d })
   }
@@ -125,8 +124,8 @@ export default function DoctorsPage() {
     if (modal.editing) {
       await update(modal.editing.id, data, "Médico atualizado.")
     } else {
-      const nome = normalizeDoctorNameOnCreateInput(data.nome)
-      await create({ ...data, nome, ativo: true }, "Médico cadastrado com sucesso!")
+      const name = normalizeDoctorNameOnCreateInput(data.name)
+      await create({ ...data, name, active: true }, "Médico cadastrado com sucesso!")
     }
     closeModal()
   }
@@ -156,10 +155,10 @@ export default function DoctorsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="col-span-2">
                   {modal.editing ? (
-                    <Input label="Nome completo" {...register("nome", { required: true })} placeholder="Dr(a). Nome Sobrenome" />
+                    <Input label="Nome completo" {...register("name", { required: true })} placeholder="Dr(a). Nome Sobrenome" />
                   ) : (
                     <Controller
-                      name="nome"
+                      name="name"
                       control={control}
                       rules={{ required: true }}
                       render={({ field }) => (
@@ -179,14 +178,14 @@ export default function DoctorsPage() {
                   )}
                 </div>
                 <Input label="CRM" {...register("crm", { required: true })} placeholder="CRM/UF 000000" />
-                <Input label="Especialidade" {...register("especialidade", { required: true })} placeholder="Ex: Psicologia" />
-                <FormSelect label="Turno" {...register("turno")}>
+                <Input label="Especialidade" {...register("specialty", { required: true })} placeholder="Ex: Psicologia" />
+                <FormSelect label="Turno" {...register("shift")}>
                   <option value="">Selecione</option>
                   <option value="Manhã">Manhã</option>
                   <option value="Tarde">Tarde</option>
                   <option value="Integral">Integral</option>
                 </FormSelect>
-                <FormSelect label="Sexo" {...register("sexo")}>
+                <FormSelect label="Sexo" {...register("gender")}>
                   <option value="">Selecione</option>
                   <option value="Masculino">Masculino</option>
                   <option value="Feminino">Feminino</option>
@@ -202,9 +201,9 @@ export default function DoctorsPage() {
                     <Input mask="cpf" label="CPF" placeholder="000.000.000-00" {...field} />
                   )}
                 />
-                <Input label="Data de nascimento" type="date" {...register("dataNascimento")} />
+                <Input label="Data de nascimento" type="date" {...register("birthDate")} />
                 <Controller
-                  name="telefone"
+                  name="phone"
                   control={control}
                   render={({ field }) => (
                     <Input mask="telefone" label="Telefone" placeholder="(00) 00000-0000" {...field} />
@@ -220,7 +219,7 @@ export default function DoctorsPage() {
                   />
                 </div>
                 <div className="col-span-2">
-                  <Textarea label="Observações" rows={2} {...register("observacoes")} />
+                  <Textarea label="Observações" rows={2} {...register("notes")} />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-2">

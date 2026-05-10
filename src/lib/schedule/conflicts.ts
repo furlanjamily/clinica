@@ -1,16 +1,16 @@
 import { db } from "@/lib/db"
 
-export async function findAgendamentoConflict(
-  medicoId: number,
-  data: string,
-  horario: string,
+export async function findAppointmentConflict(
+  doctorId: number,
+  date: string,
+  slotTime: string,
   excludeId?: number
 ) {
-  return db.agendamento.findFirst({
+  return db.appointment.findFirst({
     where: {
-      medicoId,
-      data,
-      horario,
+      doctorId,
+      date,
+      slotTime,
       status: { notIn: ["Cancelado", "Concluido"] },
       ...(excludeId != null ? { id: { not: excludeId } } : {}),
     },

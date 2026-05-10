@@ -55,8 +55,8 @@ function MedicalRecordsTable({
       <tbody>
         {records.map((r) => (
           <tr key={r.id} className="bg-white shadow-sm">
-            <td className="p-3">{r.paciente?.nome || "—"}</td>
-            <td className="p-3 text-gray-600">{r.agendamento?.profissionalNome || "—"}</td>
+            <td className="p-3">{r.patientDetails?.name || "—"}</td>
+            <td className="p-3 text-gray-600">{r.appointment?.professionalName || "—"}</td>
             <td className="p-3 text-gray-600">
               {r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : "—"}
             </td>
@@ -89,15 +89,17 @@ export default function MedicalRecordPage() {
     queryClient.setQueryData<MedicalRecord[]>(QUERY_KEY, (prev) => updater(prev ?? []))
   }
 
-  async function handleSave(data: any) {
-    if (!data.atendimentoId) { toast.error("Atendimento não identificado."); return }
-    const payload = { ...data, agendamentoId: data.atendimentoId }
+  async function handleSave(data: Partial<MedicalRecord> & { appointmentId: number }) {
+    if (!data.appointmentId) {
+      toast.error("Agendamento não identificado.")
+      return
+    }
     try {
       if (editing) {
         const res = await fetch(absoluteUrl("/api/medical-record"), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, id: editing.id }),
+          body: JSON.stringify({ ...data, id: editing.id }),
         })
         const updated: MedicalRecord = await res.json()
         setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
@@ -106,13 +108,15 @@ export default function MedicalRecordPage() {
         const res = await fetch(absoluteUrl("/api/medical-record"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(data),
         })
         const created: MedicalRecord = await res.json()
         setRecords((prev) => [created, ...prev])
         toast.success("Prontuário criado com sucesso!")
       }
-    } catch { toast.error("Erro ao salvar prontuário") }
+    } catch {
+      toast.error("Erro ao salvar prontuário")
+    }
     setShowModal(false)
     setEditing(null)
   }
@@ -126,7 +130,9 @@ export default function MedicalRecordPage() {
       })
       setRecords((prev) => prev.filter((r) => r.id !== id))
       toast.success("Prontuário apagado.")
-    } catch { toast.error("Erro ao deletar") }
+    } catch {
+      toast.error("Erro ao deletar")
+    }
   }
 
   async function handleDownload(record: MedicalRecord) {
@@ -138,7 +144,11 @@ export default function MedicalRecordPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `prontuario-${(record.patient ?? "paciente").replace(/\s+/g, "-").toLowerCase()}.pdf`
+    const base =
+      record.patientLabel ||
+      record.patientDetails?.name ||
+      "paciente"
+    a.download = `prontuario-${base.replace(/\s+/g, "-").toLowerCase()}.pdf`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("PDF gerado com sucesso!")
@@ -165,12 +175,15 @@ export default function MedicalRecordPage() {
       {showModal && (
         <MedicalRecordModal
           data={editing ?? undefined}
-          atendimento={{
-            id: editing?.agendamentoId ?? 0,
-            data: editing?.agendamento?.data ?? undefined,
-            pacienteNome: editing?.paciente?.nome || editing?.patient || "",
-            profissionalNome: editing?.agendamento?.profissionalNome ?? undefined,
-            horario: editing?.agendamento?.horario ?? "",
+          visit={{
+            id: editing?.appointmentId ?? 0,
+            date: editing?.appointment?.date ?? undefined,
+            patientName:
+              editing?.patientDetails?.name ||
+              editing?.patientLabel ||
+              "",
+            professionalName: editing?.appointment?.professionalName ?? undefined,
+            slotTime: editing?.appointment?.slotTime ?? "",
           }}
           onClose={() => { setShowModal(false); setEditing(null) }}
           onSave={handleSave}

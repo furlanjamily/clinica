@@ -1,1 +1,1 @@
-export type { Appointment as Atendimento } from "@/lib/schedule/types"
+export type { Appointment } from "@/lib/schedule/types"

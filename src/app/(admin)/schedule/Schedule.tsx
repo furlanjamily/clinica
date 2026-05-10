@@ -3,14 +3,14 @@
 import { GlobalFilters, FilterField } from "@/components/ui/table/GlobalFilters"
 import { Collapse } from "@/components/ui/Collapse"
 import { useSchedule } from "@/hooks/useSchedule"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { ScheduleNavigator } from "./components/ScheduleNavigator"
 import { ScheduleView } from "./views/ScheduleView"
 import { Header } from "@/components/ui/PageHeader"
 
 type Props = {
-  data: Atendimento[]
-  onChangeData: React.Dispatch<React.SetStateAction<Atendimento[]>>
+  data: Appointment[]
+  onChangeData: React.Dispatch<React.SetStateAction<Appointment[]>>
 }
 
 const FILTER_CONFIG = [
@@ -29,12 +29,12 @@ const FILTER_CONFIG = [
     ],
   },
   {
-    name: "paciente",
+    name: "patient",
     type: "input",
     placeholder: "Paciente...",
   },
   {
-    name: "profissional",
+    name: "professional",
     type: "input",
     placeholder: "Médico...",
   },

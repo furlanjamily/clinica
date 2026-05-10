@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Textarea } from "@/components/ui/Input"
-import { MedicalRecord } from "@/types"
+import type { MedicalRecord } from "@/types"
 
 type FormData = {
   clinicalDiagnosis?: string
@@ -17,23 +17,24 @@ type FormData = {
   familyGuidance?: string
 }
 
+type VisitSummary = {
+  id: number
+  date?: string
+  patientName: string
+  professionalName?: string
+  slotTime: string
+}
+
 type Props = {
   data?: MedicalRecord
-  atendimento: {
-    id: number
-    /** Data da consulta (YYYY-MM-DD), se disponível */
-    data?: string
-    pacienteNome: string
-    profissionalNome?: string
-    horario: string
-  }
+  visit: VisitSummary
   onClose: () => void
-  onSave: (data: FormData & { atendimentoId: number }) => void
+  onSave: (data: FormData & { appointmentId: number }) => void
 }
 
 export function MedicalRecordModal({
   data,
-  atendimento,
+  visit,
   onClose,
   onSave,
 }: Props) {
@@ -66,7 +67,7 @@ export function MedicalRecordModal({
   function handleFormSubmit(formData: FormData) {
     onSave({
       ...formData,
-      atendimentoId: atendimento.id,
+      appointmentId: visit.id,
     })
   }
 
@@ -82,13 +83,13 @@ export function MedicalRecordModal({
         <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col gap-4">
 
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Agendamento #{atendimento.id}
+            Agendamento #{visit.id}
           </p>
 
           <div className="flex flex-col gap-2 rounded-xl bg-gray-50 p-3 sm:p-4">
-            <p className="min-w-0 break-words font-semibold text-gray-900">{atendimento.pacienteNome}</p>
+            <p className="min-w-0 break-words font-semibold text-gray-900">{visit.patientName}</p>
             <p className="text-xs leading-relaxed text-gray-600 sm:text-sm">
-              {[atendimento.data, `às ${atendimento.horario}`, atendimento.profissionalNome].filter(Boolean).join(" · ")}
+              {[visit.date, `às ${visit.slotTime}`, visit.professionalName].filter(Boolean).join(" · ")}
             </p>
           </div>
 

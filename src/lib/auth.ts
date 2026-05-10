@@ -1,8 +1,53 @@
 import { compare } from "bcrypt";
+import { timingSafeEqual } from "node:crypto";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "./db";
 import type { UserRoleType } from "@/types/auth";
+import { USER_ROLES } from "@/types/auth";
+import { isDemoAuthEnabled, resolvedDemoCredentials } from "@/lib/demo-env";
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase()
+}
+
+function timingSafeStringEqual(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, "utf8")
+    const bufB = Buffer.from(b, "utf8")
+    if (bufA.length !== bufB.length) return false
+    return timingSafeEqual(bufA, bufB)
+  } catch {
+    return false
+  }
+}
+
+function tryAuthorizePortfolioDemo(
+  email: string,
+  password: string
+): { id: string; name: string; username: string; email: string; role: UserRoleType | null } | null {
+  if (!isDemoAuthEnabled()) return null
+
+  const demo = resolvedDemoCredentials()
+  if (!demo) return null
+
+  if (normalizeEmail(email) !== normalizeEmail(demo.email)) return null
+  if (!timingSafeStringEqual(password, demo.password)) return null
+
+  const rawRole = process.env.DEMO_LOGIN_ROLE?.trim()
+  const role: UserRoleType | null =
+    rawRole && (USER_ROLES as readonly string[]).includes(rawRole)
+      ? (rawRole as UserRoleType)
+      : "SUPER_ADMIN"
+
+  return {
+    id: "portfolio-demo",
+    name: "Visitante (demo)",
+    username: "Visitante (demo)",
+    email: normalizeEmail(demo.email),
+    role,
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -21,6 +66,9 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
+        const demoUser = tryAuthorizePortfolioDemo(credentials.email, credentials.password)
+        if (demoUser) return demoUser
 
         const user = await db.user.findUnique({
           where: { email: credentials.email },

@@ -1,7 +1,7 @@
 "use client"
 
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
-import { MedicalRecord } from "@/types"
+import type { MedicalRecord } from "@/types"
 
 function calcAge(date?: string | null) {
   if (!date) return "—"
@@ -121,51 +121,47 @@ function Section({ title, value }: { title: string; value?: string | null }) {
 }
 
 export function MedicalRecordPDF({ data }: { data: MedicalRecord }) {
-  const paciente = data.paciente
-  const agendamento = data.agendamento
+  const patient = data.patientDetails
+  const appointment = data.appointment
 
   return (
     <Document>
       <Page size="A4" style={s.page}>
 
-        {/* HEADER */}
         <View style={s.header}>
           <Text style={s.clinic}>CLÍNICA PSICOLÓGICA</Text>
           <Text style={s.sub}>Prontuário Clínico • Atendimento Psicológico</Text>
         </View>
 
-        {/* PACIENTE */}
         <View style={s.box}>
           <View style={s.row}>
-            <Field label="Paciente" value={paciente?.nome} />
-            <Field label="Idade" value={calcAge(paciente?.dataNascimento)} />
+            <Field label="Paciente" value={patient?.name} />
+            <Field label="Idade" value={calcAge(patient?.birthDate)} />
           </View>
 
           <View style={s.row}>
-            <Field label="Sexo" value={paciente?.sexo} />
-            <Field label="CPF" value={paciente?.cpf} />
+            <Field label="Sexo" value={patient?.gender} />
+            <Field label="CPF" value={patient?.cpf} />
           </View>
 
           <View style={s.row}>
-            <Field label="Telefone" value={paciente?.telefone} />
-            <Field label="Profissão" value={paciente?.profissao} />
+            <Field label="Telefone" value={patient?.phone} />
+            <Field label="Profissão" value={patient?.profession} />
           </View>
         </View>
 
-        {/* ATENDIMENTO */}
         <View style={s.box}>
           <View style={s.row}>
-            <Field label="Profissional" value={agendamento?.profissionalNome} />
-            <Field label="Data" value={agendamento?.data} />
+            <Field label="Profissional" value={appointment?.professionalName} />
+            <Field label="Data" value={appointment?.date} />
           </View>
 
           <View style={s.row}>
-            <Field label="Horário" value={agendamento?.horario} />
+            <Field label="Horário" value={appointment?.slotTime} />
             <Field label="Criado em" value={formatDate(data.createdAt)} />
           </View>
         </View>
 
-        {/* CLÍNICO */}
         <Section title="Diagnóstico Clínico" value={data.clinicalDiagnosis} />
         <Section title="Reações ao Diagnóstico" value={data.diagnosisReactions} />
         <Section title="Estado Emocional" value={data.emotionalState} />
@@ -174,7 +170,6 @@ export function MedicalRecordPDF({ data }: { data: MedicalRecord }) {
         <Section title="Conduta Psicológica" value={data.psychologicalConduct} />
         <Section title="Orientações" value={data.familyGuidance} />
 
-        {/* ASSINATURA */}
         <View style={s.footer}>
           <Text style={s.sign}>Psicólogo Responsável</Text>
           <Text style={s.sign}>Supervisor</Text>

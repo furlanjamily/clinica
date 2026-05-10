@@ -1,7 +1,3 @@
-/**
- * Categorias para lançamentos avulsos (Financeiro).
- * Pagamento vinculado à agenda continua restrito a Consulta / Retorno (ver `isReceitaConsultaOuRetorno`).
- */
 export const RECEITA_CATEGORIAS: string[] = [
   "Avaliação",
   "Pacote ou combo",

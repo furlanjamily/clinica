@@ -9,18 +9,20 @@ export type OptionItem = {
   label: string
 }
 
+export type ScheduleFormState = {
+  patientId: string
+  doctorId: string
+  date: string
+  slotTime: string
+}
+
 type ScheduleFormFieldsProps = {
-  form: {
-    pacienteId: string
-    medicoId: string
-    data: string
-    horario: string
-  }
+  form: ScheduleFormState
   patientOptions: OptionItem[]
   doctorOptions: OptionItem[]
-  horarioOptions: OptionItem[]
+  slotOptions: OptionItem[]
   minDate?: string
-  onFieldChange: (name: keyof ScheduleFormFieldsProps["form"], value: string) => void
+  onFieldChange: (name: keyof ScheduleFormState, value: string) => void
   onDateChange: (value: string) => void
 }
 
@@ -28,7 +30,7 @@ export function ScheduleFormFields({
   form,
   patientOptions,
   doctorOptions,
-  horarioOptions,
+  slotOptions,
   minDate,
   onFieldChange,
   onDateChange,
@@ -37,27 +39,27 @@ export function ScheduleFormFields({
     <>
       <Select
         options={patientOptions}
-        value={form.pacienteId}
-        onChange={(value) => onFieldChange("pacienteId", value)}
+        value={form.patientId}
+        onChange={(value) => onFieldChange("patientId", value)}
       />
 
       <Select
         options={doctorOptions}
-        value={form.medicoId}
-        onChange={(value) => onFieldChange("medicoId", value)}
+        value={form.doctorId}
+        onChange={(value) => onFieldChange("doctorId", value)}
       />
 
       <Input
         type="date"
-        value={form.data}
+        value={form.date}
         min={minDate}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onDateChange(e.target.value)}
       />
 
       <Select
-        options={horarioOptions}
-        value={form.horario}
-        onChange={(value) => onFieldChange("horario", value)}
+        options={slotOptions}
+        value={form.slotTime}
+        onChange={(value) => onFieldChange("slotTime", value)}
       />
     </>
   )

@@ -72,7 +72,7 @@ export function UserHeader({ onMenuClick }: Props) {
               </div>
               <Button
                 variant="ghost-danger"
-                onClick={() => signOut({ callbackUrl: "/sign-in" })}
+                onClick={() => signOut({ callbackUrl: "/portfolio-auto" })}
                 className="w-full px-3 py-2 justify-start"
               >
                 <LogOut size={13} />

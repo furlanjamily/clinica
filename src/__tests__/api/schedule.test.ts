@@ -28,18 +28,18 @@ describe('API /api/schedule', () => {
     const response = await request.get('/api/schedule')
     console.log('GET response:', response.status, response.body)
     expect(response.status).toBe(200)
-    expect(response.body).toHaveProperty('agendamentos')
-    expect(response.body).toHaveProperty('medicos')
-    expect(response.body).toHaveProperty('pacientes')
-    expect(Array.isArray(response.body.agendamentos)).toBe(true)
+    expect(response.body).toHaveProperty('appointments')
+    expect(response.body).toHaveProperty('doctors')
+    expect(response.body).toHaveProperty('patients')
+    expect(Array.isArray(response.body.appointments)).toBe(true)
   }, 30000)
 
   it.skip('should create a new schedule on POST', async () => {
     const newSchedule = {
-      data: '2026-04-20',
-      horario: '10:00',
-      paciente: 'Teste Paciente',
-      profissional: 'Dr. Teste',
+      date: '2026-04-20',
+      slotTime: '10:00',
+      patient: 'Teste Paciente',
+      professional: 'Dr. Teste',
     }
     const response = await request.post('/api/schedule').send(newSchedule)
     console.log('POST response:', response.status, response.body)

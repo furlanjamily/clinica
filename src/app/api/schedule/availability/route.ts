@@ -5,28 +5,26 @@ import { gerarHorarios } from "@/lib/schedule/slots"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { NotFoundError, ValidationError } from "@/lib/errors/custom-errors"
 
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
-const RATE_LIMIT_MAX = 20 // max requests per window
+const RATE_LIMIT_WINDOW = 60 * 1000
+const RATE_LIMIT_MAX = 20
 const AUTH_SECRET_ENV = "SCHEDULE_AVAILABILITY_SECRET"
 
-// In-memory rate limiting is fine for a single process demo.
-// For horizontal scaling, move this to Redis or another shared store.
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
 
 const AvailabilityQuerySchema = z.object({
-  medicoNome: z.string().trim().min(1, "medicoNome is required"),
-  data: z
+  doctorName: z.string().trim().min(1, "doctorName is required"),
+  date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "data must be in YYYY-MM-DD format")
-    .refine(isValidCalendarDate, "data must be a valid calendar date")
-    .refine(isTodayOrFuture, "data cannot be in the past"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be in YYYY-MM-DD format")
+    .refine(isValidCalendarDate, "date must be a valid calendar date")
+    .refine(isTodayOrFuture, "date cannot be in the past"),
 })
 
 type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? ""
-  return forwarded.split(",").map(item => item.trim()).find(Boolean) ?? "unknown"
+  return forwarded.split(",").map((item) => item.trim()).find(Boolean) ?? "unknown"
 }
 
 function getRateLimitState(ip: string) {
@@ -65,9 +63,11 @@ function isAuthorized(req: Request): boolean {
 
 function parseQuery(req: Request): AvailabilityQuery {
   const url = new URL(req.url)
+  const doctorName = url.searchParams.get("doctorName") ?? url.searchParams.get("medicoNome") ?? ""
+  const date = url.searchParams.get("date") ?? url.searchParams.get("data") ?? ""
   const parsed = AvailabilityQuerySchema.safeParse({
-    medicoNome: url.searchParams.get("medicoNome") ?? "",
-    data: url.searchParams.get("data") ?? "",
+    doctorName,
+    date,
   })
 
   if (!parsed.success) {
@@ -126,30 +126,30 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { medicoNome, data } = parseQuery(req)
+    const { doctorName, date } = parseQuery(req)
 
-    const medico = await db.medico.findFirst({
-      where: { nome: medicoNome, ativo: true },
-      select: { id: true, turno: true },
+    const doctor = await db.doctor.findFirst({
+      where: { name: doctorName, active: true },
+      select: { id: true, shift: true },
     })
 
-    if (!medico) {
+    if (!doctor) {
       throw new NotFoundError("Médico não encontrado ou inativo")
     }
 
-    const possibleSlots = gerarHorarios(medico.turno, data)
+    const possibleSlots = gerarHorarios(doctor.shift, date)
 
-    const agendamentos = await db.agendamento.findMany({
+    const appointments = await db.appointment.findMany({
       where: {
-        medicoId: medico.id,
-        data,
+        doctorId: doctor.id,
+        date,
         status: { notIn: ["Cancelado", "Concluido"] },
       },
-      select: { horario: true },
+      select: { slotTime: true },
     })
 
-    const occupiedTimes = new Set<string>(agendamentos.map(({ horario }) => horario))
-    const availableTimes = possibleSlots.filter(slot => !occupiedTimes.has(slot))
+    const occupiedTimes = new Set<string>(appointments.map(({ slotTime }) => slotTime))
+    const availableTimes = possibleSlots.filter((slot) => !occupiedTimes.has(slot))
 
     return NextResponse.json({ availableTimes })
   } catch (error) {

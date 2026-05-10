@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/hooks/useAuth"
-import type { Atendimento } from "@/types/types"
+import type { Appointment } from "@/types/types"
 import { AttendanceTable } from "./AttendanceTable"
 import { MedicalRecord } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
@@ -9,7 +9,7 @@ import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 import { absoluteUrl } from "@/lib/absolute-url"
 import { useSchedule, type ViewMode } from "@/hooks/useSchedule"
 
-type HistoryItem = Atendimento & {
+type HistoryItem = Appointment & {
   duracao?: string
   record?: MedicalRecord
 }
@@ -22,12 +22,12 @@ function formatMs(ms: number) {
   return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`
 }
 
-async function fetchSchedule(): Promise<Atendimento[]> {
+async function fetchSchedule(): Promise<Appointment[]> {
   try {
     const res = await fetch(absoluteUrl("/api/schedule"))
     if (!res.ok) return []
     const data = await res.json()
-    return Array.isArray(data) ? data : (data?.agendamentos ?? [])
+    return Array.isArray(data) ? data : (data?.appointments ?? [])
   } catch {
     return []
   }
@@ -38,7 +38,7 @@ export function AttendanceClient() {
   const username = session?.user?.name ?? ""
   const role = session?.user?.role ?? ""
 
-  const { data: allData } = useSuspenseQuery<Atendimento[]>({
+  const { data: allData } = useSuspenseQuery<Appointment[]>({
     queryKey: SCHEDULE_QUERY_KEY,
     queryFn: fetchSchedule,
   })
@@ -56,33 +56,31 @@ export function AttendanceClient() {
     setDate(new Date())
   }
 
-  const active: Atendimento[] = inPeriod.filter((item) => item.status === "Em Atendimento")
+  const active: Appointment[] = inPeriod.filter((item) => item.status === "Em Atendimento")
   const completed = inPeriod.filter((item) => item.status === "Concluido")
 
   const history: HistoryItem[] = (
     isSuperAdmin
       ? completed
       : completed.filter((item) =>
-          item.profissionalNome?.toLowerCase().includes(username.toLowerCase())
+          item.professionalName?.toLowerCase().includes(username.toLowerCase())
         )
   ).map((item) => ({
     ...item,
     duracao: item.accumulatedTime ? formatMs(item.accumulatedTime) : "—",
-    record: item.prontuario ?? undefined,
+    record: item.clinicalChart ?? undefined,
   }))
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-6">
-      <AttendanceTable
-        data={active}
-        history={history}
-        loadingHistory={false}
-        isSuperAdmin={role === "SUPER_ADMIN"}
-        date={date}
-        view={view}
-        onChangeDate={setDate}
-        onChangeView={handleViewChange}
-      />
-    </div>
+    <AttendanceTable
+      data={active}
+      history={history}
+      loadingHistory={false}
+      isSuperAdmin={role === "SUPER_ADMIN"}
+      date={date}
+      view={view}
+      onChangeDate={setDate}
+      onChangeView={handleViewChange}
+    />
   )
 }
