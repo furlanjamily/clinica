@@ -13,26 +13,26 @@ import { DESPESA_CATEGORIAS, RECEITA_CATEGORIAS } from "@/lib/finance/categories
 
 type Transacao = {
   id: number
-  tipo: "Receita" | "Despesa"
-  categoria: string
-  descricao: string
-  valor: number
-  data: string
-  formaPagamento?: string
+  type: "Receita" | "Despesa"
+  category: string
+  description: string
+  amount: number
+  date: string
+  paymentMethod?: string | null
   status: string
 }
 
 type Config = {
-  valorConsulta: number
-  valorRetorno: number
-  comissaoMedico: number
+  consultationFee: number
+  followUpFee: number
+  doctorCommissionRate: number
 }
 
 const FORMAS_PAGAMENTO = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência", "Boleto", "Não aplicável"]
 
 export default function FinancePage() {
   const [transacoes, setTransacoes] = useState<Transacao[]>([])
-  const [config, setConfig] = useState<Config>({ valorConsulta: 150, valorRetorno: 80, comissaoMedico: 40 })
+  const [config, setConfig] = useState<Config>({ consultationFee: 150, followUpFee: 80, doctorCommissionRate: 40 })
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
@@ -41,25 +41,25 @@ export default function FinancePage() {
 
   const { register, handleSubmit, reset, watch } = useForm<Omit<Transacao, "id">>({
     defaultValues: {
-      tipo: "Receita",
+      type: "Receita",
       status: "Confirmado",
-      data: new Date().toISOString().slice(0, 10),
-      categoria: "",
-      descricao: "",
-      valor: 0,
-      formaPagamento: "",
+      date: new Date().toISOString().slice(0, 10),
+      category: "",
+      description: "",
+      amount: 0,
+      paymentMethod: "",
     },
   })
   const { register: regConfig, handleSubmit: handleConfig, reset: resetConfig } = useForm<Config>()
 
-  const tipoWatch = watch("tipo")
+  const typeWatch = watch("type")
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/finance/transactions?mes=${mes}${tipoFiltro ? `&tipo=${tipoFiltro}` : ""}`).then(r => r.json()),
       fetch("/api/finance/config").then(r => r.json()),
     ]).then(([t, c]) => {
-      setTransacoes(t)
+      setTransacoes(Array.isArray(t) ? t : [])
       setConfig(c)
       resetConfig(c)
       setLoading(false)
@@ -77,18 +77,18 @@ export default function FinancePage() {
       toast.error(body?.message ?? "Não foi possível registrar.")
       return
     }
-    const nova = body.transacao ?? body
+    const nova = body.transaction ?? body.transacao ?? body
     setTransacoes((prev) => [nova, ...prev])
     toast.success("Transação registrada!")
     setShowModal(false)
     reset({
-      tipo: "Receita",
+      type: "Receita",
       status: "Confirmado",
-      data: new Date().toISOString().slice(0, 10),
-      categoria: "",
-      descricao: "",
-      valor: 0,
-      formaPagamento: "",
+      date: new Date().toISOString().slice(0, 10),
+      category: "",
+      description: "",
+      amount: 0,
+      paymentMethod: "",
     })
   }
 
@@ -114,12 +114,12 @@ export default function FinancePage() {
     setShowConfig(false)
   }
 
-  const receitas = transacoes.filter(t => t.tipo === "Receita" && t.status === "Confirmado")
-  const despesas = transacoes.filter(t => t.tipo === "Despesa" && t.status === "Confirmado")
-  const totalReceitas = receitas.reduce((acc, t) => acc + t.valor, 0)
-  const totalDespesas = despesas.reduce((acc, t) => acc + t.valor, 0)
+  const receitas = transacoes.filter(t => t.type === "Receita" && t.status === "Confirmado")
+  const despesas = transacoes.filter(t => t.type === "Despesa" && t.status === "Confirmado")
+  const totalReceitas = receitas.reduce((acc, t) => acc + t.amount, 0)
+  const totalDespesas = despesas.reduce((acc, t) => acc + t.amount, 0)
   const saldo = totalReceitas - totalDespesas
-  const comissaoTotal = totalReceitas * (config.comissaoMedico / 100)
+  const comissaoTotal = totalReceitas * (config.doctorCommissionRate / 100)
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
@@ -133,13 +133,13 @@ export default function FinancePage() {
           size="md"
           onClick={() => {
             reset({
-              tipo: "Receita",
+              type: "Receita",
               status: "Confirmado",
-              data: new Date().toISOString().slice(0, 10),
-              categoria: "",
-              descricao: "",
-              valor: 0,
-              formaPagamento: "",
+              date: new Date().toISOString().slice(0, 10),
+              category: "",
+              description: "",
+              amount: 0,
+              paymentMethod: "",
             })
             setShowModal(true)
           }}
@@ -148,7 +148,6 @@ export default function FinancePage() {
         </Button>
       </Header>
 
-      {/* Cards de resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -177,7 +176,7 @@ export default function FinancePage() {
             <span className="text-xs text-gray-500">Comissão médicos</span>
           </div>
           <p className="text-lg font-bold text-purple-600">{fmt(comissaoTotal)}</p>
-          <p className="text-xs text-gray-400">{config.comissaoMedico}% das receitas</p>
+          <p className="text-xs text-gray-400">{config.doctorCommissionRate}% das receitas</p>
         </div>
       </div>
 
@@ -201,7 +200,6 @@ export default function FinancePage() {
         </FormSelect>
       </div>
 
-      {/* Tabela */}
       {loading ? <TableSkeleton cols={6} rows={5} /> : transacoes.length === 0 ? (
         <div className="flex items-center justify-center flex-1 text-accent text-sm">
           Nenhuma transação encontrada
@@ -217,17 +215,17 @@ export default function FinancePage() {
             <tbody>
               {transacoes.map((t) => (
                 <tr key={t.id} className="bg-white shadow-sm">
-                  <td className="p-3 text-sm text-gray-600">{t.data}</td>
+                  <td className="p-3 text-sm text-gray-600">{t.date}</td>
                   <td className="p-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${t.tipo === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {t.tipo}
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                      {t.type}
                     </span>
                   </td>
-                  <td className="p-3 text-sm text-gray-600">{t.categoria}</td>
-                  <td className="p-3 text-sm">{t.descricao}</td>
-                  <td className="p-3 text-sm text-gray-600">{t.formaPagamento ?? "—"}</td>
-                  <td className={`p-3 text-sm font-semibold ${t.tipo === "Receita" ? "text-green-600" : "text-red-600"}`}>
-                    {t.tipo === "Despesa" ? "- " : ""}{fmt(t.valor)}
+                  <td className="p-3 text-sm text-gray-600">{t.category}</td>
+                  <td className="p-3 text-sm">{t.description}</td>
+                  <td className="p-3 text-sm text-gray-600">{t.paymentMethod ?? "—"}</td>
+                  <td className={`p-3 text-sm font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}>
+                    {t.type === "Despesa" ? "- " : ""}{fmt(t.amount)}
                   </td>
                   <td className="p-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
@@ -246,37 +244,36 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Modal nova transação */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
           <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Nova transação" onClose={() => { setShowModal(false); reset() }} />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormSelect label="Tipo" {...register("tipo")}>
+                <FormSelect label="Tipo" {...register("type")}>
                   <option value="Receita">Receita</option>
                   <option value="Despesa">Despesa</option>
                 </FormSelect>
                 <FormSelect
-                  key={tipoWatch}
+                  key={typeWatch}
                   label="Categoria"
-                  {...register("categoria", { required: true })}
+                  {...register("category", { required: true })}
                 >
                   <option value="">Selecione a categoria</option>
-                  {(tipoWatch === "Receita" ? RECEITA_CATEGORIAS : DESPESA_CATEGORIAS).map((c) => (
+                  {(typeWatch === "Receita" ? RECEITA_CATEGORIAS : DESPESA_CATEGORIAS).map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
                 </FormSelect>
               </div>
-              <Input label="Descrição" {...register("descricao", { required: true })} placeholder="Descrição da transação" />
+              <Input label="Descrição" {...register("description", { required: true })} placeholder="Descrição da transação" />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Input label="Valor (R$)" type="number" step="0.01" {...register("valor", { required: true, valueAsNumber: true })} placeholder="0,00" />
-                <Input label="Data" type="date" {...register("data", { required: true })} />
+                <Input label="Valor (R$)" type="number" step="0.01" {...register("amount", { required: true, valueAsNumber: true })} placeholder="0,00" />
+                <Input label="Data" type="date" {...register("date", { required: true })} />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormSelect label="Forma de pagamento (opcional em despesas)" {...register("formaPagamento")}>
+                <FormSelect label="Forma de pagamento (opcional em despesas)" {...register("paymentMethod")}>
                   <option value="">Não informado</option>
                   {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
                 </FormSelect>
@@ -296,15 +293,14 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Modal configurações */}
       {showConfig && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
           <div className="max-h-[min(92vh,32rem)] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
             <form onSubmit={handleConfig(handleSaveConfig)} className="flex flex-col gap-4">
-              <Input label="Valor da consulta (R$)" type="number" step="0.01" {...regConfig("valorConsulta", { valueAsNumber: true })} />
-              <Input label="Valor do retorno (R$)" type="number" step="0.01" {...regConfig("valorRetorno", { valueAsNumber: true })} />
-              <Input label="Comissão médico (%)" type="number" step="0.1" {...regConfig("comissaoMedico", { valueAsNumber: true })} />
+              <Input label="Valor da consulta (R$)" type="number" step="0.01" {...regConfig("consultationFee", { valueAsNumber: true })} />
+              <Input label="Valor do retorno (R$)" type="number" step="0.01" {...regConfig("followUpFee", { valueAsNumber: true })} />
+              <Input label="Comissão médico (%)" type="number" step="0.1" {...regConfig("doctorCommissionRate", { valueAsNumber: true })} />
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <Button type="button" variant="ghost" onClick={() => setShowConfig(false)}>Cancelar</Button>
                 <Button type="submit" size="md">
