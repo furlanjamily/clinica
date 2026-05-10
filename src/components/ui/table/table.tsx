@@ -63,6 +63,8 @@ type TableProps = {
   setData: React.Dispatch<React.SetStateAction<Atendimento[]>>
 }
 
+const COLUMN_COUNT = 5
+
 const columnHelper = createColumnHelper<RowType>()
 
 function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
@@ -137,7 +139,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
     original.status === "Agendado" || original.status === "AguardandoConfirmacao"
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className=" flex flex-wrap items-center gap-3">
       {showConfirmConsulta && (
         <Button
           variant="teal"
@@ -178,8 +180,10 @@ export function Table({ rows, setData }: TableProps) {
   }
 
   const columns = [
-    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.horario : ""), { id: "horario", header: "Horário" }),
-    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.data : ""), { id: "atendimento", header: "Atendimento" }),
+    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.horario : ""), {
+      id: "horario",
+      header: "Horário",
+    }),
     columnHelper.display({
       id: "status",
       header: "Status",
@@ -207,7 +211,7 @@ export function Table({ rows, setData }: TableProps) {
             {nome}
           </span>
         )
-      }
+      },
     }),
     columnHelper.display({
       id: "profissional",
@@ -260,7 +264,7 @@ export function Table({ rows, setData }: TableProps) {
         <tbody>
           {table.getRowModel().rows.length === 0 ? (
             <tr>
-              <td colSpan={6} className="text-center text-sm text-accent py-8">
+              <td colSpan={COLUMN_COUNT} className="text-center text-sm text-accent py-8">
                 Sem agendamento
               </td>
             </tr>
@@ -271,7 +275,7 @@ export function Table({ rows, setData }: TableProps) {
               if (original.type === "day") {
                 return (
                   <tr key={row.id}>
-                    <td colSpan={6} className="pt-3 text-sm capitalize leading-snug text-gray-500">{original.label}</td>
+                    <td colSpan={COLUMN_COUNT} className="pt-3 text-sm capitalize leading-snug text-gray-500">{original.label}</td>
                   </tr>
                 )
               }

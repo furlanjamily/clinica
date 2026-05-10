@@ -1,7 +1,7 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query"
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { useCallback } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { absoluteUrl } from "@/lib/absolute-url"
 
@@ -11,20 +11,32 @@ function makeQueryKey(endpoint: string) {
   return ["crud", endpoint] as const
 }
 
+/**
+ * Lista CRUD via React Query.
+ * Usa `useQuery` (não Suspense) com cache estável para evitar refetch em loop
+ * em dev/hidratação com React 19 + Next App Router.
+ */
 export function useCRUD<T extends WithId>(endpoint: string) {
   const queryClient = useQueryClient()
 
-  const { data: items } = useSuspenseQuery<T[]>({
+  const queryFn = useCallback(async (): Promise<T[]> => {
+    try {
+      const res = await fetch(absoluteUrl(endpoint))
+      const payload: unknown = await res.json()
+      return Array.isArray(payload) ? (payload as T[]) : []
+    } catch {
+      return []
+    }
+  }, [endpoint])
+
+  const { data: items = [], isPending } = useQuery({
     queryKey: makeQueryKey(endpoint),
-    queryFn: async () => {
-      try {
-        const res = await fetch(absoluteUrl(endpoint))
-        const payload: unknown = await res.json()
-        return Array.isArray(payload) ? (payload as T[]) : []
-      } catch {
-        return []
-      }
-    },
+    queryFn,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 1000 * 60 * 60 * 24,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 
   function setItems(updater: (prev: T[]) => T[]) {
@@ -57,7 +69,7 @@ export function useCRUD<T extends WithId>(endpoint: string) {
       body: JSON.stringify({ id, ...data }),
     })
     const updated: T = await res.json()
-    setItems((prev) => prev.map((item) => item.id === id ? updated : item))
+    setItems((prev) => prev.map((item) => (item.id === id ? updated : item)))
     toast.success(successMsg)
     return updated
   }
@@ -72,5 +84,5 @@ export function useCRUD<T extends WithId>(endpoint: string) {
     toast.success(successMsg)
   }
 
-  return { items, create, update, remove }
+  return { items, isPending, create, update, remove }
 }

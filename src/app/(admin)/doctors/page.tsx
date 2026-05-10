@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ChangeEvent } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,22 @@ import { Doctor } from "@/types"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
-import { TableSuspense } from "@/components/ui/TableSuspense"
+import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
 
 export const dynamic = "force-dynamic"
+
+/** Título neutro obrigatório no cadastro de novo médico (Dr./Dra.). */
+const DOCTOR_NAME_PREFIX = "Dr(a). "
+
+function normalizeDoctorNameOnCreateInput(value: string): string {
+  if (value.startsWith(DOCTOR_NAME_PREFIX)) return value
+  const rest = value
+    .trimStart()
+    .replace(/^(dr\(a\)\.?\s*|dr\.?\s*|dra\.?\s*)/i, "")
+    .trimStart()
+  return DOCTOR_NAME_PREFIX + rest
+}
 
 function doctorFormEmpty(): Omit<Doctor, "id" | "ativo"> {
   return {
@@ -37,13 +49,14 @@ function doctorFormEmpty(): Omit<Doctor, "id" | "ativo"> {
 }
 
 function DoctorsTable({
+  doctors,
   onEdit,
   onRemove,
 }: {
+  doctors: Doctor[]
   onEdit: (d: Doctor) => void
-  onRemove: (id: number) => void
+  onRemove: (id: number, successMsg?: string) => void
 }) {
-  const { items: doctors, remove } = useCRUD<Doctor>("/api/doctor")
 
   if (doctors.length === 0) {
     return (
@@ -74,7 +87,7 @@ function DoctorsTable({
               <td className="p-3">
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" onClick={() => onEdit(d)}><Pencil size={14} /> Editar</Button>
-                  <Button variant="ghost-danger" onClick={() => remove(d.id, "Médico removido.")}><Trash2 size={14} /> Remover</Button>
+                  <Button variant="ghost-danger" onClick={() => onRemove(d.id, "Médico removido.")}><Trash2 size={14} /> Remover</Button>
                 </div>
               </td>
             </tr>
@@ -86,14 +99,14 @@ function DoctorsTable({
 }
 
 export default function DoctorsPage() {
-  const { create, update } = useCRUD<Doctor>("/api/doctor")
+  const { items: doctors, remove, create, update, isPending } = useCRUD<Doctor>("/api/doctor")
   const [modal, setModal] = useState<{ open: boolean; editing: Doctor | null }>({ open: false, editing: null })
   type DoctorForm = Omit<Doctor, "id" | "ativo">
   const { register, handleSubmit, reset, setValue, control, getValues, formState: { isSubmitting } } =
     useForm<DoctorForm>({ defaultValues: doctorFormEmpty() })
 
   function openCreate() {
-    reset(doctorFormEmpty())
+    reset({ ...doctorFormEmpty(), nome: DOCTOR_NAME_PREFIX })
     setModal({ open: true, editing: null })
   }
   function openEdit(d: Doctor) {
@@ -112,7 +125,8 @@ export default function DoctorsPage() {
     if (modal.editing) {
       await update(modal.editing.id, data, "Médico atualizado.")
     } else {
-      await create({ ...data, ativo: true }, "Médico cadastrado com sucesso!")
+      const nome = normalizeDoctorNameOnCreateInput(data.nome)
+      await create({ ...data, nome, ativo: true }, "Médico cadastrado com sucesso!")
     }
     closeModal()
   }
@@ -126,9 +140,11 @@ export default function DoctorsPage() {
       </Header>
 
       <div className="flex-1 overflow-auto mt-4">
-        <TableSuspense cols={6} rows={6}>
-          <DoctorsTable onEdit={openEdit} onRemove={() => {}} />
-        </TableSuspense>
+        {isPending ? (
+          <TableSkeleton cols={6} rows={6} />
+        ) : (
+          <DoctorsTable doctors={doctors} onEdit={openEdit} onRemove={remove} />
+        )}
       </div>
 
       {modal.open && (
@@ -139,7 +155,28 @@ export default function DoctorsPage() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dados profissionais</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <Input label="Nome completo" {...register("nome", { required: true })} placeholder="Dr. Nome Sobrenome" />
+                  {modal.editing ? (
+                    <Input label="Nome completo" {...register("nome", { required: true })} placeholder="Dr(a). Nome Sobrenome" />
+                  ) : (
+                    <Controller
+                      name="nome"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <Input
+                          label="Nome completo"
+                          placeholder="Nome e sobrenome após Dr(a)."
+                          value={field.value}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                            field.onChange(normalizeDoctorNameOnCreateInput(e.target.value))
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
+                      )}
+                    />
+                  )}
                 </div>
                 <Input label="CRM" {...register("crm", { required: true })} placeholder="CRM/UF 000000" />
                 <Input label="Especialidade" {...register("especialidade", { required: true })} placeholder="Ex: Psicologia" />

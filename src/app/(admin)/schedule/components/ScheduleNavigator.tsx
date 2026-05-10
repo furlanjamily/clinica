@@ -86,33 +86,33 @@ export function ScheduleNavigator({
 
   return (
     <div
-      className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full relative gap-3"
+      className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full relative gap-3 md:gap-4"
       ref={ref}
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 md:gap-1">
         <Button variant="outline" size="icon" onClick={previous} aria-label="Período anterior">
-          <ChevronLeft size={18} />
+          <ChevronLeft className="size-[18px] md:size-5" />
         </Button>
 
         <Button
           variant="ghost"
           onClick={() => setOpen((prev) => !prev)}
-          className="min-w-0 max-w-full gap-2 text-left text-sm sm:text-base"
+          className="min-w-0 max-w-full gap-2 text-left text-sm sm:text-base md:text-lg md:px-3"
         >
-          <Calendar size={16} className="shrink-0" />
+          <Calendar className="size-4 shrink-0 md:size-[18px]" />
           <span className="truncate">{formattedDate}</span>
         </Button>
 
         <Button variant="outline" size="icon" onClick={next} aria-label="Próximo período">
-          <ChevronRight size={18} />
+          <ChevronRight className="size-[18px] md:size-5" />
         </Button>
 
-        <Button variant="secondary" onClick={goToday} className="shrink-0 text-sm sm:text-base">
+        <Button variant="secondary" size="md" onClick={goToday} className="shrink-0 text-sm sm:text-base md:text-lg">
           Hoje
         </Button>
 
         {open && (
-          <div className="absolute left-0 top-12 z-50 sm:left-auto">
+          <div className="absolute left-0 top-12 z-50 sm:left-auto md:top-14">
             <DatePicker
               date={date}
               onChange={(d) => { onChangeDate(d); setOpen(false) }}
@@ -121,12 +121,13 @@ export function ScheduleNavigator({
         )}
       </div>
 
-      <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
+      <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end md:gap-3">
         {["dia", "semana", "mes"].map((mode) => (
           <Button
             key={mode}
             variant={view === mode ? "purple" : "secondary"}
-            className="flex-1 text-xs sm:flex-none sm:text-sm"
+            size="md"
+            className="flex-1 text-xs sm:flex-none sm:text-sm md:text-base"
             onClick={() => onChangeView(mode as ViewMode)}
           >
             {mode === "mes" && "Mês"}

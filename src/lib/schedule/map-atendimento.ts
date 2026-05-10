@@ -1,6 +1,9 @@
 import type { MedicalRecord } from "@/types"
 import type { Appointment, AtendimentoPaciente } from "./types"
 
+/** Relação `medico` no Prisma (select) ou nome já denormalizado. */
+export type MedicoInput = string | { id: number; nome: string } | null | undefined
+
 /** Linha vinda do Prisma (include/select) antes do mapeamento para a UI. */
 export type AppointmentRowInput = {
   id: number
@@ -9,7 +12,7 @@ export type AppointmentRowInput = {
   status?: string | null
   pacienteId?: number | null
   pacienteNome?: string | null
-  profissionalNome?: string | null
+  medico: MedicoInput
   startTime?: string | null
   endTime?: string | null
   accumulatedTime?: number | null
@@ -33,15 +36,22 @@ function resolvePaciente(row: AppointmentRowInput): AtendimentoPaciente {
   }
 }
 
+function resolveProfissionalNome(medico: MedicoInput): string {
+  if (medico == null) return ""
+  if (typeof medico === "string") return medico
+  return medico.nome ?? ""
+}
+
 function normalizeProntuario(row: AppointmentRowInput, prontuario: unknown): MedicalRecord | null {
   if (prontuario == null) return null
   const base = prontuario as MedicalRecord
+  const profissionalNome = resolveProfissionalNome(row.medico)
   return {
     ...base,
     agendamento: base.agendamento ?? {
       data: row.data,
       horario: row.horario,
-      profissionalNome: row.profissionalNome ?? undefined,
+      profissionalNome,
     },
   }
 }
@@ -49,6 +59,7 @@ function normalizeProntuario(row: AppointmentRowInput, prontuario: unknown): Med
 export function toAppointment(row: AppointmentRowInput): Appointment {
   const paciente = resolvePaciente(row)
   const prontuario = normalizeProntuario(row, row.prontuario)
+  const profissionalNome = resolveProfissionalNome(row.medico)
 
   return {
     id: row.id,
@@ -58,7 +69,7 @@ export function toAppointment(row: AppointmentRowInput): Appointment {
     paciente,
     pacienteId: row.pacienteId ?? undefined,
     pacienteNome: row.pacienteNome ?? null,
-    profissionalNome: row.profissionalNome ?? "",
+    profissionalNome,
     startTime: row.startTime ?? undefined,
     endTime: row.endTime ?? undefined,
     accumulatedTime: row.accumulatedTime ?? undefined,

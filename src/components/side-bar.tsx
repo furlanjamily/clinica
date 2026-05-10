@@ -57,7 +57,7 @@ function SideBarContent({ onCreate }: Props) {
 
   return (
     <>
-      <div className="flex flex-col w-full h-full items-center py-10 md:py-24 border-r-[0.5px] bg-white rounded-l-2xl gap-8 md:gap-12">
+      <div className="flex flex-col w-full h-full items-center py-10 md:py-24 border-r-[0.5px] bg-white rounded-l-2xl gap-8 md:gap-12 overflow-y-auto">
         <div className="flex flex-col items-center gap-6 md:gap-8">
           <Image className="max-w-[100px] md:max-w-[139px]" src={Logo} alt="Logo" />
           <Button onClick={() => setOpen(true)}>

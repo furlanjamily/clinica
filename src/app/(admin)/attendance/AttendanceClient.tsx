@@ -7,6 +7,7 @@ import { MedicalRecord } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 import { absoluteUrl } from "@/lib/absolute-url"
+import { useSchedule, type ViewMode } from "@/hooks/useSchedule"
 
 type HistoryItem = Atendimento & {
   duracao?: string
@@ -42,8 +43,21 @@ export function AttendanceClient() {
     queryFn: fetchSchedule,
   })
 
-  const active: Atendimento[] = allData.filter((item) => item.status === "Em Atendimento")
-  const completed = allData.filter((item) => item.status === "Concluido")
+  const {
+    date,
+    view,
+    setDate,
+    setView,
+    filteredData: inPeriod,
+  } = useSchedule(allData)
+
+  function handleViewChange(v: ViewMode) {
+    setView(v)
+    setDate(new Date())
+  }
+
+  const active: Atendimento[] = inPeriod.filter((item) => item.status === "Em Atendimento")
+  const completed = inPeriod.filter((item) => item.status === "Concluido")
 
   const history: HistoryItem[] = (
     isSuperAdmin
@@ -64,6 +78,10 @@ export function AttendanceClient() {
         history={history}
         loadingHistory={false}
         isSuperAdmin={role === "SUPER_ADMIN"}
+        date={date}
+        view={view}
+        onChangeDate={setDate}
+        onChangeView={handleViewChange}
       />
     </div>
   )

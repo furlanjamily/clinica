@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, memo } from "react"
+import { useEffect, useState, useCallback, memo, useMemo } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTableFilters } from "@/hooks/useTableFilters"
 import type { Atendimento } from "@/types/types"
@@ -15,6 +15,9 @@ import { MedicalRecordPDF } from "@/components/MedicalRecordPDF"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { Button } from "@/components/ui/button"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import type { ViewMode } from "@/hooks/useSchedule"
+import { ScheduleNavigator } from "@/app/(admin)/schedule/components/ScheduleNavigator"
+import type { RowType } from "@/types/rowType"
 
 function getPatientName(item: Atendimento) {
   return item.paciente?.nome ?? item.pacienteNome ?? "Sem paciente"
@@ -33,6 +36,66 @@ function formatMs(ms: number) {
   const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, "0")
   const s = (totalSec % 60).toString().padStart(2, "0")
   return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`
+}
+
+function normalizeDate(date: string | number | Date) {
+  if (date instanceof Date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  }
+  const [year, month, day] = String(date).split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function sortByTime(a: Atendimento, b: Atendimento) {
+  return a.horario.localeCompare(b.horario)
+}
+
+/** Same grouping as schedule: day label row, then rows with time only in the first column. */
+function flattenHistoryByDay(items: Atendimento[]): RowType[] {
+  const grouped = items.reduce<Record<string, Record<string, Atendimento[]>>>(
+    (acc, item) => {
+      const date = normalizeDate(item.data)
+      const month = date.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      })
+      const day = date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+      })
+      if (!acc[month]) acc[month] = {}
+      if (!acc[month][day]) acc[month][day] = []
+      acc[month][day].push(item)
+      return acc
+    },
+    {}
+  )
+
+  const sortedMonths = Object.entries(grouped).sort((a, b) => {
+    const dateA = new Date(a[1][Object.keys(a[1])[0]][0].data)
+    const dateB = new Date(b[1][Object.keys(b[1])[0]][0].data)
+    return dateA.getTime() - dateB.getTime()
+  })
+
+  const flattened: RowType[] = []
+
+  sortedMonths.forEach(([_month, days]) => {
+    const sortedDays = Object.entries(days).sort((a, b) => {
+      const dateA = new Date(a[1][0].data)
+      const dateB = new Date(b[1][0].data)
+      return dateA.getTime() - dateB.getTime()
+    })
+
+    sortedDays.forEach(([day, rows]) => {
+      flattened.push({ type: "day", label: day })
+      const orderedRows = [...rows].sort(sortByTime)
+      orderedRows.forEach((row) => {
+        flattened.push({ ...row, type: "data" })
+      })
+    })
+  })
+
+  return flattened
 }
 
 function TimerCell({ item }: { item: Atendimento }) {
@@ -61,9 +124,22 @@ type Props = {
   history: Atendimento[]
   loadingHistory?: boolean
   isSuperAdmin?: boolean
+  date: Date
+  view: ViewMode
+  onChangeDate: (date: Date) => void
+  onChangeView: (view: ViewMode) => void
 }
 
-export function AttendanceTableComponent({ data, history, loadingHistory, isSuperAdmin }: Props) {
+export function AttendanceTableComponent({
+  data,
+  history,
+  loadingHistory,
+  isSuperAdmin,
+  date,
+  view,
+  onChangeDate,
+  onChangeView,
+}: Props) {
   const queryClient = useQueryClient()
   const [modalItem, setModalItem] = useState<Atendimento | null>(null)
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | undefined>()
@@ -82,6 +158,16 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
     { name: "data", type: "date" as const },
   ]
 
+  const setScheduleDataFromQuery: React.Dispatch<React.SetStateAction<Atendimento[]>> = useCallback(
+    (updater) => {
+      queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) => {
+        const list = prev ?? []
+        return typeof updater === "function" ? (updater as (p: Atendimento[]) => Atendimento[])(list) : updater
+      })
+    },
+    [queryClient]
+  )
+
   const filteredHistory = history.filter((item) => {
     const pacienteNome = getPatientName(item).toLowerCase()
     const matchPaciente = filters.paciente ? pacienteNome.includes(filters.paciente.toLowerCase()) : true
@@ -91,6 +177,10 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
     const matchData = filters.data ? item.data === filters.data : true
     return matchPaciente && matchProfissional && matchData
   })
+
+  const historyRows = useMemo(() => flattenHistoryByDay(filteredHistory), [filteredHistory])
+
+  const historyColCount = isSuperAdmin ? 5 : 4
 
   const updateItem = useCallback(async (id: number, changes: Partial<Atendimento>) => {
     queryClient.setQueryData<Atendimento[]>(SCHEDULE_QUERY_KEY, (prev) =>
@@ -287,6 +377,14 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
 
       <div className="flex min-h-0 flex-1 flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ScheduleNavigator
+            date={date}
+            view={view}
+            onChangeDate={onChangeDate}
+            onChangeView={onChangeView}
+          />
+        </div>
         <Collapse label="Filtros">
           <GlobalFilters
             values={filters}
@@ -294,13 +392,14 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
             filters={FILTER_CONFIG}
           />
         </Collapse>
+
         {loadingHistory ? (
-          <TableSkeleton cols={6} rows={4} />
+          <TableSkeleton cols={historyColCount} rows={4} />
         ) : filteredHistory.length === 0 ? (
           <table className="min-w-[min(100%,36rem)] w-full border-separate border-spacing-y-2 sm:min-w-[600px]">
             <thead>
               <tr>
-                {["Data", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
+                {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
                   <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
                     {h}
                   </th>
@@ -310,7 +409,7 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
             <tbody>
               <tr>
                 <td
-                  colSpan={isSuperAdmin ? 6 : 5}
+                  colSpan={historyColCount}
                   className="px-3 py-8 text-center text-sm leading-relaxed text-gray-400"
                 >
                   Nenhum atendimento concluído
@@ -324,7 +423,7 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
             <table className="min-w-[min(100%,36rem)] w-full border-separate border-spacing-y-2 sm:min-w-[600px]">
               <thead>
                 <tr>
-                  {["Data", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
+                  {["Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", "Prontuário"].map((h) => (
                     <th key={h} className="px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:px-3 sm:text-xs sm:normal-case sm:tracking-normal">
                       {h}
                     </th>
@@ -332,11 +431,24 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
                 </tr>
               </thead>
               <tbody>
-                {filteredHistory.map((item) => {
+                {historyRows.map((row, rowIndex) => {
+                  if (row.type === "day") {
+                    return (
+                      <tr key={`day-${rowIndex}-${row.label}`}>
+                        <td
+                          colSpan={historyColCount}
+                          className="pt-3 text-sm capitalize leading-snug text-gray-500"
+                        >
+                          {row.label}
+                        </td>
+                      </tr>
+                    )
+                  }
+                  if (row.type !== "data") return null
+                  const item = row
                   const pn = getPatientName(item)
                   return (
                     <tr key={item.id} className="bg-white shadow-sm">
-                      <td className="whitespace-nowrap p-2 text-xs text-gray-600 sm:p-3 sm:text-sm">{item.data}</td>
                       <td className="whitespace-nowrap p-2 text-xs sm:p-3 sm:text-sm">{item.horario}</td>
                       <td className="max-w-[10rem] p-2 text-xs font-medium sm:max-w-[14rem] sm:p-3 sm:text-sm">
                         <span className="line-clamp-2 break-words sm:line-clamp-none" title={pn}>
@@ -345,8 +457,8 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
                       </td>
                       {isSuperAdmin && (
                         <td className="max-w-[8rem] p-2 text-xs text-gray-600 sm:max-w-[12rem] sm:p-3 sm:text-sm">
-                          <span className="line-clamp-2 break-words" title={item.profissionalNome ?? ""}>
-                            {item.profissionalNome ?? "—"}
+                          <span className="line-clamp-2 break-words">
+                            {item.profissionalNome}
                           </span>
                         </td>
                       )}
@@ -376,6 +488,7 @@ export function AttendanceTableComponent({ data, history, loadingHistory, isSupe
             </table>
           </div>
         )}
+
       </div>
 
       {modalItem && (

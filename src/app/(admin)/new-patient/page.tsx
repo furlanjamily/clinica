@@ -9,7 +9,7 @@ import { Patient } from "@/types"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
-import { TableSuspense } from "@/components/ui/TableSuspense"
+import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
 
 function trimToNull(v: string | undefined | null): string | null {
@@ -50,9 +50,15 @@ function patientFormEmpty(): Omit<Patient, "id"> {
   }
 }
 
-function PatientsTable({ onEdit }: { onEdit: (p: Patient) => void }) {
-  const { items: patients, remove } = useCRUD<Patient>("/api/patient")
-
+function PatientsTable({
+  patients,
+  onEdit,
+  onRemove,
+}: {
+  patients: Patient[]
+  onEdit: (p: Patient) => void
+  onRemove: (id: number, successMsg?: string) => void
+}) {
   if (patients.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-accent text-sm">
@@ -81,7 +87,7 @@ function PatientsTable({ onEdit }: { onEdit: (p: Patient) => void }) {
               <td className="p-3">
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" onClick={() => onEdit(p)}><Pencil size={14} /> Editar</Button>
-                  <Button variant="ghost-danger" onClick={() => remove(p.id, "Paciente removido.")}><Trash2 size={14} /> Remover</Button>
+                  <Button variant="ghost-danger" onClick={() => onRemove(p.id, "Paciente removido.")}><Trash2 size={14} /> Remover</Button>
                 </div>
               </td>
             </tr>
@@ -93,7 +99,7 @@ function PatientsTable({ onEdit }: { onEdit: (p: Patient) => void }) {
 }
 
 export default function PatientsPage() {
-  const { create, update } = useCRUD<Patient>("/api/patient")
+  const { items: patients, remove, create, update, isPending } = useCRUD<Patient>("/api/patient")
   const [modal, setModal] = useState<{ open: boolean; editing: Patient | null }>({ open: false, editing: null })
   type PatientForm = Omit<Patient, "id">
   const { register, handleSubmit, reset, setValue, control, getValues, formState: { isSubmitting } } =
@@ -134,9 +140,11 @@ export default function PatientsPage() {
       </Header>
 
       <div className="mt-3 min-h-0 flex-1 overflow-auto sm:mt-4">
-        <TableSuspense cols={5} rows={6}>
-          <PatientsTable onEdit={openEdit} />
-        </TableSuspense>
+        {isPending ? (
+          <TableSkeleton cols={5} rows={6} />
+        ) : (
+          <PatientsTable patients={patients} onEdit={openEdit} onRemove={remove} />
+        )}
       </div>
 
       {modal.open && (

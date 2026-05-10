@@ -29,15 +29,6 @@ const FILTER_CONFIG = [
     ],
   },
   {
-    name: "atendimento",
-    type: "select",
-    options: [
-      { value: "", label: "Todos os tipos" },
-      { value: "Consulta", label: "Consulta" },
-      { value: "Retorno", label: "Retorno" },
-    ],
-  },
-  {
     name: "paciente",
     type: "input",
     placeholder: "Paciente...",
@@ -89,10 +80,7 @@ export default function Schedule({ data, onChangeData }: Props) {
       </div>
 
       <main className="mt-3 min-h-0 flex-1 overflow-hidden sm:mt-4">
-        <ScheduleView
-          data={filteredData}
-          setData={onChangeData}
-        />
+        <ScheduleView data={filteredData} setData={onChangeData} />
       </main>
     </div>
   )

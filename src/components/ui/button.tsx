@@ -24,10 +24,10 @@ export const buttonVariants = tv({
       "badge-orange": "bg-orange-100 text-orange-700 hover:bg-orange-200",
     },
     size: {
-      icon: "p-1.5 text-xs",
-      sm:   "h-7 px-3 text-xs",
-      md:   "h-9 px-4 text-sm",
-      lg:   "h-11 px-5 text-sm",
+      icon: "p-2 text-xs sm:p-1.5",
+      sm:   "py-1 px-2 text-xs sm:py-1.5 sm:px-3",
+      md:   "py-1.5 px-2.5 text-sm sm:py-2 sm:px-4",
+      lg:   "py-2 px-3 text-sm sm:py-2.5 sm:px-5 lg:py-3.5 lg:px-6",
     },
     disabled: {
       true: "opacity-40 pointer-events-none",
