@@ -42,6 +42,7 @@ export const config = {
     "/doctors/:path*",
     "/users",
     "/users/:path*",
+    "/finance",
     "/finance/:path*",
     "/settings/:path*",
   ],

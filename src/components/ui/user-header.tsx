@@ -29,7 +29,6 @@ export function UserHeader({ onMenuClick }: Props) {
 
   return (
     <div className="flex w-full items-center justify-between gap-2 px-3 sm:px-4 md:px-7">
-      {/* Toggle mobile — esquerda */}
       <Button
         variant="ghost"
         size="icon"
@@ -39,7 +38,6 @@ export function UserHeader({ onMenuClick }: Props) {
         <Menu size={22} />
       </Button>
 
-      {/* Itens da direita */}
       <div className="flex items-center gap-[11px] ml-auto">
         <Button variant="ghost" size="icon" className="text-gray-500 hover:text-[#9747FF] transition-colors">
           <Bell size={24} />
