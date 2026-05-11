@@ -124,7 +124,7 @@ export default function FinancePage() {
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col gap-6 overflow-y-auto">
+    <div className="flex min-w-0 max-w-full flex-col gap-6">
       <Header title="Financeiro">
         <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
           <Settings size={15} /> Configurações
