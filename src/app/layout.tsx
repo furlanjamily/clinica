@@ -15,8 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className={`${inter.className} antialiased w-screen h-screen overflow-hidden`}>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body
+        className={`${inter.className} antialiased min-h-dvh w-full overflow-hidden`}
+        suppressHydrationWarning
+      >
         <Provider>
           {children}
           <Toaster richColors position="top-right" />

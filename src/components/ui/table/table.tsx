@@ -248,7 +248,7 @@ export function Table({ rows, setData }: TableProps) {
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
 
   return (
-    <div className="h-full overflow-x-auto overflow-y-auto [-webkit-overflow-scrolling:touch]">
+    <div className="h-full min-w-0 overflow-x-auto overflow-y-auto [-webkit-overflow-scrolling:touch]">
       <table className="w-full min-w-[20rem] border-separate border-spacing-y-2 sm:min-w-0">
         <thead>
           {table.getHeaderGroups().map((hg) => (

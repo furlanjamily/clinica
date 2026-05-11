@@ -78,7 +78,7 @@ export function ScheduleView({ data, setData }: Props) {
 
 
   return (
-    <div className="h-full min-h-0 overflow-auto">
+    <div className="h-full min-h-0 min-w-0 overflow-auto">
       <Table rows={flattenedData} setData={setData} />
     </div>
   )

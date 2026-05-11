@@ -52,49 +52,66 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex w-screen h-screen bg-gray-100 justify-between overflow-hidden">
+    <div className="flex min-h-dvh w-full flex-col bg-gray-100 lg:flex-row lg:justify-between lg:overflow-hidden">
 
-      <div className="flex flex-col justify-center items-start px-[68px]">
-<Image src="/logo.svg" alt="Logo" width={139} height={27} className="absolute top-9 left-10 w-[139px] h-[27px]" />
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center px-6 pb-14 pt-28 sm:px-10 lg:px-[68px] lg:pb-12 lg:pt-16">
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          width={139}
+          height={27}
+          className="absolute left-6 top-8 sm:left-10 sm:top-9 lg:left-[68px] lg:top-9"
+          priority
+        />
 
         <div>
-        <h1 className="text-2xl font-bold text-secondary pb-1">Faça login</h1>
-        <div className="pb-4">
-        <p className="font-medium text-xs text-accent ">Acesso apenas para administradores</p>
-        </div>
+          <h1 className="pb-1 text-2xl font-bold text-secondary">Faça login</h1>
+          <div className="pb-4">
+            <p className="text-xs font-medium text-accent">Acesso apenas para administradores</p>
+          </div>
         </div>
 
-        <div>
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[350px] flex flex-col gap-2">
-          <FormProvider {...singInForm}>
-            <Input
-              id="email"
-              type="text"
-              {...register("email")}
-              className="w-[280px] h-[38px]"
-              error={errors.email?.message}
-            />
-            <Input
-              id="password"
-              type="password"
-              {...register("password")}
-              className="w-[280px] h-[38px]"
-              error={errors.password?.message}
-            />
-              
-            <div className="pt-4 flex flex-col gap-2">
-            <button type="submit" className="w-[280px] h-[32px] bg-primary text-white rounded-md justify-center items-center font-bold size-[10px]">
-              Entrar
-            </button>
-            </div>
+        <div className="w-full">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex w-full max-w-[350px] flex-col gap-2">
+            <FormProvider {...singInForm}>
+              <Input
+                id="email"
+                type="text"
+                {...register("email")}
+                className="h-[38px] w-full"
+                error={errors.email?.message}
+              />
+              <Input
+                id="password"
+                type="password"
+                {...register("password")}
+                className="h-[38px] w-full"
+                error={errors.password?.message}
+              />
 
-          </FormProvider>
-        </form>
+              <div className="flex flex-col gap-2 pt-4">
+                <button
+                  type="submit"
+                  className="flex h-[32px] w-full items-center justify-center rounded-md bg-primary text-xs font-bold text-white"
+                >
+                  Entrar
+                </button>
+              </div>
+
+            </FormProvider>
+          </form>
         </div>
       </div>
 
-      <div className="w-[810px] flex-shrink-0 justify-end flex overflow-hidden">
-        <Image src="/ImageSignIn.png" alt="Imagem de Login" width={810} height={1080} className="h-full w-full object-cover" />
+      <div className="relative hidden min-h-dvh w-full flex-shrink-0 lg:block lg:w-[min(45vw,810px)] lg:max-w-[810px] lg:overflow-hidden">
+        <Image
+          src="/ImageSignIn.png"
+          alt="Imagem de Login"
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 0px, min(45vw, 810px)"
+          priority
+        />
       </div>
     </div>
   );

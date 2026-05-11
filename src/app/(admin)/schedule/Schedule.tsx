@@ -79,7 +79,7 @@ export default function Schedule({ data, onChangeData }: Props) {
         </Collapse>
       </div>
 
-      <main className="mt-3 min-h-0 flex-1 overflow-hidden sm:mt-4">
+      <main className="mt-3 min-h-0 min-w-0 flex-1 overflow-auto sm:mt-4">
         <ScheduleView data={filteredData} setData={onChangeData} />
       </main>
     </div>

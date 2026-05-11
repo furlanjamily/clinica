@@ -48,22 +48,30 @@ export default function SignUp() {
   }
 
   return (
-    <div className="flex w-screen bg-gray-100 justify-between">
-      <div className="flex flex-col justify-center items-start px-[68px] pt-[107px]">
-        <Image src="/logo.svg" alt="Logo" width={139} height={27} className="absolute top-9 left-10 w-[139px] h-[27px]" />
+    <div className="flex min-h-dvh w-full flex-col bg-gray-100 lg:flex-row lg:justify-between lg:overflow-hidden">
+
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center px-6 pb-14 pt-28 sm:px-10 lg:px-[68px] lg:pb-12 lg:pt-28">
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          width={139}
+          height={27}
+          className="absolute left-6 top-8 sm:left-10 sm:top-9 lg:left-[68px]"
+          priority
+        />
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-secondary pb-1">Criar conta</h1>
-          <p className="font-medium text-xs text-accent">Preencha os dados para criar seu acesso</p>
+          <h1 className="pb-1 text-2xl font-bold text-secondary">Criar conta</h1>
+          <p className="text-xs font-medium text-accent">Preencha os dados para criar seu acesso</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex w-full max-w-[350px] flex-col gap-2">
           <Input
             label="Nome"
             type="text"
             placeholder="Seu nome completo"
             {...register("username")}
-            className="w-[280px] h-[38px]"
+            className="h-[38px] w-full"
             error={errors.username?.message}
           />
           <Input
@@ -71,7 +79,7 @@ export default function SignUp() {
             type="email"
             placeholder="seu@email.com"
             {...register("email")}
-            className="w-[280px] h-[38px]"
+            className="h-[38px] w-full"
             error={errors.email?.message}
           />
           <Input
@@ -79,7 +87,7 @@ export default function SignUp() {
             type="password"
             placeholder="Mínimo 8 caracteres"
             {...register("password")}
-            className="w-[280px] h-[38px]"
+            className="h-[38px] w-full"
             error={errors.password?.message}
           />
           <Input
@@ -87,22 +95,22 @@ export default function SignUp() {
             type="password"
             placeholder="Repita a senha"
             {...register("confirmPassword")}
-            className="w-[280px] h-[38px]"
+            className="h-[38px] w-full"
             error={errors.confirmPassword?.message}
           />
 
-          <div className="pt-4 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 pt-4">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-[280px] h-[32px] bg-primary text-white rounded-md font-bold text-[10px] disabled:opacity-50"
+              className="flex h-[32px] w-full items-center justify-center rounded-md bg-primary text-xs font-bold text-white disabled:opacity-50"
             >
               {isSubmitting ? "Cadastrando..." : "Criar conta"}
             </button>
 
-            <p className="text-xs text-accent text-center">
+            <p className="text-center text-xs text-accent">
               Já tem conta?{" "}
-              <Link href="/sign-in" className="text-primary font-medium hover:underline">
+              <Link href="/sign-in" className="font-medium text-primary hover:underline">
                 Fazer login
               </Link>
             </p>
@@ -110,8 +118,15 @@ export default function SignUp() {
         </form>
       </div>
 
-      <div className="w-[810px] justify-end flex overflow-hidden">
-        <Image src="/ImageSignIn.png" alt="Imagem de cadastro" width={400} height={300} />
+      <div className="relative hidden min-h-dvh w-full flex-shrink-0 lg:block lg:w-[min(45vw,810px)] lg:max-w-[810px] lg:overflow-hidden">
+        <Image
+          src="/ImageSignIn.png"
+          alt="Imagem de cadastro"
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 0px, min(45vw, 810px)"
+          priority
+        />
       </div>
     </div>
   )

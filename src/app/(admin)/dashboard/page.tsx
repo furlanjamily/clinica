@@ -57,7 +57,7 @@ export default function Dashboard() {
   const metricsPending = pending && !summary
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6">
       <div>
         <Header title="Dashboard" />
         <p className="text-accent">Resumo financeiro com base nas transações confirmadas.</p>

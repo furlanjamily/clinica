@@ -44,7 +44,8 @@ function MedicalRecordsTable({
   }
 
   return (
-    <table className="w-full border-separate border-spacing-y-2">
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-[520px] border-separate border-spacing-y-2">
       <thead>
         <tr>
           {["Paciente", "Médico", "Data", "Ações"].map((h) => (
@@ -55,13 +56,13 @@ function MedicalRecordsTable({
       <tbody>
         {records.map((r) => (
           <tr key={r.id} className="bg-white shadow-sm">
-            <td className="p-3">{r.patientDetails?.name || "—"}</td>
-            <td className="p-3 text-gray-600">{r.appointment?.professionalName || "—"}</td>
-            <td className="p-3 text-gray-600">
+            <td className="max-w-[12rem] break-words p-3">{r.patientDetails?.name || "—"}</td>
+            <td className="max-w-[10rem] break-words p-3 text-gray-600">{r.appointment?.professionalName || "—"}</td>
+            <td className="whitespace-nowrap p-3 text-gray-600 sm:whitespace-normal">
               {r.createdAt ? new Date(r.createdAt).toLocaleString("pt-BR") : "—"}
             </td>
             <td className="p-3">
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button variant="ghost-blue" onClick={() => onDownload(r)}>
                   <Download size={14} /> PDF
                 </Button>
@@ -77,6 +78,7 @@ function MedicalRecordsTable({
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -155,14 +157,14 @@ export default function MedicalRecordPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
       <Header title="Prontuários">
         <Button onClick={() => { setEditing(null); setShowModal(true) }}>
           <Plus size={16} /> Novo Prontuário
         </Button>
       </Header>
 
-      <div className="flex-1 overflow-auto mt-4">
+      <div className="mt-4 min-h-0 min-w-0 flex-1 overflow-auto">
         <TableSuspense cols={4} rows={5}>
           <MedicalRecordsTable
             onEdit={(r) => { setEditing(r); setShowModal(true) }}

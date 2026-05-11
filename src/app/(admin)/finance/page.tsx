@@ -124,7 +124,7 @@ export default function FinancePage() {
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto gap-6">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col gap-6 overflow-y-auto">
       <Header title="Financeiro">
         <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
           <Settings size={15} /> Configurações
@@ -200,48 +200,106 @@ export default function FinancePage() {
         </FormSelect>
       </div>
 
-      {loading ? <TableSkeleton cols={6} rows={5} /> : transacoes.length === 0 ? (
-        <div className="flex items-center justify-center flex-1 text-accent text-sm">
+      {loading ? (
+        <TableSkeleton cols={6} rows={5} />
+      ) : transacoes.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-accent">
           Nenhuma transação encontrada
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-y-2 min-w-[600px]">
-            <thead>
-              <tr>{["Data", "Tipo", "Categoria", "Descrição", "Forma Pgto", "Valor", "Status", ""].map((h) => (
-                <th key={h} className="text-left text-xs px-3 text-gray-500">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {transacoes.map((t) => (
-                <tr key={t.id} className="bg-white shadow-sm">
-                  <td className="p-3 text-sm text-gray-600">{t.date}</td>
-                  <td className="p-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+        <>
+          {/* Celular: cartões (tabela larga não cabe bem na viewport estreita) */}
+          <ul className="flex flex-col gap-3 md:hidden">
+            {transacoes.map((t) => (
+              <li
+                key={t.id}
+                className="space-y-3 rounded-xl bg-white p-4 shadow-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="text-xs text-gray-500">{t.date}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                    >
                       {t.type}
                     </span>
-                  </td>
-                  <td className="p-3 text-sm text-gray-600">{t.category}</td>
-                  <td className="p-3 text-sm">{t.description}</td>
-                  <td className="p-3 text-sm text-gray-600">{t.paymentMethod ?? "—"}</td>
-                  <td className={`p-3 text-sm font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}>
-                    {t.type === "Despesa" ? "- " : ""}{fmt(t.amount)}
-                  </td>
-                  <td className="p-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                    >
                       {t.status}
                     </span>
-                  </td>
-                  <td className="p-3">
-                    <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
-                      <Trash2 size={14} />
-                    </Button>
-                  </td>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-gray-900">{t.category}</p>
+                <p className="break-words text-sm text-gray-700">{t.description}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-sm">
+                  <span className="text-gray-600">{t.paymentMethod ?? "—"}</span>
+                  <span
+                    className={`font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {t.type === "Despesa" ? "- " : ""}
+                    {fmt(t.amount)}
+                  </span>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop / tablet: tabela com scroll horizontal se precisar */}
+          <div className="hidden min-w-0 md:block md:overflow-x-auto">
+            <table className="w-full min-w-[640px] border-separate border-spacing-y-2">
+              <thead>
+                <tr>
+                  {["Data", "Tipo", "Categoria", "Descrição", "Forma Pgto", "Valor", "Status", ""].map((h) => (
+                    <th key={h} className="px-3 text-left text-xs text-gray-500">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {transacoes.map((t) => (
+                  <tr key={t.id} className="bg-white shadow-sm">
+                    <td className="p-3 text-sm text-gray-600">{t.date}</td>
+                    <td className="p-3">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                      >
+                        {t.type}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">{t.category}</td>
+                    <td className="max-w-[14rem] break-words p-3 text-sm">{t.description}</td>
+                    <td className="p-3 text-sm text-gray-600">{t.paymentMethod ?? "—"}</td>
+                    <td
+                      className={`p-3 text-sm font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {t.type === "Despesa" ? "- " : ""}
+                      {fmt(t.amount)}
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {showModal && (

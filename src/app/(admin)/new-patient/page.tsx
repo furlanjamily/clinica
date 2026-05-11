@@ -68,8 +68,8 @@ function PatientsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-separate border-spacing-y-2 min-w-[500px]">
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-[500px] border-separate border-spacing-y-2">
         <thead>
           <tr>
             {["Nome", "CPF", "Telefone", "Convênio", "Ações"].map((h) => (
@@ -132,14 +132,14 @@ export default function PatientsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
       <Header title="Pacientes">
         <Button size="md" onClick={openCreate}>
           <Plus size={16} /> <span className="hidden sm:inline">Novo paciente</span>
         </Button>
       </Header>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-auto sm:mt-4">
+      <div className="mt-3 min-h-0 min-w-0 flex-1 overflow-auto sm:mt-4">
         {isPending ? (
           <TableSkeleton cols={5} rows={6} />
         ) : (

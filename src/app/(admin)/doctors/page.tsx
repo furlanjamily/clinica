@@ -66,8 +66,8 @@ function DoctorsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-separate border-spacing-y-2 min-w-[600px]">
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-[600px] border-separate border-spacing-y-2">
         <thead>
           <tr>
             {["Nome", "CRM", "Especialidade", "Turno", "Contato", "Ações"].map((h) => (
@@ -131,14 +131,14 @@ export default function DoctorsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
       <Header title="Médicos">
         <Button size="md" onClick={openCreate}>
           <Plus size={16} /> Novo médico
         </Button>
       </Header>
 
-      <div className="flex-1 overflow-auto mt-4">
+      <div className="mt-4 min-h-0 min-w-0 flex-1 overflow-auto">
         {isPending ? (
           <TableSkeleton cols={6} rows={6} />
         ) : (

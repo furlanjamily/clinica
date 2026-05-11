@@ -295,7 +295,7 @@ export function AttendanceTableComponent({
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
       <section className="flex shrink-0 flex-col gap-3">
         {data.length === 0 ? (
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Em andamento</p>
@@ -393,7 +393,7 @@ export function AttendanceTableComponent({
           </Collapse>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="max-h-[min(58dvh,calc(100dvh-13rem))] overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:max-h-[min(70vh,36rem)]">
             {loadingHistory ? (
               <div className="p-2 sm:p-3">
