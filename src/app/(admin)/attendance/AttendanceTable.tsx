@@ -394,7 +394,7 @@ export function AttendanceTableComponent({
         </div>
 
         <div className="min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="max-h-[min(58dvh,calc(100dvh-13rem))] overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:max-h-[min(70vh,36rem)]">
+          <div className="max-h-[min(58dvh,calc(100dvh-13rem))] overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch] scroll-pb-4 pb-4 sm:max-h-[min(70vh,36rem)] sm:pb-3">
             {loadingHistory ? (
               <div className="p-2 sm:p-3">
                 <TableSkeleton cols={historyColCount} rows={4} />
