@@ -29,12 +29,13 @@ export function useScheduleOptions() {
     async function load() {
       try {
         const res = await fetch("/api/schedule/options")
-        const data = await res.json()
+        if (!res.ok) return
 
+        const data = await res.json()
         setDoctors(data?.doctors ?? [])
         setPatients(data?.patients ?? [])
-      } catch (err) {
-        console.error("Erro ao carregar opções:", err)
+      } catch {
+        // Falha silenciosa: os selects ficam vazios e o usuário pode recarregar
       } finally {
         setLoading(false)
       }

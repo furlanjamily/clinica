@@ -11,6 +11,15 @@ function makeQueryKey(endpoint: string) {
   return ["crud", endpoint] as const
 }
 
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json()
+    return body?.message ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
 /**
  * Lista CRUD via React Query.
  * Usa `useQuery` (não Suspense) com cache estável para evitar refetch em loop
@@ -52,8 +61,7 @@ export function useCRUD<T extends WithId>(endpoint: string) {
       body: JSON.stringify(data),
     })
     if (!res.ok) {
-      const body = await res.json()
-      toast.error(body.message ?? "Erro ao criar.")
+      toast.error(await readErrorMessage(res, "Erro ao criar."))
       return null
     }
     const created: T = await res.json()
@@ -68,6 +76,10 @@ export function useCRUD<T extends WithId>(endpoint: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...data }),
     })
+    if (!res.ok) {
+      toast.error(await readErrorMessage(res, "Erro ao atualizar."))
+      return null
+    }
     const updated: T = await res.json()
     setItems((prev) => prev.map((item) => (item.id === id ? updated : item)))
     toast.success(successMsg)
@@ -75,13 +87,18 @@ export function useCRUD<T extends WithId>(endpoint: string) {
   }
 
   async function remove(id: T["id"], successMsg = "Removido com sucesso!") {
-    await fetch(absoluteUrl(endpoint), {
+    const res = await fetch(absoluteUrl(endpoint), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
+    if (!res.ok) {
+      toast.error(await readErrorMessage(res, "Erro ao remover."))
+      return false
+    }
     setItems((prev) => prev.filter((item) => item.id !== id))
     toast.success(successMsg)
+    return true
   }
 
   return { items, isPending, create, update, remove }

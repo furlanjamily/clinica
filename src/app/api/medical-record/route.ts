@@ -1,6 +1,15 @@
-import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
 import { mapClinicalChartFromDb } from "@/lib/medical-record/map-prontuario"
+import { requireSession } from "@/lib/auth/api-guard"
+import { handleApiError } from "@/lib/errors/error-handler"
+import { NotFoundError } from "@/lib/errors/custom-errors"
+import { parseWith } from "@/lib/validations/parse"
+import {
+  CreateMedicalRecordSchema,
+  UpdateMedicalRecordSchema,
+  DeleteMedicalRecordSchema,
+} from "@/lib/validations/medical-record"
 
 const appointmentSelect = {
   id: true,
@@ -11,89 +20,91 @@ const appointmentSelect = {
   patientId: true,
 } as const
 
-export async function GET() {
-  const records = await prisma.clinicalChart.findMany({
-    include: {
-      patient: true,
-      appointment: {
-        select: appointmentSelect,
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  })
+const chartInclude = {
+  patient: true,
+  appointment: { select: appointmentSelect },
+} as const
 
-  return NextResponse.json(records.map((r) => mapClinicalChartFromDb(r as Record<string, unknown>)))
+export async function GET() {
+  try {
+    await requireSession()
+    const records = await prisma.clinicalChart.findMany({
+      include: chartInclude,
+      orderBy: { createdAt: "desc" },
+    })
+
+    return NextResponse.json(
+      records.map((r) => mapClinicalChartFromDb(r as Record<string, unknown>))
+    )
+  } catch (error) {
+    return handleApiError(error)
+  }
 }
 
 export async function POST(req: Request) {
-  const body = await req.json()
+  try {
+    await requireSession()
+    const { appointmentId, ...chartData } = parseWith(
+      CreateMedicalRecordSchema,
+      await req.json()
+    )
 
-  const appointment = await prisma.appointment.findUnique({
-    where: { id: body.appointmentId },
-    include: { patient: true },
-  })
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { patient: true },
+    })
 
-  if (!appointment) {
-    return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 })
-  }
+    if (!appointment) {
+      throw new NotFoundError("Agendamento não encontrado")
+    }
 
-  const clinicalChart = await prisma.clinicalChart.create({
-    data: {
-      appointmentId: body.appointmentId,
-      patientId: appointment.patientId,
-      patientLabel: appointment.patientName,
-
-      clinicalDiagnosis: body.clinicalDiagnosis,
-      diagnosisReactions: body.diagnosisReactions,
-      emotionalState: body.emotionalState,
-      personalHistory: body.personalHistory,
-      psychicExam: body.psychicExam,
-      psychologicalConduct: body.psychologicalConduct,
-      familyGuidance: body.familyGuidance,
-    },
-    include: {
-      patient: true,
-      appointment: {
-        select: appointmentSelect,
+    // appointmentId é único: upsert evita erro P2002 quando o prontuário já existe
+    const clinicalChart = await prisma.clinicalChart.upsert({
+      where: { appointmentId },
+      create: {
+        appointmentId,
+        patientId: appointment.patientId,
+        patientLabel: appointment.patientName,
+        ...chartData,
       },
-    },
-  })
+      update: chartData,
+      include: chartInclude,
+    })
 
-  return Response.json(mapClinicalChartFromDb(clinicalChart as Record<string, unknown>))
+    return NextResponse.json(
+      mapClinicalChartFromDb(clinicalChart as Record<string, unknown>)
+    )
+  } catch (error) {
+    return handleApiError(error)
+  }
 }
 
 export async function PATCH(req: Request) {
-  const body = await req.json()
-  const clinicalChart = await prisma.clinicalChart.update({
-    where: { id: body.id },
-    data: {
-      clinicalDiagnosis: body.clinicalDiagnosis,
-      diagnosisReactions: body.diagnosisReactions,
-      emotionalState: body.emotionalState,
-      personalHistory: body.personalHistory,
-      psychicExam: body.psychicExam,
-      psychologicalConduct: body.psychologicalConduct,
-      familyGuidance: body.familyGuidance,
-    },
-    include: {
-      patient: true,
-      appointment: {
-        select: appointmentSelect,
-      },
-    },
-  })
+  try {
+    await requireSession()
+    const { id, ...chartData } = parseWith(UpdateMedicalRecordSchema, await req.json())
 
-  return Response.json(mapClinicalChartFromDb(clinicalChart as Record<string, unknown>))
+    const clinicalChart = await prisma.clinicalChart.update({
+      where: { id },
+      data: chartData,
+      include: chartInclude,
+    })
+
+    return NextResponse.json(
+      mapClinicalChartFromDb(clinicalChart as Record<string, unknown>)
+    )
+  } catch (error) {
+    return handleApiError(error)
+  }
 }
 
 export async function DELETE(req: Request) {
-  const body = await req.json()
-
-  await prisma.clinicalChart.delete({
-    where: { id: body.id },
-  })
-
-  return NextResponse.json({ ok: true })
+  try {
+    await requireSession()
+    const { id } = parseWith(DeleteMedicalRecordSchema, await req.json())
+    await prisma.clinicalChart.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    return handleApiError(error)
+  }
 }

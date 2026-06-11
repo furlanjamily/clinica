@@ -14,8 +14,10 @@ import { RowType } from "@/types/rowType"
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
 import { Button } from "@/components/ui/button"
+import { TableCard, Td } from "@/components/ui/table/DataTable"
 import { useQueryClient } from "@tanstack/react-query"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { AppointmentStatus, STATUS_LABEL, STATUS_STYLE } from "@/lib/schedule/status"
 
 function isDataRow(row: RowType): row is { type: "data" } & Appointment {
   return row.type === "data"
@@ -30,32 +32,6 @@ function isToday(dateStr: string) {
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate()
   )
-}
-
-const statusStyle: Record<string, string> = {
-  Agendado: "bg-yellow-100 text-yellow-700",
-  AguardandoConfirmacao: "bg-orange-100 text-orange-700",
-  Confirmado: "bg-green-100 text-green-700",
-  RegistrarChegada: "bg-blue-100 text-blue-700",
-  AguardandoPagamento: "bg-pink-100 text-pink-700",
-  Pago: "bg-teal-100 text-teal-700",
-  Cancelado: "bg-red-100 text-red-700",
-  "Em Atendimento": "bg-purple-100 text-purple-700",
-  Concluido: "bg-gray-200 text-gray-600",
-  Reagendado: "bg-blue-100 text-blue-700",
-}
-
-const statusLabel: Record<string, string> = {
-  Agendado: "Agendado",
-  AguardandoConfirmacao: "Aguardando Confirmação",
-  Confirmado: "Confirmado",
-  RegistrarChegada: "Registrar chegada",
-  AguardandoPagamento: "Aguardando Pagamento",
-  Pago: "Pago",
-  Cancelado: "Cancelado",
-  "Em Atendimento": "Em Atendimento",
-  Concluido: "Concluído",
-  Reagendado: "Reagendado",
 }
 
 type TableProps = {
@@ -78,73 +54,87 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
   const today = isToday(original.date)
   const [loading, setLoading] = useState(false)
 
-  if (today && original.status === "Confirmado") {
+  if (today && original.status === AppointmentStatus.Confirmed) {
     return (
-      <Button variant="teal" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "RegistrarChegada" })}>
-        Registrar chegada
-      </Button>
+      <div className="flex justify-end">
+        <Button variant="teal" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: AppointmentStatus.CheckIn })}>
+          Registrar chegada
+        </Button>
+      </div>
     )
   }
 
-  if (today && original.status === "RegistrarChegada") {
+  if (today && original.status === AppointmentStatus.CheckIn) {
     return (
-      <Button variant="teal" className="text-xs sm:text-sm" onClick={() => onOpenPayment(original)}>
-        Confirmar pagamento
-      </Button>
+      <div className="flex justify-end">
+        <Button variant="teal" className="text-xs sm:text-sm" onClick={() => onOpenPayment(original)}>
+          Confirmar pagamento
+        </Button>
+      </div>
     )
   }
 
-  if (today && original.status === "Pago") {
+  if (today && original.status === AppointmentStatus.Paid) {
     return (
-      <Button
-        variant="purple"
-        className="text-xs sm:text-sm"
-        disabled={loading}
-        onClick={async () => {
-          setLoading(true)
-          try {
-            const res = await fetch("/api/schedule", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: original.id,
-                status: "Em Atendimento",
-                startTime: new Date().toISOString(),
-              }),
-            })
-            const updated = await res.json()
+      <div className="flex justify-end">
+        <Button
+          variant="purple"
+          className="text-xs sm:text-sm"
+          disabled={loading}
+          onClick={async () => {
+            setLoading(true)
+            try {
+              const res = await fetch("/api/schedule", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: original.id,
+                  status: AppointmentStatus.InProgress,
+                  startTime: new Date().toISOString(),
+                }),
+              })
+              const updated = await res.json()
 
-            queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-              prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item)) ?? []
-            )
+              // Atualiza o cache apenas se ele já existir (retornar undefined não altera nada)
+              queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
+                prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item))
+              )
+              // Garante que a página de atendimentos busque dados frescos ao montar
+              queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY })
 
-            router.push("/attendance")
-          } finally {
-            setLoading(false)
-          }
-        }}
-      >
-        {loading ? "Aguarde..." : "Atender"}
-      </Button>
+              router.push("/attendance")
+            } finally {
+              setLoading(false)
+            }
+          }}
+        >
+          {loading ? "Aguarde..." : "Atender"}
+        </Button>
+      </div>
     )
   }
 
-  if (original.status === "Em Atendimento") {
-    return <Button variant="purple" className="text-xs sm:text-sm" disabled>Atender</Button>
+  if (original.status === AppointmentStatus.InProgress) {
+    return (
+      <div className="flex justify-end">
+        <Button variant="purple" className="text-xs sm:text-sm" disabled>Atender</Button>
+      </div>
+    )
   }
 
-  if (original.status === "Concluido" || original.status === "Cancelado") return null
+  if (original.status === AppointmentStatus.Completed || original.status === AppointmentStatus.Cancelled) return null
 
   const showConfirmConsulta =
-    original.status === "Agendado" || original.status === "AguardandoConfirmacao"
+    original.status === AppointmentStatus.Scheduled ||
+    original.status === AppointmentStatus.AwaitingConfirmation
 
   return (
-    <div className=" flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center justify-end gap-3">
       {showConfirmConsulta && (
         <Button
           variant="teal"
           className="text-xs sm:text-sm"
-          onClick={() => updateItem(original.id, { status: "Confirmado" })}
+          onClick={() => updateItem(original.id, { status: AppointmentStatus.Confirmed })}
         >
           Confirmar consulta
         </Button>
@@ -152,7 +142,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
       <Button variant="ghost" className="text-xs sm:text-sm" onClick={() => onReschedule(original)}>
         <Calendar size={12} /> Reagendar
       </Button>
-      <Button variant="ghost-danger" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: "Cancelado" })}>
+      <Button variant="ghost-danger" className="text-xs sm:text-sm" onClick={() => updateItem(original.id, { status: AppointmentStatus.Cancelled })}>
         Cancelar
       </Button>
     </div>
@@ -175,7 +165,7 @@ export function Table({ rows, setData }: TableProps) {
     setData((prev) => prev.map((item) => item.id === id ? { ...item, ...updated } : item))
 
     queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-      prev?.map((item) => (item.id === id ? { ...item, ...updated } : item)) ?? []
+      prev?.map((item) => (item.id === id ? { ...item, ...updated } : item))
     )
   }
 
@@ -192,9 +182,9 @@ export function Table({ rows, setData }: TableProps) {
         if (!isDataRow(original)) return null
         return (
           <span
-            className={`inline-block max-w-[9rem] rounded-lg px-2 py-1 text-center text-[11px] font-medium leading-snug sm:max-w-none sm:text-xs ${statusStyle[original.status] ?? ""}`}
+            className={`inline-block max-w-[9rem] rounded-lg px-2 py-1 text-center text-[11px] font-medium leading-snug sm:max-w-none sm:text-xs ${STATUS_STYLE[original.status] ?? ""}`}
           >
-            <span className="line-clamp-2 break-words">{statusLabel[original.status] ?? original.status}</span>
+            <span className="line-clamp-2 break-words">{STATUS_LABEL[original.status] ?? original.status}</span>
           </span>
         )
       },
@@ -248,23 +238,30 @@ export function Table({ rows, setData }: TableProps) {
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
 
   return (
-    <div className="h-full min-w-0 overflow-x-auto overflow-y-auto [-webkit-overflow-scrolling:touch]">
-      <table className="w-full min-w-[20rem] border-separate border-spacing-y-2 sm:min-w-0">
+    <TableCard>
+      <table className={`w-full min-w-[20rem] border-separate border-spacing-0 sm:min-w-0 ${table.getRowModel().rows.length === 0 ? "h-full" : ""}`}>
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
-              {hg.headers.map((header) => (
-                <th key={header.id} className="whitespace-nowrap px-2 py-1 text-left text-[11px] font-medium text-gray-500 sm:px-2 sm:text-xs">
+              {hg.headers.map((header, i) => (
+                <th
+                  key={header.id}
+                  style={{ width: `${100 / hg.headers.length}%` }}
+                  className={`sticky top-0 z-10 whitespace-nowrap border-b border-gray-200 bg-gray-50 px-3 py-2.5 text-[11px] font-medium text-gray-500 sm:px-4 sm:py-3 sm:text-xs ${i === hg.headers.length - 1 ? "text-right" : "text-left"}`}
+                >
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className={table.getRowModel().rows.length === 0 ? "h-full" : undefined}>
           {table.getRowModel().rows.length === 0 ? (
-            <tr>
-              <td colSpan={COLUMN_COUNT} className="text-center text-sm text-accent py-8">
+            <tr className="h-full">
+              <td
+                colSpan={COLUMN_COUNT}
+                className="px-3 py-16 text-center align-middle text-sm leading-relaxed text-gray-400"
+              >
                 Sem agendamento
               </td>
             </tr>
@@ -275,16 +272,16 @@ export function Table({ rows, setData }: TableProps) {
               if (original.type === "day") {
                 return (
                   <tr key={row.id}>
-                    <td colSpan={COLUMN_COUNT} className="pt-3 text-sm capitalize leading-snug text-gray-500">{original.label}</td>
+                    <td colSpan={COLUMN_COUNT} className="px-3 pt-4 pb-1 text-sm capitalize leading-snug text-gray-500 sm:px-4">{original.label}</td>
                   </tr>
                 )
               }
               return (
-                <tr key={row.id} className={`rounded-md bg-white shadow-sm ${isDataRow(original) && original.status === "Cancelado" ? "opacity-40" : ""}`}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-1.5 align-middle sm:p-2">
+                <tr key={row.id} className={`transition-colors hover:bg-gray-50/80 ${isDataRow(original) && original.status === AppointmentStatus.Cancelled ? "opacity-40" : ""}`}>
+                  {row.getVisibleCells().map((cell, i, cells) => (
+                    <Td key={cell.id} className={`align-middle ${i === cells.length - 1 ? "text-right" : ""}`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                    </Td>
                   ))}
                 </tr>
               )
@@ -312,11 +309,11 @@ export function Table({ rows, setData }: TableProps) {
           onSuccess={(updated) => {
             setData((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
             queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-              prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)) ?? []
+              prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
             )
           }}
         />
       )}
-    </div>
+    </TableCard>
   )
 }

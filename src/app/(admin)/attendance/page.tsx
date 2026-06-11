@@ -4,10 +4,8 @@ import { Header } from "@/components/ui/PageHeader"
 
 export default function AttendancePage() {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden sm:gap-3">
       <Header title="Atendimentos" />
-      {/* Conteúdo cresce com a página — o scroll principal é o do AdminShell (main).
-          O histórico continua com scroll só na caixa da tabela (max-h em AttendanceTable). */}
       <TableSuspense cols={5} rows={4}>
         <AttendanceClient />
       </TableSuspense>

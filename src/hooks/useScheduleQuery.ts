@@ -6,7 +6,7 @@ import { absoluteUrl } from "@/lib/absolute-url"
 
 export const SCHEDULE_QUERY_KEY = ["schedule"] as const
 
-async function fetchSchedule(): Promise<Appointment[]> {
+export async function fetchSchedule(): Promise<Appointment[]> {
   const res = await fetch(absoluteUrl("/api/schedule"))
   if (!res.ok) throw new Error("Erro ao buscar agendamentos")
   const data = await res.json()

@@ -13,6 +13,7 @@ import { Input, FormSelect } from "@/components/ui/Input"
 import type { UserRoleType } from "@/types/auth"
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query"
 import { TableSuspense } from "@/components/ui/TableSuspense"
+import { DataTable, Td } from "@/components/ui/table/DataTable"
 import { absoluteUrl } from "@/lib/absolute-url"
 
 const roleLabel: Record<UserRoleType, string> = {
@@ -28,6 +29,8 @@ const roleColors: Record<UserRoleType, string> = {
 }
 
 export type UserType = { id: string; username: string; email: string; role: UserRoleType }
+
+type UserFormValues = { username: string; email: string; password: string; role: UserRoleType }
 
 const QUERY_KEY = ["users"] as const
 
@@ -59,53 +62,42 @@ function UsersTable({
     },
   })
 
-  if (users.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-accent text-sm">
-        Nenhum usuário cadastrado
-      </div>
-    )
-  }
-
   return (
-    <div className="min-w-0 overflow-x-auto">
-      <table className="w-full min-w-[600px] border-separate border-spacing-y-2">
-        <thead>
-          <tr>
-            {["Nome", "Email", "Permissão", "Ações"].map((h) => (
-              <th key={h} className="text-left text-xs px-3 text-gray-500">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="bg-white shadow-sm">
-              <td className="p-3 text-sm">{u.username}</td>
-              <td className="p-3 text-sm text-gray-600">{u.email}</td>
-              <td className="p-3">
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${roleColors[u.role]}`}>
-                  {roleLabel[u.role]}
-                </span>
-              </td>
-              <td className="p-3">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" onClick={() => onEdit(u)}>
-                    <Pencil size={14} /> Editar
-                  </Button>
-                  <Button
-                    variant="ghost-danger"
-                    onClick={() => onDelete(u.id)}
-                    disabled={u.id === currentUserId}
-                  >
-                    <Trash2 size={14} /> Remover
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable<UserType>
+      headers={[
+        { label: "Nome", sort: (u) => u.username },
+        { label: "Email", sort: (u) => u.email },
+        { label: "Permissão", sort: (u) => roleLabel[u.role] },
+        { label: "Ações", align: "right" },
+      ]}
+      data={users}
+      emptyMessage="Nenhum usuário cadastrado"
+      renderRow={(u) => (
+        <tr key={u.id} className="transition-colors hover:bg-gray-50/80">
+          <Td className="font-medium">{u.username}</Td>
+          <Td className="text-gray-600">{u.email}</Td>
+          <Td>
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${roleColors[u.role]}`}>
+              {roleLabel[u.role]}
+            </span>
+          </Td>
+          <Td>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="ghost" onClick={() => onEdit(u)}>
+                <Pencil size={14} /> Editar
+              </Button>
+              <Button
+                variant="ghost-danger"
+                onClick={() => onDelete(u.id)}
+                disabled={u.id === currentUserId}
+              >
+                <Trash2 size={14} /> Remover
+              </Button>
+            </div>
+          </Td>
+        </tr>
+      )}
+    />
   )
 }
 
@@ -115,7 +107,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<UserType | null>(null)
-  const { register, handleSubmit, reset, setValue } = useForm<{ username: string; email: string; password: string; role: string }>()
+  const { register, handleSubmit, reset, setValue } = useForm<UserFormValues>()
 
   useEffect(() => {
     if (session && !isSuperAdmin) router.push("/dashboard")
@@ -125,25 +117,46 @@ export default function UsersPage() {
     queryClient.setQueryData<UserType[]>(QUERY_KEY, (prev) => updater(prev ?? []))
   }
 
-  async function handleSave(data: any) {
+  async function handleSave(data: UserFormValues) {
     if (editing) {
       const res = await fetch(absoluteUrl("/api/user"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: editing.id, role: data.role }),
       })
-      const updated = await res.json()
-      setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u))
+      if (!res.ok) {
+        toast.error((await res.json()).message ?? "Erro ao atualizar permissão.")
+        return
+      }
+      const updated: { id: string; name?: string; email: string; role: UserRoleType } = await res.json()
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === updated.id
+            ? { id: updated.id, username: updated.name ?? u.username, email: updated.email, role: updated.role }
+            : u
+        )
+      )
       toast.success("Permissão atualizada.")
     } else {
       const res = await fetch(absoluteUrl("/api/user"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          name: data.username,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+        }),
       })
-      if (!res.ok) { toast.error((await res.json()).message); return }
-      const novo = await res.json()
-      setUsers((prev) => [...prev, novo])
+      if (!res.ok) {
+        toast.error((await res.json()).message ?? "Erro ao criar usuário.")
+        return
+      }
+      const created: { id: string; name?: string; email: string; role: UserRoleType } = await res.json()
+      setUsers((prev) => [
+        ...prev,
+        { id: created.id, username: created.name ?? "", email: created.email, role: created.role },
+      ])
       toast.success("Usuário criado com sucesso!")
     }
     setShowModal(false)
@@ -152,11 +165,15 @@ export default function UsersPage() {
   }
 
   async function handleDelete(id: string) {
-    await fetch(absoluteUrl("/api/user"), {
+    const res = await fetch(absoluteUrl("/api/user"), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
+    if (!res.ok) {
+      toast.error("Erro ao remover usuário.")
+      return
+    }
     setUsers((prev) => prev.filter((u) => u.id !== id))
     toast.success("Usuário removido.")
   }
@@ -175,7 +192,7 @@ export default function UsersPage() {
         </Button>
       </Header>
 
-      <div className="mt-4 min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <TableSuspense cols={4} rows={5}>
           <UsersTable
             currentUserId={session?.user?.id}

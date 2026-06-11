@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { Card } from "@/components/ui/card";
+import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
 
 type Props = {
   onMenuClick?: () => void
@@ -28,7 +30,7 @@ export function UserHeader({ onMenuClick }: Props) {
   }, []);
 
   return (
-    <div className="flex w-full items-center justify-between gap-2 px-3 sm:px-4 md:px-7">
+    <Card className="flex w-full items-center justify-between gap-2 p-3 sm:px-4 md:px-7">
       <Button
         variant="ghost"
         size="icon"
@@ -47,10 +49,10 @@ export function UserHeader({ onMenuClick }: Props) {
           <Button
             variant="outline"
             onClick={() => setOpen((prev) => !prev)}
-            className="flex items-center bg-white border border-gray-200 text-[#9747FF] rounded-sm px-[12px] py-1 shadow-sm hover:bg-gray-50 transition-all"
+            className="flex items-center rounded-xl border border-gray-200 bg-transparent px-[12px] py-1 text-[#9747FF] backdrop-blur-sm transition-all hover:bg-white/25"
           >
             <Image
-              src="https://github.com/shadcn.png"
+              src={AVATAR_PLACEHOLDER_URL}
               alt="Avatar"
               width={24}
               height={24}
@@ -63,7 +65,7 @@ export function UserHeader({ onMenuClick }: Props) {
           </Button>
 
           {open && (
-            <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-md shadow-md w-40 z-50">
+            <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-xl shadow-md w-40 z-50">
               <div className="px-3 py-2 border-b">
                 <p className="text-xs font-semibold text-gray-700 truncate">{displayName}</p>
                 <p className="text-[10px] text-gray-400 truncate">{displayEmail}</p>
@@ -80,6 +82,6 @@ export function UserHeader({ onMenuClick }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

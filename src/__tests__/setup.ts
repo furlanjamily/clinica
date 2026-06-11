@@ -1,4 +1,4 @@
-import { createServer } from 'http'
+import { createServer, type Server } from 'http'
 import { parse } from 'url'
 import next from 'next'
 
@@ -11,7 +11,7 @@ export async function startServer() {
     const parsedUrl = parse(req.url!, true)
     handle(req, res, parsedUrl)
   })
-  return new Promise<{ server: any; port: number }>((resolve, reject) => {
+  return new Promise<{ server: Server; port: number }>((resolve, reject) => {
     server.listen(0, () => {
       const address = server.address()
       if (!address || typeof address === 'string') {

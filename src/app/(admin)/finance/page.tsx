@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { Plus, Trash2, Settings, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
+import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
@@ -201,19 +203,24 @@ export default function FinancePage() {
       </div>
 
       {loading ? (
-        <TableSkeleton cols={6} rows={5} />
-      ) : transacoes.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-accent">
-          Nenhuma transação encontrada
-        </div>
+        <TableCard>
+          <div className="p-2 sm:p-3">
+            <TableSkeleton cols={6} rows={5} />
+          </div>
+        </TableCard>
       ) : (
         <>
           {/* Celular: cartões (tabela larga não cabe bem na viewport estreita) */}
+          {transacoes.length === 0 ? (
+            <Card className="p-8 text-center text-sm leading-relaxed text-gray-400 md:hidden">
+              Nenhuma transação encontrada
+            </Card>
+          ) : (
           <ul className="flex flex-col gap-3 md:hidden">
             {transacoes.map((t) => (
               <li
                 key={t.id}
-                className="space-y-3 rounded-xl bg-white p-4 shadow-sm"
+                className="space-y-3 rounded-3xl border border-gray-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="text-xs text-gray-500">{t.date}</span>
@@ -249,56 +256,60 @@ export default function FinancePage() {
               </li>
             ))}
           </ul>
+          )}
 
           {/* Desktop / tablet: tabela com scroll horizontal se precisar */}
-          <div className="hidden min-w-0 md:block md:overflow-x-auto">
-            <table className="w-full min-w-[640px] border-separate border-spacing-y-2">
-              <thead>
-                <tr>
-                  {["Data", "Tipo", "Categoria", "Descrição", "Forma Pgto", "Valor", "Status", ""].map((h) => (
-                    <th key={h} className="px-3 text-left text-xs text-gray-500">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {transacoes.map((t) => (
-                  <tr key={t.id} className="bg-white shadow-sm">
-                    <td className="p-3 text-sm text-gray-600">{t.date}</td>
-                    <td className="p-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-                      >
-                        {t.type}
-                      </span>
-                    </td>
-                    <td className="p-3 text-sm text-gray-600">{t.category}</td>
-                    <td className="max-w-[14rem] break-words p-3 text-sm">{t.description}</td>
-                    <td className="p-3 text-sm text-gray-600">{t.paymentMethod ?? "—"}</td>
-                    <td
-                      className={`p-3 text-sm font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {t.type === "Despesa" ? "- " : ""}
-                      {fmt(t.amount)}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
-                      >
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
-                        <Trash2 size={14} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<Transacao>
+            className="hidden md:flex"
+            headers={[
+              { label: "Data", sort: (t) => t.date },
+              { label: "Tipo", sort: (t) => t.type },
+              { label: "Categoria", sort: (t) => t.category },
+              { label: "Descrição", sort: (t) => t.description },
+              { label: "Forma Pgto", sort: (t) => t.paymentMethod || null },
+              { label: "Valor", sort: (t) => t.amount * (t.type === "Despesa" ? -1 : 1) },
+              { label: "Status", sort: (t) => t.status },
+              { label: "", align: "right" },
+            ]}
+            data={transacoes}
+            emptyMessage="Nenhuma transação encontrada"
+            minWidthClassName="min-w-[640px]"
+            renderRow={(t) => (
+              <tr key={t.id} className="transition-colors hover:bg-gray-50/80">
+                <Td className="text-gray-600">{t.date}</Td>
+                <Td>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {t.type}
+                  </span>
+                </Td>
+                <Td className="text-gray-600">{t.category}</Td>
+                <Td className="max-w-[14rem] break-words">{t.description}</Td>
+                <Td className="text-gray-600">{t.paymentMethod ?? "—"}</Td>
+                <Td
+                  className={`font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {t.type === "Despesa" ? "- " : ""}
+                  {fmt(t.amount)}
+                </Td>
+                <Td>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {t.status}
+                  </span>
+                </Td>
+                <Td>
+                  <div className="flex justify-end">
+                    <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </Td>
+              </tr>
+            )}
+          />
         </>
       )}
 

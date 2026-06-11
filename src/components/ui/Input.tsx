@@ -9,7 +9,7 @@ export const inputContainerVariants = tv({
 })
 
 export const inputWrapperVariants = tv({
-  base: "border border-input bg-transparent rounded-md flex items-center gap-2 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
+  base: "border border-input bg-transparent rounded-3xl flex items-center gap-2 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
   variants: {
     size: {
       sm: "h-8 px-2",

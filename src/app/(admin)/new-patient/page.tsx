@@ -10,6 +10,7 @@ import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
+import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
 
 function trimToNull(v: string | undefined | null): string | null {
@@ -59,42 +60,33 @@ function PatientsTable({
   onEdit: (p: Patient) => void
   onRemove: (id: number, successMsg?: string) => void
 }) {
-  if (patients.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-accent text-sm">
-        Nenhum paciente cadastrado
-      </div>
-    )
-  }
-
   return (
-    <div className="min-w-0 overflow-x-auto">
-      <table className="w-full min-w-[500px] border-separate border-spacing-y-2">
-        <thead>
-          <tr>
-            {["Nome", "CPF", "Telefone", "Convênio", "Ações"].map((h) => (
-              <th key={h} className="text-left text-xs px-3 text-gray-500">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {patients.map((p) => (
-            <tr key={p.id} className="bg-white shadow-sm">
-              <td className="p-3 text-sm font-medium">{p.name}</td>
-              <td className="p-3 text-sm text-gray-600">{p.cpf ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{p.phone ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{p.insurancePlan ?? "—"}</td>
-              <td className="p-3">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" onClick={() => onEdit(p)}><Pencil size={14} /> Editar</Button>
-                  <Button variant="ghost-danger" onClick={() => onRemove(p.id, "Paciente removido.")}><Trash2 size={14} /> Remover</Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable<Patient>
+      headers={[
+        { label: "Nome", sort: (p) => p.name },
+        { label: "CPF", sort: (p) => p.cpf || null },
+        { label: "Telefone", sort: (p) => p.phone || null },
+        { label: "Convênio", sort: (p) => p.insurancePlan || null },
+        { label: "Ações", align: "right" },
+      ]}
+      data={patients}
+      emptyMessage="Nenhum paciente cadastrado"
+      minWidthClassName="min-w-[min(100%,31rem)] sm:min-w-[500px]"
+      renderRow={(p) => (
+        <tr key={p.id} className="transition-colors hover:bg-gray-50/80">
+          <Td className="font-medium">{p.name}</Td>
+          <Td className="text-gray-600">{p.cpf ?? "—"}</Td>
+          <Td className="text-gray-600">{p.phone ?? "—"}</Td>
+          <Td className="text-gray-600">{p.insurancePlan ?? "—"}</Td>
+          <Td>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="ghost" onClick={() => onEdit(p)}><Pencil size={14} /> Editar</Button>
+              <Button variant="ghost-danger" onClick={() => onRemove(p.id, "Paciente removido.")}><Trash2 size={14} /> Remover</Button>
+            </div>
+          </Td>
+        </tr>
+      )}
+    />
   )
 }
 
@@ -139,9 +131,13 @@ export default function PatientsPage() {
         </Button>
       </Header>
 
-      <div className="mt-3 min-h-0 min-w-0 flex-1 overflow-auto sm:mt-4">
+      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:mt-4">
         {isPending ? (
-          <TableSkeleton cols={5} rows={6} />
+          <TableCard>
+            <div className="p-2 sm:p-3">
+              <TableSkeleton cols={5} rows={6} />
+            </div>
+          </TableCard>
         ) : (
           <PatientsTable patients={patients} onEdit={openEdit} onRemove={remove} />
         )}

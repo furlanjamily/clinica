@@ -116,7 +116,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
         <ModalHeader title="Confirmar pagamento" onClose={onClose} />
         <p className="mb-4 text-sm leading-relaxed text-gray-600">
           Registre a receita vinculada a este agendamento. O valor deve estar na faixa de ±15% da tabela da clínica
-          (consulta ou retorno) e o status da transação será <strong>Confirmado</strong>, liberando a etapa «Atender».
+          (consulta ou retorno) e o status da transação será <strong>Confirmado</strong>, liberando o atendimento.
         </p>
         {feeConfig && (
           <p className="mb-4 text-xs text-gray-500">
@@ -125,10 +125,6 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
           </p>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <FormSelect label="Tipo de atendimento" {...register("category")}>
-            <option value="Consulta">Consulta</option>
-            <option value="Retorno">Retorno</option>
-          </FormSelect>
           <Input
             label="Valor (R$)"
             type="number"
@@ -150,7 +146,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
               Cancelar
             </Button>
             <Button type="submit" disabled={loading || !feeConfig}>
-              {loading ? "Salvando..." : "Registrar e marcar como pago"}
+              {loading ? "Salvando..." : "Confirmar"}
             </Button>
           </div>
         </form>

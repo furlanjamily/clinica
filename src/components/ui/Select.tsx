@@ -4,12 +4,23 @@ interface Option {
   color?: string
 }
 
+/** Contexto de célula do TanStack Table (modo tabela). */
+type TableCellInfo = {
+  getValue: () => string
+  row: { index: number }
+  table: {
+    options: {
+      meta?: { updateData?: (rowIndex: number, value: string) => void }
+    }
+  }
+}
+
 interface SelectProps {
   options: Option[]
   showStatusDot?: boolean
 
   // modo tabela
-  info?: any
+  info?: TableCellInfo
 
   // modo formulário
   value?: string
@@ -30,7 +41,7 @@ export default function Select({
 
   const handleChange = (val: string) => {
     if (info) {
-      info.table.options.meta?.updateData(info.row.index, val)
+      info.table.options.meta?.updateData?.(info.row.index, val)
     }
 
     if (onChange) {
@@ -51,7 +62,7 @@ export default function Select({
       <select
         value={currentValue}
         onChange={(e) => handleChange(e.target.value)}
-        className={`appearance-none cursor-pointer text-[12px] text-gray-700 bg-white px-3 py-2 pr-8 rounded-md font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px]
+        className={`appearance-none cursor-pointer text-[12px] text-gray-700 bg-white px-3 py-2 pr-8 rounded-3xl font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px]
         ${showStatusDot ? "pl-8" : ""}`}
       >
         {options.map((option) => (

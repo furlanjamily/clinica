@@ -4,12 +4,10 @@ import { db } from "@/lib/db"
 import { gerarHorarios } from "@/lib/schedule/slots"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { NotFoundError, ValidationError } from "@/lib/errors/custom-errors"
+import { createApiGuard } from "@/lib/api/rate-limit"
+import { AppointmentStatus } from "@/lib/schedule/status"
 
-const RATE_LIMIT_WINDOW = 60 * 1000
-const RATE_LIMIT_MAX = 20
-const AUTH_SECRET_ENV = "SCHEDULE_AVAILABILITY_SECRET"
-
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+const guard = createApiGuard({ max: 20, secretEnv: "SCHEDULE_AVAILABILITY_SECRET" })
 
 const AvailabilityQuerySchema = z.object({
   doctorName: z.string().trim().min(1, "doctorName is required"),
@@ -21,45 +19,6 @@ const AvailabilityQuerySchema = z.object({
 })
 
 type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? ""
-  return forwarded.split(",").map((item) => item.trim()).find(Boolean) ?? "unknown"
-}
-
-function getRateLimitState(ip: string) {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
-    return { limited: false, remaining: RATE_LIMIT_MAX - 1 }
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return {
-      limited: true,
-      retryAfterSeconds: Math.ceil((entry.resetTime - now) / 1000),
-    }
-  }
-
-  entry.count += 1
-  return { limited: false, remaining: RATE_LIMIT_MAX - entry.count }
-}
-
-function getBearerToken(req: Request): string {
-  const authHeader = req.headers.get("authorization") ?? ""
-  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : ""
-}
-
-function isAuthorized(req: Request): boolean {
-  const configuredSecret = process.env[AUTH_SECRET_ENV]?.trim()
-  if (!configuredSecret) {
-    return true
-  }
-
-  return getBearerToken(req) === configuredSecret
-}
 
 function parseQuery(req: Request): AvailabilityQuery {
   const url = new URL(req.url)
@@ -106,24 +65,8 @@ function isTodayOrFuture(value: string): boolean {
 }
 
 export async function GET(req: Request) {
-  const ip = getClientIp(req)
-  const rateLimit = getRateLimitState(ip)
-
-  if (rateLimit.limited) {
-    return NextResponse.json(
-      { success: false, error: "Too many requests" },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(rateLimit.retryAfterSeconds ?? 60),
-        },
-      }
-    )
-  }
-
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-  }
+  const check = guard(req)
+  if (!check.ok) return check.response
 
   try {
     const { doctorName, date } = parseQuery(req)
@@ -143,7 +86,7 @@ export async function GET(req: Request) {
       where: {
         doctorId: doctor.id,
         date,
-        status: { notIn: ["Cancelado", "Concluido"] },
+        status: { notIn: [AppointmentStatus.Cancelled, AppointmentStatus.Completed] },
       },
       select: { slotTime: true },
     })

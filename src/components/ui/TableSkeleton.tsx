@@ -15,7 +15,7 @@ export function TableSkeleton({ cols = 5, rows = 6 }: { cols?: number; rows?: nu
 
       <tbody>
         {Array.from({ length: rows }).map((_, i) => (
-          <tr key={i} className="bg-white shadow-sm">
+          <tr key={i} className="bg-white">
             {Array.from({ length: cols }).map((_, j) => (
               <td key={j} className="p-3">
                 <div

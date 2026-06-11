@@ -21,7 +21,8 @@ export type Appointment = {
   startTime?: string
   endTime?: string
   accumulatedTime?: number
-  pausedAt?: string
+  /** `null` zera a pausa (atendimento retomado); `undefined` mantém o valor atual. */
+  pausedAt?: string | null
 
   clinicalChart?: MedicalRecord | null
 

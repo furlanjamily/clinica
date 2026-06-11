@@ -10,7 +10,7 @@ type Props = {
 
 export function DatePicker({ date, onChange }: Props) {
   return (
-    <div className="absolute z-50 bg-white shadow-lg rounded-lg p-4">
+    <div className="absolute z-50 bg-white shadow-lg rounded-3xl p-4">
       <DayPicker
         mode="single"
         selected={date}

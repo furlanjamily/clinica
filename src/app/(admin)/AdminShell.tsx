@@ -8,13 +8,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className="flex h-dvh min-h-0 w-full bg-[#E3E3E3] overflow-hidden">
+    <div className="clean-dashboard-gradient flex h-dvh min-h-0 w-full gap-3 overflow-hidden p-3 sm:gap-4 sm:p-4">
       <SideBar drawerOpen={drawerOpen} onDrawerClose={() => setDrawerOpen(false)} />
-      <main className="flex-1 bg-white shadow-sm overflow-hidden relative flex flex-col min-w-0">
-        <header className="sticky top-0 z-10 w-full flex items-center pt-4 md:pt-6 pb-2 bg-white/80 backdrop-blur-md">
-          <UserHeader onMenuClick={() => setDrawerOpen(true)} />
-        </header>
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] md:px-12 md:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <main className="relative flex min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
+        <UserHeader onMenuClick={() => setDrawerOpen(true)} />
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
           {children}
         </div>
       </main>

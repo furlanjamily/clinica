@@ -1,7 +1,21 @@
 export class ValidationError extends Error {
-  constructor(message: string, public details?: any) {
+  constructor(message: string, public details?: unknown) {
     super(message)
     this.name = 'ValidationError'
+  }
+}
+
+export class UnauthorizedError extends Error {
+  constructor(message = 'Não autenticado') {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
+export class ForbiddenError extends Error {
+  constructor(message = 'Sem permissão') {
+    super(message)
+    this.name = 'ForbiddenError'
   }
 }
 
@@ -20,7 +34,7 @@ export class NotFoundError extends Error {
 }
 
 export class DatabaseError extends Error {
-  constructor(message: string, public originalError?: any) {
+  constructor(message: string, public originalError?: unknown) {
     super(message)
     this.name = 'DatabaseError'
   }

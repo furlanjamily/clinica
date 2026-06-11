@@ -67,3 +67,12 @@
   }
 }
 
+@layer utilities {
+  .clean-dashboard-gradient {
+    background:
+      radial-gradient(circle at 82% 12%, rgba(255, 255, 255, 0.96) 0%, rgba(244, 244, 241, 0.78) 28%, rgba(232, 232, 228, 0) 52%),
+      radial-gradient(circle at 18% 88%, rgba(255, 255, 255, 0.72) 0%, rgba(239, 239, 236, 0.42) 34%, rgba(230, 230, 226, 0) 58%),
+      linear-gradient(135deg, #f7f7f5 0%, #eeeeeb 46%, #f9f9f7 100%);
+  }
+}
+

@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import Logo from "../../public/logo.svg";
 import { LinkSideBar } from "./link-side-bar";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import type { Appointment } from "@/types/types";
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal";
@@ -57,7 +58,7 @@ function SideBarContent({ onCreate }: Props) {
 
   return (
     <>
-      <div className="flex flex-col w-full h-full items-center py-10 md:py-24 border-r-[0.5px] bg-white rounded-l-2xl gap-8 md:gap-12 overflow-y-auto">
+      <Card className="flex flex-col w-full h-full items-center py-10 md:py-16 gap-8 md:gap-12 overflow-y-auto">
         <div className="flex flex-col items-center gap-6 md:gap-8">
           <Image className="max-w-[100px] md:max-w-[139px]" src={Logo} alt="Logo" />
           <Button onClick={() => setOpen(true)}>
@@ -88,7 +89,7 @@ function SideBarContent({ onCreate }: Props) {
             <span className="hidden md:inline">Configurações</span>
           </Link>
         </div>
-      </div>
+      </Card>
 
       {open && (
         <ScheduleFormModal
@@ -111,7 +112,7 @@ export function SideBar({ drawerOpen, onDrawerClose, ...props }: Props) {
       {/* Mobile: drawer overlay */}
       {drawerOpen && (
         <div className="md:hidden fixed inset-0 z-40 flex">
-          <div className="w-[216px] h-full relative">
+          <div className="w-[228px] h-full relative p-3">
             <SideBarContent {...props} />
           </div>
           <div className="flex-1 bg-black/40" onClick={onDrawerClose} />

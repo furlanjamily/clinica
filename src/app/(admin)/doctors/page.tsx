@@ -10,9 +10,8 @@ import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
+import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
-
-export const dynamic = "force-dynamic"
 
 /** Título neutro obrigatório no cadastro de novo médico (Dr./Dra.). */
 const DOCTOR_NAME_PREFIX = "Dr(a). "
@@ -57,43 +56,34 @@ function DoctorsTable({
   onEdit: (d: Doctor) => void
   onRemove: (id: number, successMsg?: string) => void
 }) {
-  if (doctors.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-accent text-sm">
-        Nenhum médico cadastrado
-      </div>
-    )
-  }
-
   return (
-    <div className="min-w-0 overflow-x-auto">
-      <table className="w-full min-w-[600px] border-separate border-spacing-y-2">
-        <thead>
-          <tr>
-            {["Nome", "CRM", "Especialidade", "Turno", "Contato", "Ações"].map((h) => (
-              <th key={h} className="text-left text-xs px-3 text-gray-500">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {doctors.map((d) => (
-            <tr key={d.id} className={`bg-white shadow-sm ${!d.active ? "opacity-40" : ""}`}>
-              <td className="p-3 text-sm font-medium">{d.name}</td>
-              <td className="p-3 text-sm text-gray-600">{d.crm}</td>
-              <td className="p-3 text-sm text-gray-600">{d.specialty}</td>
-              <td className="p-3 text-sm text-gray-600">{d.shift ?? "—"}</td>
-              <td className="p-3 text-sm text-gray-600">{d.phone ?? d.email ?? "—"}</td>
-              <td className="p-3">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" onClick={() => onEdit(d)}><Pencil size={14} /> Editar</Button>
-                  <Button variant="ghost-danger" onClick={() => onRemove(d.id, "Médico removido.")}><Trash2 size={14} /> Remover</Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable<Doctor>
+      headers={[
+        { label: "Nome", sort: (d) => d.name },
+        { label: "CRM", sort: (d) => d.crm || null },
+        { label: "Especialidade", sort: (d) => d.specialty || null },
+        { label: "Turno", sort: (d) => d.shift || null },
+        { label: "Contato", sort: (d) => d.phone ?? d.email ?? null },
+        { label: "Ações", align: "right" },
+      ]}
+      data={doctors}
+      emptyMessage="Nenhum médico cadastrado"
+      renderRow={(d) => (
+        <tr key={d.id} className={`transition-colors hover:bg-gray-50/80 ${!d.active ? "opacity-40" : ""}`}>
+          <Td className="font-medium">{d.name}</Td>
+          <Td className="text-gray-600">{d.crm}</Td>
+          <Td className="text-gray-600">{d.specialty}</Td>
+          <Td className="text-gray-600">{d.shift ?? "—"}</Td>
+          <Td className="text-gray-600">{d.phone ?? d.email ?? "—"}</Td>
+          <Td>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="ghost" onClick={() => onEdit(d)}><Pencil size={14} /> Editar</Button>
+              <Button variant="ghost-danger" onClick={() => onRemove(d.id, "Médico removido.")}><Trash2 size={14} /> Remover</Button>
+            </div>
+          </Td>
+        </tr>
+      )}
+    />
   )
 }
 
@@ -138,9 +128,13 @@ export default function DoctorsPage() {
         </Button>
       </Header>
 
-      <div className="mt-4 min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {isPending ? (
-          <TableSkeleton cols={6} rows={6} />
+          <TableCard>
+            <div className="p-2 sm:p-3">
+              <TableSkeleton cols={6} rows={6} />
+            </div>
+          </TableCard>
         ) : (
           <DoctorsTable doctors={doctors} onEdit={openEdit} onRemove={remove} />
         )}

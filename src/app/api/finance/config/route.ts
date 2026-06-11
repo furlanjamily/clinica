@@ -1,23 +1,40 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { requireSession } from "@/lib/auth/api-guard"
+import { handleApiError } from "@/lib/errors/error-handler"
+import { parseWith } from "@/lib/validations/parse"
+import { UpdateFinancialConfigSchema } from "@/lib/validations/financial-config"
+import { DEFAULT_FINANCIAL_CONFIG } from "@/lib/finance/config"
+
+async function getOrCreateConfig() {
+  const config = await db.financialConfig.findFirst()
+  if (config) return config
+  return db.financialConfig.create({ data: DEFAULT_FINANCIAL_CONFIG })
+}
 
 export async function GET() {
-  let config = await db.financialConfig.findFirst()
-  if (!config) {
-    config = await db.financialConfig.create({
-      data: { consultationFee: 150, followUpFee: 80, doctorCommissionRate: 40 },
-    })
+  try {
+    await requireSession()
+    const config = await getOrCreateConfig()
+    return NextResponse.json(config)
+  } catch (error) {
+    return handleApiError(error)
   }
-  return NextResponse.json(config)
 }
 
 export async function PATCH(req: Request) {
-  const body = await req.json()
-  let config = await db.financialConfig.findFirst()
-  if (!config) {
-    config = await db.financialConfig.create({ data: body })
-  } else {
-    config = await db.financialConfig.update({ where: { id: config.id }, data: body })
+  try {
+    await requireSession()
+    const data = parseWith(UpdateFinancialConfigSchema, await req.json())
+
+    const current = await getOrCreateConfig()
+    const config = await db.financialConfig.update({
+      where: { id: current.id },
+      data,
+    })
+
+    return NextResponse.json(config)
+  } catch (error) {
+    return handleApiError(error)
   }
-  return NextResponse.json(config)
 }

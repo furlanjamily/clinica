@@ -1,10 +1,10 @@
 // @vitest-environment node
+import type { Server } from 'node:http'
 import supertest from 'supertest'
 import { startServer } from '../setup'
-import { db } from '@/lib/db'
 
-let request: any
-let server: any
+let request: ReturnType<typeof supertest>
+let server: Server
 
 beforeAll(async () => {
   const { server: s, port } = await startServer()
@@ -26,7 +26,6 @@ afterAll(async () => {
 describe('API /api/schedule', () => {
   it('should return list of schedules on GET', async () => {
     const response = await request.get('/api/schedule')
-    console.log('GET response:', response.status, response.body)
     expect(response.status).toBe(200)
     expect(response.body).toHaveProperty('appointments')
     expect(response.body).toHaveProperty('doctors')
@@ -42,7 +41,6 @@ describe('API /api/schedule', () => {
       professional: 'Dr. Teste',
     }
     const response = await request.post('/api/schedule').send(newSchedule)
-    console.log('POST response:', response.status, response.body)
-    expect(response.status).toBe(200) // Assuming success
+    expect(response.status).toBe(200)
   }, 10000)
 })

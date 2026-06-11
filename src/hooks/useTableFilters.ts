@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 
-export function useTableFilters<T extends Record<string, any>>(initialFilters: T) {
+export function useTableFilters<T extends Record<string, unknown>>(initialFilters: T) {
   const [filters, setFilters] = useState<T>(initialFilters)
 
   const handleFilterChange = useCallback(

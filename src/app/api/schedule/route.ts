@@ -4,52 +4,18 @@ import { findAppointmentConflict } from "@/lib/schedule/conflicts"
 import { toAppointment } from "@/lib/schedule/map-appointment"
 import { CreateAppointmentSchema } from "@/lib/validations/schedule"
 import { handleApiError } from "@/lib/errors/error-handler"
-import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
+import { ValidationError, ConflictError, NotFoundError } from "@/lib/errors/custom-errors"
+import { createApiGuard } from "@/lib/api/rate-limit"
+import { AppointmentStatus } from "@/lib/schedule/status"
 
 export type { Appointment } from "@/lib/schedule/types"
 
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-const RATE_LIMIT_WINDOW = 60 * 1000
-const RATE_LIMIT_MAX = 50
-
-function getClientIp(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for") ?? ""
-  return forwarded.split(",")[0] ?? "unknown"
-}
-
-function rateLimit(ip: string) {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
-    return false
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) return true
-
-  entry.count++
-  return false
-}
-
-function isAuthorized(req: Request) {
-  const secret = process.env.SCHEDULE_API_SECRET?.trim()
-  if (!secret) return true
-
-  const auth = req.headers.get("authorization") ?? ""
-  return auth === `Bearer ${secret}`
-}
+const guard = createApiGuard({ max: 50, secretEnv: "SCHEDULE_API_SECRET" })
 
 export async function GET(req: Request) {
   try {
-    const ip = getClientIp(req)
-    if (rateLimit(ip)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 })
-    }
-
-    if (!isAuthorized(req)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const check = guard(req)
+    if (!check.ok) return check.response
 
     const [appointments, doctors, patients] = await Promise.all([
       db.appointment.findMany({
@@ -164,14 +130,8 @@ async function resolveDoctor(doctorInput: { id?: number; name?: string } | strin
 
 export async function POST(req: Request) {
   try {
-    const ip = getClientIp(req)
-    if (rateLimit(ip)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 })
-    }
-
-    if (!isAuthorized(req)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const check = guard(req)
+    if (!check.ok) return check.response
 
     const body = await req.json()
 
@@ -201,7 +161,7 @@ export async function POST(req: Request) {
       data: {
         date: data.date,
         slotTime: data.slotTime,
-        status: "Agendado",
+        status: AppointmentStatus.Scheduled,
 
         patientName: patient.name,
         professionalName: doctor.name,
@@ -236,7 +196,7 @@ export async function PATCH(req: Request) {
     })
 
     if (!current) {
-      throw new ValidationError("Agendamento não encontrado")
+      throw new NotFoundError("Agendamento não encontrado")
     }
 
     if (body.date || body.slotTime || body.data || body.horario) {
@@ -254,7 +214,7 @@ export async function PATCH(req: Request) {
       }
     }
 
-    if (body.status === "Pago" && current.status === "RegistrarChegada") {
+    if (body.status === AppointmentStatus.Paid && current.status === AppointmentStatus.CheckIn) {
       const linked = await db.transaction.findUnique({
         where: { appointmentId: body.id },
       })

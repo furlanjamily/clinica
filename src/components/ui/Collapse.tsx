@@ -26,7 +26,7 @@ export function Collapse({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center gap-2 rounded-md py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 lg:hidden"
+        className="flex w-full items-center gap-2 rounded-3xl py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 lg:hidden"
       >
         <ChevronDown
           size={16}
