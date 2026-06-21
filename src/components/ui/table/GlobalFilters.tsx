@@ -39,14 +39,14 @@ export function GlobalFilters({
     })
   }
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2">
-      <span className="text-xs font-medium text-gray-500 sm:text-sm">Filtrar por</span>
+    <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
+      <span className="shrink-0 p-1 text-xs font-medium text-gray-500 sm:text-sm">Filtrar por</span>
 
-      <div className="flex w-full flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-end justify-center gap-2">
         {filters.map((filter) => {
           if (filter.type === "select") {
             return (
-              <div key={filter.name} className="min-w-0 w-full sm:w-auto sm:min-w-[11rem]">
+              <div key={filter.name} className="min-w-0 w-full sm:w-auto sm:min-w-[8rem]">
                 <Select
                   value={toInputValue(values[filter.name])}
                   onChange={(value) => onChange(filter.name, value)}
@@ -63,7 +63,7 @@ export function GlobalFilters({
                 value={toInputValue(values[filter.name])}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(filter.name, e.target.value)}
                 placeholder={filter.placeholder ?? "Buscar..."}
-                className="min-w-0 w-full sm:w-auto sm:min-w-[10rem]"
+                className="min-w-0 w-full sm:w-auto sm:min-w-[8rem]"
               />
             )
           }
@@ -82,15 +82,15 @@ export function GlobalFilters({
 
           return null
         })}
-
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="w-full rounded-3xl bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300 sm:ml-0 sm:w-auto sm:shrink-0"
-        >
-          Limpar filtros
-        </button>
       </div>
+
+      <button
+        type="button"
+        onClick={clearFilters}
+        className="shrink-0 self-end rounded-3xl bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300"
+      >
+        Limpar
+      </button>
     </div>
   )
 }

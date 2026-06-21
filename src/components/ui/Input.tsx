@@ -1,6 +1,7 @@
 "use client"
 
 import { forwardRef, useEffect, useMemo } from "react"
+import { ChevronDown } from "lucide-react"
 import { useIMask } from "react-imask"
 import { type VariantProps, tv } from "tailwind-variants"
 
@@ -264,15 +265,20 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
             {label}
           </label>
         )}
-        <select
-          ref={ref}
-          id={inputId}
-          disabled={disabled as boolean}
-          className={inputWrapperVariants({ size, disabled, error: !!error, class: "w-full text-sm text-foreground" })}
-          {...props}
-        >
-          {children}
-        </select>
+        <div className={inputWrapperVariants({ size, disabled, error: !!error, class: "relative w-full" })}>
+          <select
+            ref={ref}
+            id={inputId}
+            disabled={disabled as boolean}
+            className={inputFieldVariants({ class: "appearance-none cursor-pointer pr-7" })}
+            {...props}
+          >
+            {children}
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <ChevronDown size={14} />
+          </span>
+        </div>
         {error && <p className={inputErrorVariants()}>{error}</p>}
       </div>
     )

@@ -19,3 +19,4 @@ export function ScheduleView({ data, setData }: Props) {
     </div>
   )
 }
+ 

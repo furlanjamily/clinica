@@ -5,16 +5,11 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import type { Appointment } from "@/types/types"
 import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
-
-type FeeConfig = {
-  consultationFee: number
-  followUpFee: number
-  doctorCommissionRate: number
-}
-
-const PAYMENT_METHODS = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência"]
+import { PAYMENT_METHODS } from "@/lib/finance/categories"
+import { useFinancialConfig } from "@/hooks/useFinance"
 
 type PaymentForm = {
   category: string
@@ -31,7 +26,7 @@ type Props = {
 }
 
 export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
-  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(null)
+  const { data: feeConfig, isError: configError } = useFinancialConfig()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, reset, watch, setValue } = useForm<PaymentForm>({
@@ -45,24 +40,14 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   })
 
   const category = watch("category")
+  const patientLabel = item.patient?.name ?? item.patientName ?? "Paciente"
 
   useEffect(() => {
-    let cancelled = false
-    fetch("/api/finance/config")
-      .then((r) => r.json())
-      .then((c: FeeConfig) => {
-        if (cancelled) return
-        setFeeConfig(c)
-      })
-      .catch(() => toast.error("Não foi possível carregar a tabela de valores."))
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (configError) toast.error("Não foi possível carregar a tabela de valores.")
+  }, [configError])
 
   useEffect(() => {
     if (!feeConfig) return
-    const patientLabel = item.patient?.name ?? item.patientName ?? "Paciente"
     reset({
       category: "Consulta",
       amount: feeConfig.consultationFee,
@@ -70,7 +55,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
       date: new Date().toISOString().slice(0, 10),
       paymentMethod: "",
     })
-  }, [item.id, item.date, item.slotTime, item.patient?.name ?? "", item.patientName ?? "", feeConfig, reset])
+  }, [item.date, item.slotTime, patientLabel, feeConfig, reset])
 
   useEffect(() => {
     if (!feeConfig) return
@@ -111,7 +96,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <ModalOverlay className="z-[60]">
       <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
         <ModalHeader title="Confirmar pagamento" onClose={onClose} />
         <p className="mb-4 text-sm leading-relaxed text-gray-600">
@@ -151,6 +136,6 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

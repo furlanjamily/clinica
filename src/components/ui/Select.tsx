@@ -54,7 +54,7 @@ export default function Select({
 
       {showStatusDot && currentOption?.color && (
         <span
-          className="absolute left-3 h-2.5 w-2.5 rounded-full"
+          className="absolute h-2.5 w-2.5 rounded-full"
           style={{ backgroundColor: currentOption.color }}
         />
       )}
@@ -62,7 +62,7 @@ export default function Select({
       <select
         value={currentValue}
         onChange={(e) => handleChange(e.target.value)}
-        className={`appearance-none cursor-pointer text-[12px] text-gray-700 bg-white px-3 py-2 pr-8 rounded-3xl font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px]
+        className={`appearance-none cursor-pointer h-10 text-[12px] text-gray-700 bg-white py-2 pl-3 pr-8 rounded-3xl font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px]
         ${showStatusDot ? "pl-8" : ""}`}
       >
         {options.map((option) => (
@@ -72,7 +72,7 @@ export default function Select({
         ))}
       </select>
 
-      <span className="pointer-events-none absolute right-2 text-gray-400 text-xs">
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
         ▼
       </span>
 

@@ -7,8 +7,17 @@ import { handleApiError } from "@/lib/errors/error-handler"
 import { ValidationError, ConflictError, NotFoundError } from "@/lib/errors/custom-errors"
 import { createApiGuard } from "@/lib/api/rate-limit"
 import { AppointmentStatus } from "@/lib/schedule/status"
+import { combineLocalDateTime, toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
 
 export type { Appointment } from "@/lib/schedule/types"
+
+const nestedAppointmentSelect = {
+  id: true,
+  scheduledStart: true,
+  professionalNameSnapshot: true,
+  patientNameSnapshot: true,
+  patientId: true,
+} as const
 
 const guard = createApiGuard({ max: 50, secretEnv: "SCHEDULE_API_SECRET" })
 
@@ -21,15 +30,16 @@ export async function GET(req: Request) {
       db.appointment.findMany({
         select: {
           id: true,
-          date: true,
-          slotTime: true,
+          scheduledStart: true,
           status: true,
           patientId: true,
           doctorId: true,
-          startTime: true,
-          endTime: true,
+          patientNameSnapshot: true,
+          professionalNameSnapshot: true,
+          startedAt: true,
+          endedAt: true,
           pausedAt: true,
-          accumulatedTime: true,
+          accumulatedMs: true,
           patient: {
             select: {
               id: true,
@@ -43,18 +53,11 @@ export async function GET(req: Request) {
               name: true,
             },
           },
-          clinicalChart: {
+          medicalRecord: {
             include: {
               patient: true,
               appointment: {
-                select: {
-                  id: true,
-                  date: true,
-                  slotTime: true,
-                  professionalName: true,
-                  patientName: true,
-                  patientId: true,
-                },
+                select: nestedAppointmentSelect,
               },
             },
           },
@@ -68,7 +71,7 @@ export async function GET(req: Request) {
             },
           },
         },
-        orderBy: [{ date: "asc" }, { slotTime: "asc" }],
+        orderBy: { scheduledStart: "asc" },
       }),
       db.doctor.findMany({
         select: {
@@ -159,13 +162,12 @@ export async function POST(req: Request) {
 
     const appointment = await db.appointment.create({
       data: {
-        date: data.date,
-        slotTime: data.slotTime,
+        scheduledStart: combineLocalDateTime(data.date, data.slotTime),
         status: AppointmentStatus.Scheduled,
 
-        patientName: patient.name,
-        professionalName: doctor.name,
-        phone,
+        patientNameSnapshot: patient.name,
+        professionalNameSnapshot: doctor.name,
+        phoneSnapshot: phone,
 
         patient: { connect: { id: patient.id } },
         doctor: { connect: { id: doctor.id } },
@@ -199,11 +201,15 @@ export async function PATCH(req: Request) {
       throw new NotFoundError("Agendamento não encontrado")
     }
 
-    if (body.date || body.slotTime || body.data || body.horario) {
-      const nextDate = body.date ?? body.data ?? current.date
-      const nextSlot = body.slotTime ?? body.horario ?? current.slotTime
+    const currentDate = toLocalDate(current.scheduledStart)
+    const currentSlot = toLocalSlotTime(current.scheduledStart)
+    const reschedules = Boolean(body.date || body.slotTime || body.data || body.horario)
+    const nextDate = body.date ?? body.data ?? currentDate
+    const nextSlot = body.slotTime ?? body.horario ?? currentSlot
+
+    if (reschedules) {
       const conflict = await findAppointmentConflict(
-        current.doctor.id,
+        current.doctorId,
         nextDate,
         nextSlot,
         body.id
@@ -228,26 +234,29 @@ export async function PATCH(req: Request) {
     const updated = await db.appointment.update({
       where: { id: body.id },
       data: {
-        ...(body.date || body.data
-          ? { date: (body.date ?? body.data) as string }
-          : {}),
-        ...(body.slotTime || body.horario
-          ? { slotTime: (body.slotTime ?? body.horario) as string }
-          : {}),
+        ...(reschedules ? { scheduledStart: combineLocalDateTime(nextDate, nextSlot) } : {}),
         ...(body.status && { status: body.status }),
-        ...(body.startTime !== undefined && { startTime: body.startTime }),
-        ...(body.endTime !== undefined && { endTime: body.endTime }),
-        ...(body.accumulatedTime !== undefined && { accumulatedTime: body.accumulatedTime }),
-        ...(body.pausedAt !== undefined && { pausedAt: body.pausedAt }),
+        ...(body.startTime !== undefined && {
+          startedAt: body.startTime ? new Date(body.startTime as string) : null,
+        }),
+        ...(body.endTime !== undefined && {
+          endedAt: body.endTime ? new Date(body.endTime as string) : null,
+        }),
+        ...(body.accumulatedTime !== undefined && {
+          accumulatedMs: body.accumulatedTime as number,
+        }),
+        ...(body.pausedAt !== undefined && {
+          pausedAt: body.pausedAt ? new Date(body.pausedAt as string) : null,
+        }),
       },
       include: {
         patient: true,
         doctor: true,
         transaction: true,
-        clinicalChart: {
+        medicalRecord: {
           include: {
             patient: true,
-            appointment: true,
+            appointment: { select: nestedAppointmentSelect },
           },
         },
       },

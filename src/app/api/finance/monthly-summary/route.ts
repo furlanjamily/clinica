@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { handleApiError } from "@/lib/errors/error-handler"
+import { requireSession } from "@/lib/auth/api-guard"
+import { startOfLocalDay } from "@/lib/datetime/appointment-time"
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"] as const
 
 export async function GET(req: Request) {
   try {
+    await requireSession()
     const { searchParams } = new URL(req.url)
     const yearParam = searchParams.get("ano")
 
@@ -14,14 +17,13 @@ export async function GET(req: Request) {
     const currentMonthPrefix = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
     const datesRows = await db.transaction.findMany({
-      where: { status: "Confirmado" },
-      select: { date: true },
+      where: { status: "Confirmado", deletedAt: null },
+      select: { competenceDate: true },
     })
 
     const yearSet = new Set<number>()
-    for (const { date } of datesRows) {
-      const y = parseInt(date.slice(0, 4), 10)
-      if (!Number.isNaN(y)) yearSet.add(y)
+    for (const { competenceDate } of datesRows) {
+      yearSet.add(competenceDate.getUTCFullYear())
     }
 
     let availableYears = [...yearSet].sort((a, b) => b - a)
@@ -46,11 +48,29 @@ export async function GET(req: Request) {
 
     const [yearTxs, monthTxs] = await Promise.all([
       db.transaction.findMany({
-        where: { status: "Confirmado", date: { startsWith: `${year}-` } },
-        select: { date: true, type: true, amount: true },
+        where: {
+          status: "Confirmado",
+          deletedAt: null,
+          competenceDate: {
+            gte: startOfLocalDay(`${year}-01-01`),
+            lt: startOfLocalDay(`${year + 1}-01-01`),
+          },
+        },
+        select: { competenceDate: true, type: true, amount: true },
       }),
       db.transaction.findMany({
-        where: { status: "Confirmado", date: { startsWith: currentMonthPrefix } },
+        where: {
+          status: "Confirmado",
+          deletedAt: null,
+          competenceDate: {
+            gte: startOfLocalDay(`${currentMonthPrefix}-01`),
+            lt: startOfLocalDay(
+              now.getMonth() === 11
+                ? `${currentYear + 1}-01-01`
+                : `${currentYear}-${String(now.getMonth() + 2).padStart(2, "0")}-01`
+            ),
+          },
+        },
         select: { type: true, amount: true },
       }),
     ])
@@ -58,17 +78,17 @@ export async function GET(req: Request) {
     const months = MONTH_LABELS.map((label) => ({ mes: label, receitas: 0, despesas: 0 }))
 
     for (const t of yearTxs) {
-      const m = parseInt(t.date.slice(5, 7), 10) - 1
+      const m = t.competenceDate.getUTCMonth()
       if (m < 0 || m > 11) continue
-      if (t.type === "Receita") months[m].receitas += t.amount
-      else if (t.type === "Despesa") months[m].despesas += t.amount
+      if (t.type === "Receita") months[m].receitas += Number(t.amount)
+      else if (t.type === "Despesa") months[m].despesas += Number(t.amount)
     }
 
     let monthRevenue = 0
     let monthExpense = 0
     for (const t of monthTxs) {
-      if (t.type === "Receita") monthRevenue += t.amount
-      else if (t.type === "Despesa") monthExpense += t.amount
+      if (t.type === "Receita") monthRevenue += Number(t.amount)
+      else if (t.type === "Despesa") monthExpense += Number(t.amount)
     }
 
     const totalRevenueYear = months.reduce((acc, m) => acc + m.receitas, 0)

@@ -14,7 +14,7 @@ export const CreateTransactionSchema = z.object({
     .optional()
     .nullable()
     .transform((s) => (s?.trim() ? s.trim() : undefined)),
-  status: z.string().default("Confirmado"),
+  status: z.enum(["Confirmado", "Pendente", "Cancelado", "Vencido"]).default("Confirmado"),
   appointmentId: z.number().int().positive().optional(),
 })
 

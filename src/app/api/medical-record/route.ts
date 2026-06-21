@@ -13,10 +13,9 @@ import {
 
 const appointmentSelect = {
   id: true,
-  date: true,
-  slotTime: true,
-  professionalName: true,
-  patientName: true,
+  scheduledStart: true,
+  professionalNameSnapshot: true,
+  patientNameSnapshot: true,
   patientId: true,
 } as const
 
@@ -28,7 +27,7 @@ const chartInclude = {
 export async function GET() {
   try {
     await requireSession()
-    const records = await prisma.clinicalChart.findMany({
+    const records = await prisma.medicalRecord.findMany({
       include: chartInclude,
       orderBy: { createdAt: "desc" },
     })
@@ -59,12 +58,12 @@ export async function POST(req: Request) {
     }
 
     // appointmentId é único: upsert evita erro P2002 quando o prontuário já existe
-    const clinicalChart = await prisma.clinicalChart.upsert({
+    const medicalRecord = await prisma.medicalRecord.upsert({
       where: { appointmentId },
       create: {
         appointmentId,
         patientId: appointment.patientId,
-        patientLabel: appointment.patientName,
+        patientLabel: appointment.patientNameSnapshot,
         ...chartData,
       },
       update: chartData,
@@ -72,7 +71,7 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json(
-      mapClinicalChartFromDb(clinicalChart as Record<string, unknown>)
+      mapClinicalChartFromDb(medicalRecord as Record<string, unknown>)
     )
   } catch (error) {
     return handleApiError(error)
@@ -84,14 +83,14 @@ export async function PATCH(req: Request) {
     await requireSession()
     const { id, ...chartData } = parseWith(UpdateMedicalRecordSchema, await req.json())
 
-    const clinicalChart = await prisma.clinicalChart.update({
+    const medicalRecord = await prisma.medicalRecord.update({
       where: { id },
       data: chartData,
       include: chartInclude,
     })
 
     return NextResponse.json(
-      mapClinicalChartFromDb(clinicalChart as Record<string, unknown>)
+      mapClinicalChartFromDb(medicalRecord as Record<string, unknown>)
     )
   } catch (error) {
     return handleApiError(error)
@@ -102,7 +101,7 @@ export async function DELETE(req: Request) {
   try {
     await requireSession()
     const { id } = parseWith(DeleteMedicalRecordSchema, await req.json())
-    await prisma.clinicalChart.delete({ where: { id } })
+    await prisma.medicalRecord.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
     return handleApiError(error)

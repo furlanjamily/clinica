@@ -1,4 +1,6 @@
 import { db } from "@/lib/db"
+import { AppointmentStatus } from "@/lib/schedule/status"
+import { combineLocalDateTime } from "@/lib/datetime/appointment-time"
 
 export async function findAppointmentConflict(
   doctorId: number,
@@ -9,9 +11,8 @@ export async function findAppointmentConflict(
   return db.appointment.findFirst({
     where: {
       doctorId,
-      date,
-      slotTime,
-      status: { notIn: ["Cancelado", "Concluido"] },
+      scheduledStart: combineLocalDateTime(date, slotTime),
+      status: { notIn: [AppointmentStatus.Cancelled, AppointmentStatus.Completed] },
       ...(excludeId != null ? { id: { not: excludeId } } : {}),
     },
   })

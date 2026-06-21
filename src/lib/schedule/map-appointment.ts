@@ -1,25 +1,27 @@
 import type { MedicalRecord } from "@/types"
 import type { Appointment, AppointmentPatient } from "./types"
+import { toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
+import { mapMedicalRecordFromDb } from "@/lib/medical-record/map-prontuario"
 
 export type DoctorInput = string | { id: number; name: string } | null | undefined
 
 export type AppointmentRowInput = {
   id: number
-  date: string
-  slotTime: string
+  scheduledStart: Date
   status?: string | null
   patientId?: number | null
-  patientName?: string | null
-  doctor: DoctorInput
-  startTime?: string | null
-  endTime?: string | null
-  accumulatedTime?: number | null
-  pausedAt?: string | null
+  patientNameSnapshot?: string | null
+  professionalNameSnapshot?: string | null
+  doctor?: DoctorInput
+  startedAt?: Date | null
+  endedAt?: Date | null
+  accumulatedMs?: number | null
+  pausedAt?: Date | null
   patient?: { id: number; name: string; phone?: string | null } | null
-  clinicalChart?: unknown | null
+  medicalRecord?: unknown | null
   transaction?: {
     id: number
-    amount: number
+    amount: number | { toString(): string }
     category: string
     type: string
     status: string
@@ -30,78 +32,48 @@ function resolvePatient(row: AppointmentRowInput): AppointmentPatient {
   if (row.patient) return { id: row.patient.id, name: row.patient.name, phone: row.patient.phone }
   return {
     id: row.patientId ?? 0,
-    name: (row.patientName ?? "").trim() || "Patient",
+    name: (row.patientNameSnapshot ?? "").trim() || "Patient",
   }
 }
 
-function resolveProfessionalName(doctor: DoctorInput): string {
-  if (doctor == null) return ""
+function resolveProfessionalName(row: AppointmentRowInput): string {
+  const doctor = row.doctor
   if (typeof doctor === "string") return doctor
-  return doctor.name ?? ""
+  if (doctor && doctor.name) return doctor.name
+  return (row.professionalNameSnapshot ?? "").trim()
 }
 
-function normalizeClinicalChart(row: AppointmentRowInput, clinicalChart: unknown): MedicalRecord | null {
-  if (clinicalChart == null) return null
-  const raw = clinicalChart as Record<string, unknown>
-  const base = {
-    ...raw,
-    patientDetails: (raw.patientDetails ?? raw.patient) as MedicalRecord["patientDetails"],
-  } as MedicalRecord
-  const professionalName =
-    base.appointment?.professionalName?.trim() ||
-    resolveProfessionalName(row.doctor)
-
-  const patientDisplayName =
-    base.patientDetails?.name?.trim() ||
-    base.patientLabel?.trim() ||
-    row.patient?.name?.trim() ||
-    (row.patientName ?? "").trim() ||
-    ""
-
-  const patientMerged: MedicalRecord["patientDetails"] = base.patientDetails
-    ? { ...(row.patient ?? {}), ...base.patientDetails }
-    : row.patient
-      ? { id: row.patient.id, name: row.patient.name, phone: row.patient.phone }
-      : patientDisplayName
-        ? { id: row.patientId ?? 0, name: patientDisplayName }
-        : undefined
-
-  return {
-    ...base,
-    patientLabel: base.patientLabel?.trim() || patientDisplayName || "",
-    patientDetails: patientMerged,
-    appointment: {
-      ...(typeof base.appointment === "object" && base.appointment ? base.appointment : {}),
-      date: base.appointment?.date ?? row.date,
-      slotTime: base.appointment?.slotTime ?? row.slotTime,
-      professionalName,
-    },
-  }
+function isoOrUndefined(value: Date | null | undefined): string | undefined {
+  return value ? value.toISOString() : undefined
 }
 
 export function toAppointment(row: AppointmentRowInput): Appointment {
   const patient = resolvePatient(row)
-  const clinicalChart = normalizeClinicalChart(row, row.clinicalChart)
-  const professionalName = resolveProfessionalName(row.doctor)
+  const professionalName = resolveProfessionalName(row)
+  const clinicalChart = row.medicalRecord
+    ? mapMedicalRecordFromDb(row.medicalRecord as Record<string, unknown>, {
+        fallbackProfessionalName: professionalName,
+      })
+    : null
 
   return {
     id: row.id,
-    date: row.date,
-    slotTime: row.slotTime,
+    date: toLocalDate(row.scheduledStart),
+    slotTime: toLocalSlotTime(row.scheduledStart),
     status: row.status ?? "Agendado",
     patient,
     patientId: row.patientId ?? undefined,
-    patientName: row.patientName ?? null,
+    patientName: row.patientNameSnapshot ?? null,
     professionalName,
-    startTime: row.startTime ?? undefined,
-    endTime: row.endTime ?? undefined,
-    accumulatedTime: row.accumulatedTime ?? undefined,
-    pausedAt: row.pausedAt ?? undefined,
+    startTime: isoOrUndefined(row.startedAt),
+    endTime: isoOrUndefined(row.endedAt),
+    accumulatedTime: row.accumulatedMs ?? undefined,
+    pausedAt: isoOrUndefined(row.pausedAt),
     clinicalChart,
     transaction: row.transaction
       ? {
           id: row.transaction.id,
-          amount: row.transaction.amount,
+          amount: Number(row.transaction.amount),
           category: row.transaction.category,
           type: row.transaction.type,
           status: row.transaction.status,

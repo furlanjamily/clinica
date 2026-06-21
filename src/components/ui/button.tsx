@@ -7,6 +7,7 @@ export const buttonVariants = tv({
   base: "flex items-center justify-center cursor-pointer transition-colors rounded-full gap-1.5 font-medium select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
   variants: {
     variant: {
+      header:      "bg-white text-gray-700 hover:bg-purple-500 hover:text-white",
       primary:     "bg-primary text-white hover:bg-primary/90",
       secondary:   "bg-gray-100 text-gray-700 hover:bg-gray-200",
       destructive: "bg-red-50 text-red-600 hover:bg-red-100",

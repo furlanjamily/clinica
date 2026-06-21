@@ -42,8 +42,8 @@ function tryAuthorizePortfolioDemo(
 
   return {
     id: "portfolio-demo",
-    name: "Visitante (demo)",
-    username: "Visitante (demo)",
+    name: "Dr.Teste",
+    username: "Dr.Teste",
     email: normalizeEmail(demo.email),
     role,
   }

@@ -1,3 +1,20 @@
+/** Formas de pagamento aceitas no pagamento vinculado a um agendamento. */
+export const PAYMENT_METHODS: string[] = [
+  "Dinheiro",
+  "Cartão de Crédito",
+  "Cartão de Débito",
+  "Pix",
+  "Convênio",
+  "Transferência",
+]
+
+/** Formas de pagamento de transações avulsas (inclui opções administrativas). */
+export const TRANSACTION_PAYMENT_METHODS: string[] = [
+  ...PAYMENT_METHODS,
+  "Boleto",
+  "Não aplicável",
+]
+
 export const RECEITA_CATEGORIAS: string[] = [
   "Avaliação",
   "Pacote ou combo",

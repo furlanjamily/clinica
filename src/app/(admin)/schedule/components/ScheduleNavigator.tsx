@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react"
 import { DatePicker } from "@/components/ui/DatePicker"
 import { Button } from "@/components/ui/button"
 import type { ViewMode } from "@/hooks/useSchedule"
+import { cn } from "@/lib/utils"
 
 
 type Props = {
@@ -121,20 +122,22 @@ export function ScheduleNavigator({
         )}
       </div>
 
-      <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end md:gap-3">
-        {["dia", "semana", "mes"].map((mode) => (
-          <Button
-            key={mode}
-            variant={view === mode ? "purple" : "secondary"}
-            size="md"
-            className="flex-1 text-xs sm:flex-none sm:text-sm md:text-base"
-            onClick={() => onChangeView(mode as ViewMode)}
-          >
-            {mode === "mes" && "Mês"}
-            {mode === "dia" && "Dia"}
-            {mode === "semana" && "Semana"}
-          </Button>
-        ))}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex rounded-full bg-white p-1">
+          {["dia", "semana", "mes"].map((mode) => (
+            <Button
+              key={mode}
+              variant={view === mode ? "purple" : "header"}
+              size="md"
+              className="flex-1 text-xs sm:flex-none sm:text-sm md:text-base"
+              onClick={() => onChangeView(mode as ViewMode)}
+            >
+              {mode === "mes" && "Mês"}
+              {mode === "dia" && "Dia"}
+              {mode === "semana" && "Semana"}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   )

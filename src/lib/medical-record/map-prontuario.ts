@@ -1,31 +1,53 @@
 import type { MedicalRecord } from "@/types"
+import { toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
 
 type NestedAppointment = {
   id?: number
-  date?: string
-  slotTime?: string
-  professionalName?: string | null
-  patientName?: string | null
+  scheduledStart?: Date | string
+  professionalNameSnapshot?: string | null
+  patientNameSnapshot?: string | null
   patientId?: number
 } | null
 
-export function mapClinicalChartFromDb(
-  raw: Record<string, unknown> & {
-    id?: number
-    appointmentId?: number
-    patientId?: number | null
-    patientLabel?: string | null
-    patientDetails?: MedicalRecord["patientDetails"] | null
-    patient?: MedicalRecord["patientDetails"] | null
-    appointment?: NestedAppointment
-    createdAt?: Date | string
+type RawMedicalRecord = Record<string, unknown> & {
+  id?: number
+  appointmentId?: number
+  patientId?: number | null
+  patientLabel?: string | null
+  patientDetails?: MedicalRecord["patientDetails"] | null
+  patient?: MedicalRecord["patientDetails"] | null
+  appointment?: NestedAppointment
+  createdAt?: Date | string
+}
+
+type MapOptions = { fallbackProfessionalName?: string }
+
+function mapNestedAppointment(
+  appointment: NestedAppointment | undefined,
+  fallbackProfessionalName?: string
+): MedicalRecord["appointment"] {
+  if (!appointment) return undefined
+  const start = appointment.scheduledStart ? new Date(appointment.scheduledStart) : undefined
+  return {
+    date: start ? toLocalDate(start) : undefined,
+    slotTime: start ? toLocalSlotTime(start) : undefined,
+    professionalName:
+      appointment.professionalNameSnapshot ?? fallbackProfessionalName ?? undefined,
   }
+}
+
+export function mapMedicalRecordFromDb(
+  raw: RawMedicalRecord,
+  options: MapOptions = {}
 ): MedicalRecord {
-  const relationPatient = (raw.patient ?? raw.patientDetails) as MedicalRecord["patientDetails"] | undefined
+  const relationPatient = (raw.patient ?? raw.patientDetails) as
+    | MedicalRecord["patientDetails"]
+    | undefined
+
   const name =
     relationPatient?.name?.trim() ||
     (typeof raw.patientLabel === "string" ? raw.patientLabel.trim() : "") ||
-    raw.appointment?.patientName?.trim() ||
+    raw.appointment?.patientNameSnapshot?.trim() ||
     ""
 
   const patientField =
@@ -37,8 +59,7 @@ export function mapClinicalChartFromDb(
     relationPatient?.id ?? raw.patientId ?? raw.appointment?.patientId ?? 0
 
   const patientDetails: MedicalRecord["patientDetails"] =
-    relationPatient ??
-    (name ? { id: resolvedPatientId, name } : undefined)
+    relationPatient ?? (name ? { id: resolvedPatientId, name } : undefined)
 
   const createdAt =
     raw.createdAt instanceof Date ? raw.createdAt.toISOString() : raw.createdAt
@@ -49,13 +70,10 @@ export function mapClinicalChartFromDb(
     appointmentId: raw.appointmentId as number,
     patientLabel: patientField,
     patientDetails,
-    appointment: raw.appointment
-      ? {
-          date: raw.appointment.date,
-          slotTime: raw.appointment.slotTime,
-          professionalName: raw.appointment.professionalName ?? undefined,
-        }
-      : undefined,
+    appointment: mapNestedAppointment(raw.appointment, options.fallbackProfessionalName),
     createdAt,
   }
 }
+
+/** @deprecated usar `mapMedicalRecordFromDb`; mantido para compatibilidade. */
+export const mapClinicalChartFromDb = mapMedicalRecordFromDb

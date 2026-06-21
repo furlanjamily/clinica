@@ -6,6 +6,11 @@ import { handleApiError } from "@/lib/errors/error-handler"
 import { NotFoundError, ValidationError } from "@/lib/errors/custom-errors"
 import { createApiGuard } from "@/lib/api/rate-limit"
 import { AppointmentStatus } from "@/lib/schedule/status"
+import {
+  startOfLocalDay,
+  startOfNextLocalDay,
+  toLocalSlotTime,
+} from "@/lib/datetime/appointment-time"
 
 const guard = createApiGuard({ max: 20, secretEnv: "SCHEDULE_AVAILABILITY_SECRET" })
 
@@ -85,13 +90,18 @@ export async function GET(req: Request) {
     const appointments = await db.appointment.findMany({
       where: {
         doctorId: doctor.id,
-        date,
+        scheduledStart: {
+          gte: startOfLocalDay(date),
+          lt: startOfNextLocalDay(date),
+        },
         status: { notIn: [AppointmentStatus.Cancelled, AppointmentStatus.Completed] },
       },
-      select: { slotTime: true },
+      select: { scheduledStart: true },
     })
 
-    const occupiedTimes = new Set<string>(appointments.map(({ slotTime }) => slotTime))
+    const occupiedTimes = new Set<string>(
+      appointments.map(({ scheduledStart }) => toLocalSlotTime(scheduledStart))
+    )
     const availableTimes = possibleSlots.filter((slot) => !occupiedTimes.has(slot))
 
     return NextResponse.json({ availableTimes })

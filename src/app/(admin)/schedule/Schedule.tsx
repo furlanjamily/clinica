@@ -15,6 +15,16 @@ type Props = {
 
 const FILTER_CONFIG = [
   {
+    name: "id",
+    type: "input",
+    placeholder: "ID...",
+  },
+  {
+    name: "date",
+    type: "date",
+    placeholder: "Data...",
+  },
+  {
     name: "status",
     type: "select",
     options: [
@@ -57,11 +67,11 @@ export default function Schedule({ data, onChangeData }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-4 sm:gap-6">
-        <Header title="Agenda" />
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
+      <Header title="Agenda" />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:mt-4 sm:gap-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <ScheduleNavigator
             date={date}
             view={view}
@@ -70,18 +80,20 @@ export default function Schedule({ data, onChangeData }: Props) {
           />
         </div>
 
-        <Collapse label="Filtros">
-          <GlobalFilters
-            values={filters}
-            onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
-            filters={FILTER_CONFIG}
-          />
-        </Collapse>
-      </div>
+        <div className="flex shrink-0 flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+          <Collapse label="Filtros" unboundedPanel>
+            <GlobalFilters
+              values={filters}
+              onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
+              filters={FILTER_CONFIG}
+            />
+          </Collapse>
+        </div>
 
-      <main className="mt-3 min-h-0 min-w-0 flex-1 overflow-auto sm:mt-4">
-        <ScheduleView data={filteredData} setData={onChangeData} />
-      </main>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <ScheduleView data={filteredData} setData={onChangeData} />
+        </main>
+      </div>
     </div>
   )
 }

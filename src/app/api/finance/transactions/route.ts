@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { db } from "@/lib/db"
 import { toAppointment } from "@/lib/schedule/map-appointment"
 import {
@@ -7,15 +8,35 @@ import {
   amountMatchesFeeTable,
 } from "@/lib/validations/finance-transaction"
 import { handleApiError } from "@/lib/errors/error-handler"
-import { ValidationError, ConflictError } from "@/lib/errors/custom-errors"
+import { ValidationError, ConflictError, NotFoundError } from "@/lib/errors/custom-errors"
+import { requireSession } from "@/lib/auth/api-guard"
+import { parseWith } from "@/lib/validations/parse"
+import { AppointmentStatus } from "@/lib/schedule/status"
+import { toTransactionDTO, transactionWriteToDb } from "@/lib/finance/transaction-dto"
+import { localDateOnly, startOfLocalDay } from "@/lib/datetime/appointment-time"
+import type { Prisma } from "@/generated/prisma/client"
+
+const UpdateTransactionSchema = CreateTransactionSchema.omit({ appointmentId: true })
+  .partial()
+  .extend({ id: z.number().int().positive() })
+
+const DeleteTransactionSchema = z.object({ id: z.number().int().positive() })
+
+const nestedAppointmentSelect = {
+  id: true,
+  scheduledStart: true,
+  professionalNameSnapshot: true,
+  patientNameSnapshot: true,
+  patientId: true,
+} as const
 
 const appointmentWithRelations = {
   patient: true,
   doctor: true,
-  clinicalChart: {
+  medicalRecord: {
     include: {
       patient: true,
-      appointment: true,
+      appointment: { select: nestedAppointmentSelect },
     },
   },
   transaction: true,
@@ -23,20 +44,27 @@ const appointmentWithRelations = {
 
 export async function GET(req: Request) {
   try {
+    await requireSession()
     const { searchParams } = new URL(req.url)
     const month = searchParams.get("mes")
     const type = searchParams.get("tipo")
 
-    const where: Record<string, unknown> = {}
-    if (month) where.date = { startsWith: month }
-    if (type) where.type = type
+    const where: Prisma.TransactionWhereInput = { deletedAt: null }
+    if (month) {
+      const [y, m] = month.split("-").map(Number)
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`
+      where.competenceDate = {
+        gte: startOfLocalDay(`${month}-01`),
+        lt: startOfLocalDay(`${nextMonth}-01`),
+      }
+    }
+    if (type === "Receita" || type === "Despesa") where.type = type
 
     const transactions = await db.transaction.findMany({
       where,
-      orderBy: { date: "desc" },
-      include: { appointment: true },
+      orderBy: { competenceDate: "desc" },
     })
-    return NextResponse.json(transactions)
+    return NextResponse.json(transactions.map(toTransactionDTO))
   } catch (err) {
     return handleApiError(err)
   }
@@ -44,13 +72,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const raw = await req.json()
-    const parsed = CreateTransactionSchema.safeParse(raw)
-    if (!parsed.success) {
-      throw new ValidationError("Dados inválidos", parsed.error.issues)
-    }
-
-    const body = parsed.data
+    await requireSession()
+    const body = parseWith(CreateTransactionSchema, await req.json())
 
     if (body.appointmentId == null) {
       const transaction = await db.transaction.create({
@@ -59,12 +82,13 @@ export async function POST(req: Request) {
           category: body.category,
           description: body.description,
           amount: body.amount,
-          date: body.date,
+          competenceDate: localDateOnly(body.date),
           paymentMethod: body.paymentMethod ?? undefined,
           status: body.status,
+          paidAt: body.status === "Confirmado" ? new Date() : undefined,
         },
       })
-      return NextResponse.json(transaction, { status: 201 })
+      return NextResponse.json(toTransactionDTO(transaction), { status: 201 })
     }
 
     const appointmentId = body.appointmentId
@@ -76,10 +100,10 @@ export async function POST(req: Request) {
       })
 
       if (!appt) {
-        throw new ValidationError("Agendamento não encontrado.")
+        throw new NotFoundError("Agendamento não encontrado.")
       }
 
-      if (appt.status !== "RegistrarChegada") {
+      if (appt.status !== AppointmentStatus.CheckIn) {
         throw new ValidationError(
           "Só é possível registrar pagamento vinculado quando o agendamento está em «Registrar chegada»."
         )
@@ -113,8 +137,8 @@ export async function POST(req: Request) {
       const coherent = amountMatchesFeeTable(
         body.category,
         body.amount,
-        config.consultationFee,
-        config.followUpFee
+        Number(config.consultationFee),
+        Number(config.followUpFee)
       )
       if (!coherent.ok) {
         throw new ValidationError(coherent.message)
@@ -126,16 +150,17 @@ export async function POST(req: Request) {
           category: body.category,
           description: body.description,
           amount: body.amount,
-          date: body.date,
+          competenceDate: localDateOnly(body.date),
           paymentMethod: body.paymentMethod,
           status: body.status,
+          paidAt: new Date(),
           appointmentId,
         },
       })
 
       const updatedAppointment = await tx.appointment.update({
         where: { id: appointmentId },
-        data: { status: "Pago" },
+        data: { status: AppointmentStatus.Paid },
         include: appointmentWithRelations,
       })
 
@@ -144,7 +169,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        transaction: result.transaction,
+        transaction: toTransactionDTO(result.transaction),
         appointment: toAppointment(result.appointment),
       },
       { status: 201 }
@@ -156,9 +181,13 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, ...data } = await req.json()
-    const transaction = await db.transaction.update({ where: { id }, data })
-    return NextResponse.json(transaction)
+    await requireSession()
+    const { id, ...data } = parseWith(UpdateTransactionSchema, await req.json())
+    const transaction = await db.transaction.update({
+      where: { id },
+      data: transactionWriteToDb(data),
+    })
+    return NextResponse.json(toTransactionDTO(transaction))
   } catch (err) {
     return handleApiError(err)
   }
@@ -166,8 +195,9 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { id } = await req.json()
-    await db.transaction.delete({ where: { id } })
+    await requireSession()
+    const { id } = parseWith(DeleteTransactionSchema, await req.json())
+    await db.transaction.update({ where: { id }, data: { deletedAt: new Date() } })
     return NextResponse.json({ success: true })
   } catch (err) {
     return handleApiError(err)

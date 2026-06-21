@@ -58,7 +58,11 @@ export function filterSchedules(data: Appointment[], date: Date, view: ViewMode,
 export function useSchedule(data: Appointment[]) {
   const [date, setDate] = useState(new Date())
   const [view, setView] = useState<ViewMode>("dia")
-  const { filters, setFilters, handleFilterChange } = useTableFilters<Filters>({})
+  const { filters, setFilters, handleFilterChange } = useTableFilters<Filters>({
+    status: "",
+    patient: "",
+    professional: "",
+  })
 
   const filteredData = useMemo(() => {
     return filterSchedules(data, date, view, filters)

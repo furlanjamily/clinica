@@ -5,6 +5,8 @@ import { createApiGuard } from "@/lib/api/rate-limit"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { parseWith } from "@/lib/validations/parse"
 import { CreatePatientSchema } from "@/lib/validations/patient"
+import { patientInputToDb, toPatientDTO } from "@/lib/domain/patient-dto"
+import type { Prisma } from "@/generated/prisma/client"
 
 const guard = createApiGuard({ max: 10, secretEnv: "SCHEDULE_OPTIONS_SECRET" })
 
@@ -39,7 +41,7 @@ export async function GET(req: Request) {
     ])
 
     const doctors = doctorsRaw.map((m) => ({ id: m.id, name: m.name, shift: m.shift }))
-    return NextResponse.json({ doctors, patients })
+    return NextResponse.json({ doctors, patients: patients.map(toPatientDTO) })
   } catch (error) {
     return handleApiError(error)
   }
@@ -51,8 +53,10 @@ export async function POST(req: Request) {
 
   try {
     const data = parseWith(CreatePatientSchema, await req.json())
-    const created = await db.patient.create({ data })
-    return NextResponse.json(created, { status: 201 })
+    const created = await db.patient.create({
+      data: patientInputToDb(data) as Prisma.PatientCreateInput,
+    })
+    return NextResponse.json(toPatientDTO(created), { status: 201 })
   } catch (error) {
     return handleApiError(error)
   }

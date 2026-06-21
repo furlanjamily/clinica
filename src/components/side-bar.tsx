@@ -3,7 +3,6 @@
 import {
   IconCalendarWeek,
   IconCurrencyDollar,
-  IconDashboard,
   IconPlus,
   IconSettings,
   IconUserPlus,
@@ -11,6 +10,7 @@ import {
   IconUsers,
   IconReportMedical,
 } from "@tabler/icons-react";
+import { LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,8 +18,8 @@ import { usePathname } from "next/navigation";
 import Logo from "../../public/logo.svg";
 import { LinkSideBar } from "./link-side-bar";
 import { Button } from "./ui/button";
-import { Card } from "./ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import type { Appointment } from "@/types/types";
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal";
 
@@ -41,7 +41,7 @@ function SideBarContent({ onCreate }: Props) {
   const { canViewSchedule, isSuperAdmin } = useAuth()
 
   const links: LinkItem[] = [
-    { name: "Dashboard", href: "/dashboard", icon: <IconDashboard size={24} /> },
+    { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
     ...(canViewSchedule ? [
       { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
       { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },
@@ -58,7 +58,12 @@ function SideBarContent({ onCreate }: Props) {
 
   return (
     <>
-      <Card className="flex flex-col w-full h-full items-center py-10 md:py-16 gap-8 md:gap-12 overflow-y-auto">
+      <div
+        className={cn(
+          "flex h-full w-full flex-col items-center gap-8 overflow-y-auto bg-white py-9 md:gap-12",
+          "md:rounded-3xl md:border md:border-gray-200"
+        )}
+      >
         <div className="flex flex-col items-center gap-6 md:gap-8">
           <Image className="max-w-[100px] md:max-w-[139px]" src={Logo} alt="Logo" />
           <Button onClick={() => setOpen(true)}>
@@ -89,7 +94,7 @@ function SideBarContent({ onCreate }: Props) {
             <span className="hidden md:inline">Configurações</span>
           </Link>
         </div>
-      </Card>
+      </div>
 
       {open && (
         <ScheduleFormModal
@@ -111,11 +116,11 @@ export function SideBar({ drawerOpen, onDrawerClose, ...props }: Props) {
     <>
       {/* Mobile: drawer overlay */}
       {drawerOpen && (
-        <div className="md:hidden fixed inset-0 z-40 flex">
-          <div className="w-[228px] h-full relative p-3">
+        <div className="fixed inset-0 z-40 flex md:hidden">
+          <div className="flex h-dvh w-[min(280px,85vw)] flex-shrink-0 flex-col bg-white">
             <SideBarContent {...props} />
           </div>
-          <div className="flex-1 bg-black/40" onClick={onDrawerClose} />
+          <div className="flex-1 bg-black/40" onClick={onDrawerClose} aria-hidden />
         </div>
       )}
 

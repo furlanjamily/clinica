@@ -170,6 +170,10 @@ export function Table({ rows, setData }: TableProps) {
   }
 
   const columns = [
+    columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.id : ""), {
+      id: "id",
+      header: "ID",
+    }),
     columnHelper.accessor((row: RowType) => (isDataRow(row) ? row.slotTime : ""), {
       id: "slotTime",
       header: "Horário",

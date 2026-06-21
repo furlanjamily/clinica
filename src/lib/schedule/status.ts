@@ -1,6 +1,7 @@
 /**
  * Fonte única de verdade para os status de agendamento.
- * Os valores correspondem aos persistidos no banco — não alterar sem migração.
+ * Os valores correspondem aos membros do enum `AppointmentStatus` do Prisma
+ * (identificadores válidos == valores persistidos == valores na API).
  */
 export const AppointmentStatus = {
   Scheduled: "Agendado",
@@ -9,7 +10,7 @@ export const AppointmentStatus = {
   CheckIn: "RegistrarChegada",
   AwaitingPayment: "AguardandoPagamento",
   Paid: "Pago",
-  InProgress: "Em Atendimento",
+  InProgress: "EmAtendimento",
   Completed: "Concluido",
   Cancelled: "Cancelado",
   Rescheduled: "Reagendado",

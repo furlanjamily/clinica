@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
 import type { UserRoleType } from "@/types/auth"
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query"
@@ -203,7 +204,7 @@ export default function UsersPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+        <ModalOverlay>
           <div className="max-h-[min(92vh,36rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader
               title={editing ? "Editar permissão" : "Novo usuário"}
@@ -232,7 +233,7 @@ export default function UsersPage() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

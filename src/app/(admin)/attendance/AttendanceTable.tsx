@@ -58,27 +58,30 @@ export function AttendanceTableComponent({
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | undefined>()
 
   const { filters, handleFilterChange } = useTableFilters({
+    id: "",
+    visitDate: "",
     patient: "",
     professional: "",
-    visitDate: "",
   })
 
   const FILTER_CONFIG: FilterField[] = [
+    { name: "id", type: "input", placeholder: "ID..." },
+    { name: "visitDate", type: "date" as const },
     { name: "patient", type: "input", placeholder: "Paciente..." },
     ...(isSuperAdmin
       ? [{ name: "professional", type: "input" as const, placeholder: "Médico..." }]
       : []),
-    { name: "visitDate", type: "date" as const },
   ]
 
   const filteredHistory = history.filter((item) => {
+    const matchId = filters.id ? item.id.toString() === filters.id : true
     const patientLower = getPatientName(item).toLowerCase()
     const matchPatient = filters.patient ? patientLower.includes(filters.patient.toLowerCase()) : true
     const matchProfessional = filters.professional
       ? (item.professionalName ?? "").toLowerCase().includes(filters.professional.toLowerCase())
       : true
     const matchVisitDate = filters.visitDate ? item.date === filters.visitDate : true
-    return matchPatient && matchProfessional && matchVisitDate
+    return matchPatient && matchProfessional && matchVisitDate && matchId
   })
 
   const historyRows: RowType[] = useMemo(
@@ -217,7 +220,7 @@ export function AttendanceTableComponent({
               })
             )}
 
-            <div className="flex flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+            <div className="flex gap-3 rounded-3xl border border-gray-200 bg-white p-2">
               <Collapse label="Filtros" unboundedPanel>
                 <GlobalFilters
                   values={filters}

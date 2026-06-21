@@ -7,10 +7,10 @@ export async function getAppointments(): Promise<Appointment[]> {
     include: {
       patient: true,
       doctor: true,
-      clinicalChart: true,
+      medicalRecord: { include: { patient: true } },
       transaction: true,
     },
-    orderBy: [{ date: "asc" }, { slotTime: "asc" }],
+    orderBy: { scheduledStart: "asc" },
   })
   return rows.map(toAppointment)
 }

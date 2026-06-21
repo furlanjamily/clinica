@@ -2,131 +2,175 @@
 
 import { useEffect, useState, type ChangeEvent } from "react"
 import { useForm } from "react-hook-form"
-import { toast } from "sonner"
 import { Plus, Trash2, Settings, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
-import { DESPESA_CATEGORIAS, RECEITA_CATEGORIAS } from "@/lib/finance/categories"
+import {
+  DESPESA_CATEGORIAS,
+  RECEITA_CATEGORIAS,
+  TRANSACTION_PAYMENT_METHODS,
+} from "@/lib/finance/categories"
+import { DEFAULT_FINANCIAL_CONFIG, type FinancialConfigValues } from "@/lib/finance/config"
+import type { FinanceTransaction } from "@/lib/finance/types"
+import { formatBRL, summarizeTransactions } from "@/lib/finance/summary"
+import {
+  useFinanceTransactions,
+  useFinancialConfig,
+  useFinanceMutations,
+} from "@/hooks/useFinance"
+import { Collapse } from "@/components/ui/Collapse"
+import { FilterField, GlobalFilters } from "@/components/ui/table/GlobalFilters"
+import { useTableFilters } from "@/hooks/useTableFilters"
 
-type Transacao = {
-  id: number
-  type: "Receita" | "Despesa"
-  category: string
-  description: string
-  amount: number
-  date: string
-  paymentMethod?: string | null
-  status: string
+type TransactionForm = Omit<FinanceTransaction, "id">
+
+function emptyTransactionForm(): TransactionForm {
+  return {
+    type: "Receita",
+    status: "Confirmado",
+    date: new Date().toISOString().slice(0, 10),
+    category: "",
+    description: "",
+    amount: 0,
+    paymentMethod: "",
+  }
 }
 
-type Config = {
-  consultationFee: number
-  followUpFee: number
-  doctorCommissionRate: number
+function currentMonth() {
+  return new Date().toISOString().slice(0, 7)
 }
-
-const FORMAS_PAGAMENTO = ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix", "Convênio", "Transferência", "Boleto", "Não aplicável"]
 
 export default function FinancePage() {
-  const [transacoes, setTransacoes] = useState<Transacao[]>([])
-  const [config, setConfig] = useState<Config>({ consultationFee: 150, followUpFee: 80, doctorCommissionRate: 40 })
-  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
-  const [mes, setMes] = useState(new Date().toISOString().slice(0, 7))
-  const [tipoFiltro, setTipoFiltro] = useState("")
-
-  const { register, handleSubmit, reset, watch } = useForm<Omit<Transacao, "id">>({
-    defaultValues: {
-      type: "Receita",
-      status: "Confirmado",
-      date: new Date().toISOString().slice(0, 10),
-      category: "",
-      description: "",
-      amount: 0,
-      paymentMethod: "",
-    },
+  const [month] = useState(currentMonth)
+  const [typeFilter] = useState("")
+  const { filters, handleFilterChange } = useTableFilters({
+    date: "",
+    type: "",
+    category: "",
+    paymentMethod: "",
+    status: "",
   })
-  const { register: regConfig, handleSubmit: handleConfig, reset: resetConfig } = useForm<Config>()
+
+
+  const { data: transactions = [], isPending: loadingTransactions } =
+    useFinanceTransactions(month, typeFilter)
+  const { data: config = DEFAULT_FINANCIAL_CONFIG } = useFinancialConfig()
+  const { createTransaction, removeTransaction, saveConfig } =
+    useFinanceMutations(month, typeFilter)
+
+  const { register, handleSubmit, reset, watch } = useForm<TransactionForm>({
+    defaultValues: emptyTransactionForm(),
+  })
+  const { register: regConfig, handleSubmit: handleConfig, reset: resetConfig } =
+    useForm<FinancialConfigValues>()
 
   const typeWatch = watch("type")
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/finance/transactions?mes=${mes}${tipoFiltro ? `&tipo=${tipoFiltro}` : ""}`).then(r => r.json()),
-      fetch("/api/finance/config").then(r => r.json()),
-    ]).then(([t, c]) => {
-      setTransacoes(Array.isArray(t) ? t : [])
-      setConfig(c)
-      resetConfig(c)
-      setLoading(false)
-    })
-  }, [mes, tipoFiltro, resetConfig])
+    resetConfig(config)
+  }, [config, resetConfig])
 
-  async function handleSave(data: Omit<Transacao, "id">) {
-    const res = await fetch("/api/finance/transactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-    const body = await res.json()
-    if (!res.ok) {
-      toast.error(body?.message ?? "Não foi possível registrar.")
-      return
-    }
-    const nova = body.transaction ?? body.transacao ?? body
-    setTransacoes((prev) => [nova, ...prev])
-    toast.success("Transação registrada!")
+  async function handleSave(data: TransactionForm) {
+    const created = await createTransaction(data)
+    if (!created) return
     setShowModal(false)
-    reset({
-      type: "Receita",
-      status: "Confirmado",
-      date: new Date().toISOString().slice(0, 10),
-      category: "",
-      description: "",
-      amount: 0,
-      paymentMethod: "",
-    })
+    reset(emptyTransactionForm())
   }
 
-  async function handleDelete(id: number) {
-    await fetch("/api/finance/transactions", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-    setTransacoes(prev => prev.filter(t => t.id !== id))
-    toast.success("Transação removida.")
-  }
-
-  async function handleSaveConfig(data: Config) {
-    const res = await fetch("/api/finance/config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-    const updated = await res.json()
-    setConfig(updated)
-    toast.success("Configurações salvas!")
+  async function handleSaveConfig(data: FinancialConfigValues) {
+    const updated = await saveConfig(data)
+    if (!updated) return
     setShowConfig(false)
   }
 
-  const receitas = transacoes.filter(t => t.type === "Receita" && t.status === "Confirmado")
-  const despesas = transacoes.filter(t => t.type === "Despesa" && t.status === "Confirmado")
-  const totalReceitas = receitas.reduce((acc, t) => acc + t.amount, 0)
-  const totalDespesas = despesas.reduce((acc, t) => acc + t.amount, 0)
-  const saldo = totalReceitas - totalDespesas
-  const comissaoTotal = totalReceitas * (config.doctorCommissionRate / 100)
+  const { totalIncome, totalExpense, balance, commission } = summarizeTransactions(
+    transactions,
+    config.doctorCommissionRate
+  )
 
-  const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+  function FinanceTable() {
+    return (
+      <DataTable<FinanceTransaction>
+        headers={[
+          { label: "Data", sort: (t) => t.date },
+          { label: "Tipo", sort: (t) => t.type },
+          { label: "Categoria", sort: (t) => t.category },
+          { label: "Descrição", sort: (t) => t.description },
+          { label: "Forma Pgto", sort: (t) => t.paymentMethod || null },
+          { label: "Valor", sort: (t) => t.amount * (t.type === "Despesa" ? -1 : 1) },
+          { label: "Status", sort: (t) => t.status },
+          { label: "Ações", align: "right" },
+        ]}
+        data={filteredTransactions}
+        emptyMessage="Nenhuma transação encontrada"
+        renderRow={(t) => (
+          <tr key={t.id} className="transition-colors hover:bg-gray-50/80">
+            <Td className="text-gray-600">{t.date}</Td>
+            <Td>
+              <span
+                className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+              >
+                {t.type}
+              </span>
+            </Td>
+            <Td className="text-gray-600">{t.category}</Td>
+            <Td className="max-w-[14rem] break-words">{t.description}</Td>
+            <Td className="text-gray-600">{t.paymentMethod ?? "—"}</Td>
+            <Td
+              className={`font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
+            >
+              {t.type === "Despesa" ? "- " : ""}
+              {formatBRL(t.amount)}
+            </Td>
+            <Td>
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+              >
+                {t.status}
+              </span>
+            </Td>
+            <Td>
+              <div className="flex justify-end">
+                <Button variant="ghost-danger" onClick={() => removeTransaction(t.id)}>
+                  <Trash2 size={14} />
+                </Button>
+              </div>
+            </Td>
+          </tr>
+        )}
+      />
+    )
+  }
+
+  const ALL_CATEGORIES = [...new Set([...RECEITA_CATEGORIAS, ...DESPESA_CATEGORIAS])]
+
+  const FILTER_CONFIG: FilterField[] = [
+    { name: "date", type: "date" as const },
+    { name: "type", type: "select" as const, options: [{ value: "", label: "Todos os tipos" }, { value: "Receita", label: "Receitas" }, { value: "Despesa", label: "Despesas" }], placeholder: "Tipo..." },
+    { name: "category", type: "select" as const, options: [{ value: "", label: "Todas as categorias" }, ...ALL_CATEGORIES.map(c => ({ value: c, label: c }))], placeholder: "Categoria..." },
+    { name: "paymentMethod", type: "select" as const, options: [{ value: "", label: "Todas as formas de pagamento" }, ...TRANSACTION_PAYMENT_METHODS.map(f => ({ value: f, label: f }))], placeholder: "Forma de pagamento..." },
+    { name: "status", type: "select" as const, options: [{ value: "", label: "Todos os status" }, { value: "Confirmado", label: "Confirmado" }, { value: "Pendente", label: "Pendente" }], placeholder: "Status..." },
+  ]
+
+  const filteredTransactions = transactions.filter((t) => {
+    const matchDate = filters.date ? t.date === filters.date : true
+    const matchType = filters.type ? t.type === filters.type : true
+    const matchCategory = filters.category ? t.category === filters.category : true
+    const matchPaymentMethod = filters.paymentMethod ? t.paymentMethod === filters.paymentMethod : true
+    const matchStatus = filters.status ? t.status === filters.status : true
+    return matchDate && matchType && matchCategory && matchPaymentMethod && matchStatus
+  })
+
 
   return (
-    <div className="flex min-w-0 max-w-full flex-col gap-6">
+    <div className="flex h-full min-w-0 min-h-0 max-w-full flex-col gap-6">
       <Header title="Financeiro">
         <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
           <Settings size={15} /> Configurações
@@ -134,15 +178,7 @@ export default function FinancePage() {
         <Button
           size="md"
           onClick={() => {
-            reset({
-              type: "Receita",
-              status: "Confirmado",
-              date: new Date().toISOString().slice(0, 10),
-              category: "",
-              description: "",
-              amount: 0,
-              paymentMethod: "",
-            })
+            reset(emptyTransactionForm())
             setShowModal(true)
           }}
         >
@@ -156,165 +192,55 @@ export default function FinancePage() {
             <TrendingUp size={16} className="text-green-500" />
             <span className="text-xs text-gray-500">Receitas</span>
           </div>
-          <p className="text-lg font-bold text-green-600">{fmt(totalReceitas)}</p>
+          <p className="text-lg font-bold text-green-600">{formatBRL(totalIncome)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown size={16} className="text-red-500" />
             <span className="text-xs text-gray-500">Despesas</span>
           </div>
-          <p className="text-lg font-bold text-red-600">{fmt(totalDespesas)}</p>
+          <p className="text-lg font-bold text-red-600">{formatBRL(totalExpense)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign size={16} className={saldo >= 0 ? "text-blue-500" : "text-red-500"} />
+            <DollarSign size={16} className={balance >= 0 ? "text-blue-500" : "text-red-500"} />
             <span className="text-xs text-gray-500">Saldo</span>
           </div>
-          <p className={`text-lg font-bold ${saldo >= 0 ? "text-blue-600" : "text-red-600"}`}>{fmt(saldo)}</p>
+          <p className={`text-lg font-bold ${balance >= 0 ? "text-blue-600" : "text-red-600"}`}>{formatBRL(balance)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign size={16} className="text-purple-500" />
             <span className="text-xs text-gray-500">Comissão médicos</span>
           </div>
-          <p className="text-lg font-bold text-purple-600">{fmt(comissaoTotal)}</p>
+          <p className="text-lg font-bold text-purple-600">{formatBRL(commission)}</p>
           <p className="text-xs text-gray-400">{config.doctorCommissionRate}% das receitas</p>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm text-gray-500 font-medium">Filtrar por</span>
-        <Input
-          type="month"
-          value={mes}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setMes(e.target.value)}
-          className="w-auto"
-        />
-        <FormSelect
-          value={tipoFiltro}
-          onChange={(e) => setTipoFiltro(e.target.value)}
-          className="w-auto"
-        >
-          <option value="">Todos os tipos</option>
-          <option value="Receita">Receitas</option>
-          <option value="Despesa">Despesas</option>
-        </FormSelect>
+      <div className="flex flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+        <Collapse label="Filtros" unboundedPanel>
+          <GlobalFilters
+            values={filters}
+            onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
+            filters={FILTER_CONFIG}
+          />
+        </Collapse>
       </div>
 
-      {loading ? (
-        <TableCard>
-          <div className="p-2 sm:p-3">
-            <TableSkeleton cols={6} rows={5} />
-          </div>
-        </TableCard>
-      ) : (
-        <>
-          {/* Celular: cartões (tabela larga não cabe bem na viewport estreita) */}
-          {transacoes.length === 0 ? (
-            <Card className="p-8 text-center text-sm leading-relaxed text-gray-400 md:hidden">
-              Nenhuma transação encontrada
-            </Card>
-          ) : (
-          <ul className="flex flex-col gap-3 md:hidden">
-            {transacoes.map((t) => (
-              <li
-                key={t.id}
-                className="space-y-3 rounded-3xl border border-gray-200 bg-white p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <span className="text-xs text-gray-500">{t.date}</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-                    >
-                      {t.type}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
-                    >
-                      {t.status}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-gray-900">{t.category}</p>
-                <p className="break-words text-sm text-gray-700">{t.description}</p>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-sm">
-                  <span className="text-gray-600">{t.paymentMethod ?? "—"}</span>
-                  <span
-                    className={`font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {t.type === "Despesa" ? "- " : ""}
-                    {fmt(t.amount)}
-                  </span>
-                </div>
-                <div className="flex justify-end">
-                  <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          )}
-
-          {/* Desktop / tablet: tabela com scroll horizontal se precisar */}
-          <DataTable<Transacao>
-            className="hidden md:flex"
-            headers={[
-              { label: "Data", sort: (t) => t.date },
-              { label: "Tipo", sort: (t) => t.type },
-              { label: "Categoria", sort: (t) => t.category },
-              { label: "Descrição", sort: (t) => t.description },
-              { label: "Forma Pgto", sort: (t) => t.paymentMethod || null },
-              { label: "Valor", sort: (t) => t.amount * (t.type === "Despesa" ? -1 : 1) },
-              { label: "Status", sort: (t) => t.status },
-              { label: "", align: "right" },
-            ]}
-            data={transacoes}
-            emptyMessage="Nenhuma transação encontrada"
-            minWidthClassName="min-w-[640px]"
-            renderRow={(t) => (
-              <tr key={t.id} className="transition-colors hover:bg-gray-50/80">
-                <Td className="text-gray-600">{t.date}</Td>
-                <Td>
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs font-medium ${t.type === "Receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-                  >
-                    {t.type}
-                  </span>
-                </Td>
-                <Td className="text-gray-600">{t.category}</Td>
-                <Td className="max-w-[14rem] break-words">{t.description}</Td>
-                <Td className="text-gray-600">{t.paymentMethod ?? "—"}</Td>
-                <Td
-                  className={`font-semibold ${t.type === "Receita" ? "text-green-600" : "text-red-600"}`}
-                >
-                  {t.type === "Despesa" ? "- " : ""}
-                  {fmt(t.amount)}
-                </Td>
-                <Td>
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs ${t.status === "Confirmado" ? "bg-green-100 text-green-700" : t.status === "Pendente" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
-                  >
-                    {t.status}
-                  </span>
-                </Td>
-                <Td>
-                  <div className="flex justify-end">
-                    <Button variant="ghost-danger" onClick={() => handleDelete(t.id)}>
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
-                </Td>
-              </tr>
-            )}
-          />
-        </>
-      )}
-
+      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {loadingTransactions ? (
+          <TableCard>
+            <div className="p-2 sm:p-3">
+              <TableSkeleton cols={6} rows={5} />
+            </div>
+          </TableCard>
+        ) : (
+          <FinanceTable />
+        )}
+      </div>
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+        <ModalOverlay>
           <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Nova transação" onClose={() => { setShowModal(false); reset() }} />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
@@ -344,7 +270,7 @@ export default function FinancePage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormSelect label="Forma de pagamento (opcional em despesas)" {...register("paymentMethod")}>
                   <option value="">Não informado</option>
-                  {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
+                  {TRANSACTION_PAYMENT_METHODS.map(f => <option key={f} value={f}>{f}</option>)}
                 </FormSelect>
                 <FormSelect label="Status" {...register("status")}>
                   <option value="Confirmado">Confirmado</option>
@@ -359,11 +285,11 @@ export default function FinancePage() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {showConfig && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+        <ModalOverlay>
           <div className="max-h-[min(92vh,32rem)] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
             <form onSubmit={handleConfig(handleSaveConfig)} className="flex flex-col gap-4">
@@ -378,7 +304,7 @@ export default function FinancePage() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

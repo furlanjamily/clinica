@@ -60,7 +60,7 @@ export function TimerCell({ item }: { item: Appointment }) {
           {mounted ? formatDuration(elapsedMs) : "--:--"}
         </span>
         <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-500">
-          Tempo de atendimento
+          Timer
         </span>
       </div>
     </div>

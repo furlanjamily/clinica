@@ -8,12 +8,18 @@ import {
   UpdateDoctorSchema,
   DeleteDoctorSchema,
 } from "@/lib/validations/doctor"
+import { doctorInputToDb, toDoctorDTO } from "@/lib/domain/doctor-dto"
+import type { Prisma } from "@/generated/prisma/client"
 
 export async function GET() {
   try {
     await requireSession()
-    const doctors = await db.doctor.findMany({ orderBy: { name: "asc" } })
-    return NextResponse.json(doctors)
+    const doctors = await db.doctor.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      include: { specialty: true },
+    })
+    return NextResponse.json(doctors.map(toDoctorDTO))
   } catch (error) {
     return handleApiError(error)
   }
@@ -23,8 +29,11 @@ export async function POST(req: Request) {
   try {
     await requireRole("ADMIN", "SUPER_ADMIN")
     const data = parseWith(CreateDoctorSchema, await req.json())
-    const doctor = await db.doctor.create({ data })
-    return NextResponse.json(doctor, { status: 201 })
+    const doctor = await db.doctor.create({
+      data: doctorInputToDb(data) as unknown as Prisma.DoctorCreateInput,
+      include: { specialty: true },
+    })
+    return NextResponse.json(toDoctorDTO(doctor), { status: 201 })
   } catch (error) {
     return handleApiError(error)
   }
@@ -34,8 +43,12 @@ export async function PATCH(req: Request) {
   try {
     await requireRole("ADMIN", "SUPER_ADMIN")
     const { id, ...data } = parseWith(UpdateDoctorSchema, await req.json())
-    const doctor = await db.doctor.update({ where: { id }, data })
-    return NextResponse.json(doctor)
+    const doctor = await db.doctor.update({
+      where: { id },
+      data: doctorInputToDb(data),
+      include: { specialty: true },
+    })
+    return NextResponse.json(toDoctorDTO(doctor))
   } catch (error) {
     return handleApiError(error)
   }
@@ -45,7 +58,8 @@ export async function DELETE(req: Request) {
   try {
     await requireRole("ADMIN", "SUPER_ADMIN")
     const { id } = parseWith(DeleteDoctorSchema, await req.json())
-    await db.doctor.delete({ where: { id } })
+    // Soft delete: preserva agendamentos/histórico (FK Restrict).
+    await db.doctor.update({ where: { id }, data: { deletedAt: new Date(), active: false } })
     return NextResponse.json({ success: true })
   } catch (error) {
     return handleApiError(error)

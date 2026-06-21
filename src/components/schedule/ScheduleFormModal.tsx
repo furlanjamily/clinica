@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useScheduleOptions } from "@/hooks/useScheduleOptions"
 import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { ScheduleFormFields } from "@/components/schedule/ScheduleFormFields"
 import { formatDateToInput, isDateDisabled, filterAvailableSlots } from "@/lib/schedule/form-utils"
 
@@ -176,7 +177,7 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <ModalOverlay>
       <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
         <ModalHeader
           title={isReschedule ? "Reagendar" : "Novo Agendamento"}
@@ -205,6 +206,6 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
           </Button>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

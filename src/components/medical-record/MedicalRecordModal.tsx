@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Textarea } from "@/components/ui/Input"
 import type { MedicalRecord } from "@/types"
 
@@ -72,7 +73,7 @@ export function MedicalRecordModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <ModalOverlay>
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
 
         <ModalHeader
@@ -112,6 +113,6 @@ export function MedicalRecordModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
