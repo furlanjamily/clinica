@@ -34,7 +34,6 @@ function addDaysStr(date: string, days: number): string {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
 }
 
-/** Rótulo legível do dia (Hoje, Amanhã ou "Segunda, 20 de junho"). */
 export function formatDayHeader(dateStr: string, today = getTodayYYYYMMDD()): string {
   const [y, m, d] = dateStr.split("-").map(Number)
   const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()]
@@ -58,7 +57,6 @@ export type DayGroup<T> = {
   items: T[]
 }
 
-/** Agrupa itens por data (YYYY-MM-DD), ordenados cronologicamente. */
 export function groupByDay<T>(items: T[], getDate: (item: T) => string): DayGroup<T>[] {
   const map = new Map<string, T[]>()
   for (const item of items) {
@@ -77,7 +75,6 @@ export function groupByDay<T>(items: T[], getDate: (item: T) => string): DayGrou
     }))
 }
 
-/** Cabeçalho sticky para listas agrupadas por dia. */
 export function DaySectionHeader({
   label,
   count,

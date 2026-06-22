@@ -1,7 +1,31 @@
-/** Altura fixa da área rolável quando há itens — scroll interno, não estoura o layout. */
-export const DASHBOARD_PANEL_BODY_H = "h-[420px]"
+import type { DashboardPeriod } from "./DashboardDataProvider"
 
-/** Mínimo quando vazio — o card expande (flex-1) para alinhar as colunas. */
-export const DASHBOARD_PANEL_EMPTY_MIN = "min-h-[160px]"
+export const DASHBOARD_PANEL_HEIGHT = 600
 
-export const DASHBOARD_PANEL_SCROLL = "overflow-y-auto overscroll-contain pr-1"
+export const DASHBOARD_PANEL_HEIGHT_MONTH = 580
+
+export function getDashboardPanelHeight(period: DashboardPeriod): number {
+  return period === "month" ? DASHBOARD_PANEL_HEIGHT_MONTH : DASHBOARD_PANEL_HEIGHT
+}
+
+export const DASHBOARD_PANEL_SHELL =
+  "flex h-full max-h-full min-h-0 flex-col overflow-hidden"
+
+export const DASHBOARD_PANELS_GRID = "grid shrink-0 grid-rows-2 gap-5 sm:gap-6"
+
+export const DASHBOARD_PANEL_BODY =
+  "relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+
+export const DASHBOARD_PANEL_HEADER =
+  "mb-5 flex min-h-[3.25rem] shrink-0 items-start justify-between gap-2"
+
+export const DASHBOARD_LAST_VISIT_SHELL =
+  "flex h-[600px] min-h-[600px] max-h-[600px] shrink-0 flex-col overflow-hidden"
+
+export const DASHBOARD_LAST_VISIT_BODY =
+  "relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+
+export const DASHBOARD_CALENDAR_BODY_WEEK = "grid grid-cols-7 gap-1 text-center"
+
+export const DASHBOARD_CALENDAR_BODY_MONTH =
+  "grid grid-cols-7 gap-1 text-center content-start"

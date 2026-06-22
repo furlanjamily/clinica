@@ -9,18 +9,11 @@ import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
 import { useAdminShell } from "@/hooks/useAdminShell";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
-import { PeriodTab } from "@/data/dashboardMock";
+import { FiArrowLeft, FiArrowRight } from "react-icons/fi"
 
-
-type Props = {
-  onMenuClick?: () => void
-}
-
-export function UserHeader({ onMenuClick }: Props) {
+export function UserHeader() {
   const shell = useAdminShell()
-  const [period, setPeriod] = useState<PeriodTab>("Today")
-  const { data: session } = useSession();
+  const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
   const displayEmail = session?.user?.email ?? "";
   const [open, setOpen] = useState(false);

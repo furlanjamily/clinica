@@ -6,22 +6,19 @@ import { HiOutlineUser } from "react-icons/hi"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { STATUS_STYLE } from "@/lib/schedule/status"
-import {
-  DASHBOARD_PANEL_BODY_H,
-  DASHBOARD_PANEL_EMPTY_MIN,
-  DASHBOARD_PANEL_SCROLL,
-} from "./dashboard-panel-layout"
+import { DASHBOARD_PANEL_BODY, DASHBOARD_PANEL_HEADER, DASHBOARD_PANEL_SHELL } from "./dashboard-panel-layout"
 import { DaySectionHeader, groupByDay } from "./group-by-day"
 import { useDashboard, type DashboardAgendaItem, type DashboardPeriod } from "./DashboardDataProvider"
+import { TimelineAgendaSkeleton } from "./TimelineAgendaSkeleton"
 
 const AGENDA_TITLE: Record<DashboardPeriod, string> = {
-  today: "Agenda de hoje",
+  day: "Agenda do dia",
   week: "Agenda da semana",
   month: "Agenda do mês",
 }
 
 const AGENDA_EMPTY: Record<DashboardPeriod, string> = {
-  today: "Nenhum atendimento agendado para hoje.",
+  day: "Nenhum atendimento agendado neste dia.",
   week: "Nenhum atendimento agendado nesta semana.",
   month: "Nenhum atendimento agendado neste mês.",
 }
@@ -30,7 +27,9 @@ export function TimelineAgenda() {
   const { data, loading, period } = useDashboard()
   const agenda = data?.periodAgenda ?? []
   const groupByDayEnabled = period === "week" || period === "month"
-  const isEmpty = !loading && agenda.length === 0
+  const title = data?.calendarLabel
+    ? `${AGENDA_TITLE[period]} · ${data.calendarLabel}`
+    : AGENDA_TITLE[period]
 
   const dayGroups = useMemo(
     () => (groupByDayEnabled ? groupByDay(agenda, (item) => item.date) : []),
@@ -43,16 +42,13 @@ export function TimelineAgenda() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.35 }}
       whileHover={{ y: -2 }}
-      className={cn("flex flex-col", isEmpty && "lg:flex-1")}
+      className={cn("h-full min-h-0", DASHBOARD_PANEL_SHELL)}
     >
-      <Card
-        className={cn(
-          "flex flex-col rounded-[20px] border-0 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.05)]",
-          isEmpty ? "h-full lg:flex-1" : "overflow-hidden"
-        )}
-      >
-        <div className="mb-5 flex shrink-0 items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-600">{AGENDA_TITLE[period]}</h3>
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border-0 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.05)]">
+        <div className={DASHBOARD_PANEL_HEADER}>
+          <h3 className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-gray-600">
+            {title}
+          </h3>
           {agenda.length > 0 ? (
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-semibold text-gray-500">
               {agenda.length} {agenda.length === 1 ? "consulta" : "consultas"}
@@ -60,17 +56,9 @@ export function TimelineAgenda() {
           ) : null}
         </div>
 
-        <div
-          className={cn(
-            "relative",
-            DASHBOARD_PANEL_SCROLL,
-            isEmpty ? cn("flex-1", DASHBOARD_PANEL_EMPTY_MIN) : DASHBOARD_PANEL_BODY_H
-          )}
-        >
+        <div className={DASHBOARD_PANEL_BODY}>
           {loading ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-center text-sm text-gray-400">Carregando agenda...</p>
-            </div>
+            <TimelineAgendaSkeleton />
           ) : agenda.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-center text-sm text-gray-400">{AGENDA_EMPTY[period]}</p>

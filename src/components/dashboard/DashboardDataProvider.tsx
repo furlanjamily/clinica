@@ -1,8 +1,16 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react"
+import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
 
-export type DashboardPeriod = "today" | "week" | "month"
+export type DashboardPeriod = "day" | "week" | "month"
 
 export type DashboardKpis = {
   patientsInRange: number
@@ -23,6 +31,7 @@ export type DashboardCalendarDay = {
   day: number | null
   count: number
   isToday: boolean
+  isSelected?: boolean
   inPeriod?: boolean
 }
 
@@ -43,6 +52,16 @@ export type DashboardFeaturedDoctor = {
   qualification: string | null
   shift: string | null
   completedCount: number
+}
+
+export type DashboardFocusPatient = {
+  patientName: string
+  demographics: string
+  patientId: string
+  appointmentDate: string
+  appointmentTime: string
+  statusLabel: string
+  contextLabel: string
 }
 
 export type DashboardLastVisit = {
@@ -66,6 +85,7 @@ export type DashboardStatusBreakdown = {
 
 export type DashboardOverview = {
   period: DashboardPeriod
+  referenceDate: string
   periodLabel: string
   kpis: DashboardKpis
   calendarLabel: string
@@ -73,6 +93,7 @@ export type DashboardOverview = {
   calendar: DashboardCalendarDay[]
   periodAgenda: DashboardAgendaItem[]
   featuredDoctor: DashboardFeaturedDoctor | null
+  focusPatient: DashboardFocusPatient | null
   lastVisit: DashboardLastVisit | null
   statusBreakdown: DashboardStatusBreakdown
 }
@@ -80,30 +101,71 @@ export type DashboardOverview = {
 type DashboardContextValue = {
   data: DashboardOverview | null
   loading: boolean
-  error: boolean
   period: DashboardPeriod
   setPeriod: (period: DashboardPeriod) => void
+  navigatePrevious: () => void
+  navigateNext: () => void
+  selectDay: (date: string) => void
+}
+
+function addDaysStr(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + days)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
+function addMonthsStr(date: string, months: number): string {
+  const [y, m, d] = date.split("-").map(Number)
+  const dt = new Date(y, m - 1 + months, d)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
+function shiftReferenceDate(period: DashboardPeriod, date: string, direction: -1 | 1): string {
+  if (period === "day") return addDaysStr(date, direction)
+  if (period === "week") return addDaysStr(date, direction * 7)
+  return addMonthsStr(date, direction)
 }
 
 const DashboardContext = createContext<DashboardContextValue>({
   data: null,
   loading: true,
-  error: false,
-  period: "month",
+  period: "day",
   setPeriod: () => {},
+  navigatePrevious: () => {},
+  navigateNext: () => {},
+  selectDay: () => {},
 })
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<DashboardOverview | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-  const [period, setPeriod] = useState<DashboardPeriod>("today")
+  const [period, setPeriodState] = useState<DashboardPeriod>("day")
+  const [referenceDate, setReferenceDate] = useState(getTodayYYYYMMDD)
+
+  const setPeriod = useCallback((next: DashboardPeriod) => {
+    setReferenceDate(getTodayYYYYMMDD())
+    setPeriodState(next)
+  }, [])
+
+  const navigatePrevious = useCallback(() => {
+    setReferenceDate((current) => shiftReferenceDate(period, current, -1))
+  }, [period])
+
+  const navigateNext = useCallback(() => {
+    setReferenceDate((current) => shiftReferenceDate(period, current, 1))
+  }, [period])
+
+  const selectDay = useCallback((date: string) => {
+    setReferenceDate(date)
+  }, [])
 
   useEffect(() => {
     let active = true
     setLoading(true)
-    setError(false)
-    fetch(`/api/dashboard/overview?period=${period}`)
+    fetch(`/api/dashboard/overview?period=${period}&date=${referenceDate}`)
       .then((res) => {
         if (!res.ok) throw new Error("overview failed")
         return res.json()
@@ -115,18 +177,25 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        if (active) {
-          setError(true)
-          setLoading(false)
-        }
+        if (active) setLoading(false)
       })
     return () => {
       active = false
     }
-  }, [period])
+  }, [period, referenceDate])
 
   return (
-    <DashboardContext.Provider value={{ data, loading, error, period, setPeriod }}>
+    <DashboardContext.Provider
+      value={{
+        data,
+        loading,
+        period,
+        setPeriod,
+        navigatePrevious,
+        navigateNext,
+        selectDay,
+      }}
+    >
       {children}
     </DashboardContext.Provider>
   )

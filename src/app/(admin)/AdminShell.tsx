@@ -22,7 +22,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             isDashboard ? "gap-0" : "gap-3 sm:gap-4"
           )}
         >
-          {!isDashboard ? <UserHeader onMenuClick={() => setDrawerOpen(true)} /> : null}
+          {!isDashboard ? <UserHeader /> : null}
           <div
             className={cn(
               "flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto",

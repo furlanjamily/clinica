@@ -4,7 +4,6 @@ interface Option {
   color?: string
 }
 
-/** Contexto de célula do TanStack Table (modo tabela). */
 type TableCellInfo = {
   getValue: () => string
   row: { index: number }
@@ -19,10 +18,8 @@ interface SelectProps {
   options: Option[]
   showStatusDot?: boolean
 
-  // modo tabela
   info?: TableCellInfo
 
-  // modo formulário
   value?: string
   onChange?: (value: string) => void
 }

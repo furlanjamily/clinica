@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { ProjectOverviewCard } from "./ProjectOverviewCard"
+import { ProjectOverviewCardSkeleton } from "./ProjectOverviewCardSkeleton"
 import { useDashboard } from "./DashboardDataProvider"
 
 const BRL = new Intl.NumberFormat("pt-BR", {
@@ -11,15 +12,6 @@ const BRL = new Intl.NumberFormat("pt-BR", {
 })
 
 function buildCards(kpis, periodLabel) {
-  if (!kpis) {
-    return [
-      { id: 1, title: "Pacientes", value: "—", description: "Carregando...", featured: true },
-      { id: 2, title: "Atendimentos", value: "—", description: "Carregando..." },
-      { id: 3, title: "Faturamento", value: "—", description: "Carregando..." },
-      { id: 4, title: "Prontuários", value: "—", description: "Carregando..." },
-    ]
-  }
-
   return [
     {
       id: 1,
@@ -62,7 +54,6 @@ function buildCards(kpis, periodLabel) {
 
 export function ProjectOverviewCards() {
   const { data, loading } = useDashboard()
-  const cards = buildCards(loading ? null : data?.kpis, data?.periodLabel ?? "no período")
 
   return (
     <motion.div
@@ -71,9 +62,17 @@ export function ProjectOverviewCards() {
       transition={{ duration: 0.35 }}
       className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4"
     >
-      {cards.map((card, index) => (
-        <ProjectOverviewCard key={card.id} card={card} index={index} />
-      ))}
+      {loading
+        ? Array.from({ length: 4 }).map((_, index) => (
+            <ProjectOverviewCardSkeleton
+              key={index}
+              index={index}
+              featured={index === 0}
+            />
+          ))
+        : buildCards(data?.kpis, data?.periodLabel ?? "no período").map((card, index) => (
+            <ProjectOverviewCard key={card.id} card={card} index={index} />
+          ))}
     </motion.div>
   )
 }

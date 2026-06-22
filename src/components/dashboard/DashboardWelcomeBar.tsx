@@ -7,9 +7,9 @@ import { useSession } from "next-auth/react"
 import { useDashboard, type DashboardPeriod } from "./DashboardDataProvider"
 
 const PERIOD_OPTIONS: { value: DashboardPeriod; label: string }[] = [
-  { value: "today", label: "Hoje" },
-  { value: "week", label: "Esta semana" },
-  { value: "month", label: "Este mês" },
+  { value: "day", label: "Dia" },
+  { value: "week", label: "Semana" },
+  { value: "month", label: "Mês" },
 ]
 
 function ActionButton({

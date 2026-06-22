@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { dashboardColors } from "./theme"
 import { Card } from "../ui/card"
 import { useDashboard } from "./DashboardDataProvider"
+import { ProjectProgressCardSkeleton } from "./ProjectProgressCardSkeleton"
 
 const CX = 110
 const CY = 110
@@ -49,7 +50,6 @@ function AnimatedArc({
       initial={{ pathLength: 0, opacity: 0.5 }}
       animate={{ pathLength: 1, opacity: 1 }}
       transition={{ duration: 0.9, delay, ease: "easeOut" }}
-      style={{ pathLength: 1 }}
     />
   )
 }
@@ -74,8 +74,12 @@ function LegendDot({ variant }: { variant: "completed" | "inProgress" | "pending
 }
 
 export function ProjectProgressCard() {
-  const { data } = useDashboard()
+  const { data, loading } = useDashboard()
   const breakdown = data?.statusBreakdown
+
+  if (loading) {
+    return <ProjectProgressCardSkeleton />
+  }
   const completed = breakdown?.completed ?? 0
   const inProgress = breakdown?.inProgress ?? 0
   const pending = breakdown?.pending ?? 0

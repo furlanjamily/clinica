@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { computeProgress } from "@/data/dashboardTasksMock"
 import { useDashboard, type DashboardAgendaItem } from "@/components/dashboard/DashboardDataProvider"
+import { DASHBOARD_PANEL_SHELL } from "@/components/dashboard/dashboard-panel-layout"
 import { cn } from "@/lib/utils"
 import { DashboardHeader } from "./DashboardHeader"
-import { ProgressSection } from "./ProgressSection"
+import { computeProgress } from "./progress"
 import { TaskCard } from "./TaskCard"
 import { CreateTaskModal } from "./CreateTaskModal"
 import { EditTaskModal } from "./EditTaskModal"
+import { TaskDashboardPanelSkeleton } from "./TaskDashboardPanelSkeleton"
 import type { ClinicTask, TaskFilter, TaskFormData, TaskIcon, TaskStatus } from "./types"
 
 let nextId = 100000
@@ -20,7 +21,6 @@ function statusToTask(status: string): TaskStatus {
   return "pending"
 }
 
-/** Tarefas geradas a partir da agenda do período selecionado. */
 function agendaToTasks(agenda: DashboardAgendaItem[]): ClinicTask[] {
   return agenda.map((a) => {
     const status = statusToTask(a.status)
@@ -158,6 +158,16 @@ type TaskDashboardContentProps = {
 }
 
 function TaskDashboardContent({ compact = false }: TaskDashboardContentProps) {
+  const { loading } = useDashboard()
+
+  if (compact && loading) {
+    return <TaskDashboardPanelSkeleton />
+  }
+
+  return <TaskDashboardContentLoaded compact={compact} />
+}
+
+function TaskDashboardContentLoaded({ compact = false }: TaskDashboardContentProps) {
   const {
     filter,
     setFilter,
@@ -175,7 +185,6 @@ function TaskDashboardContent({ compact = false }: TaskDashboardContentProps) {
     handleToggleComplete,
   } = useTaskDashboardState()
 
-  const isEmpty = tasks.length === 0
   const { period } = useDashboard()
   const groupByDay = period === "week" || period === "month"
 
@@ -186,9 +195,9 @@ function TaskDashboardContent({ compact = false }: TaskDashboardContentProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: compact ? 0.2 : 0 }}
         className={cn(
-          "flex w-full min-w-0 flex-col rounded-[20px] border border-gray-200 bg-white p-5 sm:p-6",
-          compact && isEmpty && "lg:flex-1",
-          compact && !isEmpty && "overflow-hidden"
+          "h-full min-h-0",
+          DASHBOARD_PANEL_SHELL,
+          "w-full min-w-0 rounded-[20px] border border-gray-200 bg-white p-5 sm:p-6"
         )}
       >
         <div className="shrink-0">
@@ -200,10 +209,10 @@ function TaskDashboardContent({ compact = false }: TaskDashboardContentProps) {
           />
         </div>
 
-        <div className={cn(compact && isEmpty && "flex min-h-0 flex-1 flex-col")}>
+        <div className="flex min-h-0 flex-1 flex-col">
           <TaskCard
             compact={compact}
-            fillHeight={compact && isEmpty}
+            fillHeight={compact}
             groupByDay={compact && groupByDay}
             tasks={filteredTasks}
             completed={progress.completed}

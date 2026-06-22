@@ -4,17 +4,20 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { MessageCircle } from "lucide-react"
 import { useDashboard } from "./DashboardDataProvider"
+import { FeaturedDoctorCardSkeleton } from "./FeaturedDoctorCardSkeleton"
 import { Card } from "../ui/card"
 import { useSession } from "next-auth/react"
 
 const FEATURED_DOCTOR_IMAGE = "/images/featured-doctor-female.png"
 
 export function FeaturedDoctorCard() {
-  const { data } = useDashboard()
-  const { data: session } = useSession();
-  const doctor = data?.featuredDoctor
+  const { data, loading } = useDashboard()
+  const { data: session } = useSession()
+  const specialty = data?.featuredDoctor?.specialty ?? "—"
 
-  const specialty = doctor?.specialty ?? "—"
+  if (loading) {
+    return <FeaturedDoctorCardSkeleton />
+  }
 
   return (
     <motion.div
@@ -22,16 +25,13 @@ export function FeaturedDoctorCard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
       className="flex h-full w-full min-h-[400px] flex-col"
-
     >
-      <Card
-        className={"flex flex-col h-[600px] lg:flex-1 rounded-[20px] border-0 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.05)]"}
-      >
+      <Card className="flex h-[600px] flex-col rounded-[20px] border-0 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.05)] lg:flex-1">
         <div className="h-full relative overflow-hidden rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.06)">
           <div className="flex flex-col h-full w-full justify-center items-center">
             <Image
               src={FEATURED_DOCTOR_IMAGE}
-              alt={doctor?.name ?? ""}
+              alt={session?.user?.name ?? "Profissional"}
               fill
               priority
               className="object-cover object-top h-full"

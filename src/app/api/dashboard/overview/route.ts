@@ -26,21 +26,42 @@ const PENDING = [
   AppointmentStatus.Confirmed,
 ]
 
-type Period = "today" | "week" | "month"
+type Period = "day" | "week" | "month"
 const PERIOD_LABEL: Record<Period, string> = {
-  today: "hoje",
-  week: "esta semana",
-  month: "este mês",
+  day: "no dia",
+  week: "na semana",
+  month: "no mês",
 }
 
 function parsePeriod(value: string | null): Period {
-  if (value === "today" || value === "week" || value === "month") return value
-  return "month"
+  if (value === "day" || value === "today" || value === "week" || value === "month") {
+    return value === "today" ? "day" : value
+  }
+  return "day"
+}
+
+function parseReferenceDate(value: string | null, fallback: string): string {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return fallback
 }
 
 function addDaysStr(date: string, days: number): string {
   const d = startOfLocalDay(date)
   return toLocalDate(new Date(d.getTime() + days * 86400000))
+}
+
+function addMonthsStr(date: string, months: number): string {
+  const [y, m, d] = date.split("-").map(Number)
+  const dt = new Date(y, m - 1 + months, d)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
+function weekDatesFrom(date: string): string[] {
+  const dow = startOfLocalDay(date).getUTCDay()
+  const mondayOffset = dow === 0 ? -6 : 1 - dow
+  const weekStartStr = addDaysStr(date, mondayOffset)
+  return Array.from({ length: 7 }, (_, i) => addDaysStr(weekStartStr, i))
 }
 
 function ageFrom(birthDate: string | null): number | null {
@@ -54,9 +75,143 @@ function ageFrom(birthDate: string | null): number | null {
   return age >= 0 && age < 130 ? age : null
 }
 
+const DEFAULT_SLOT_MS = 30 * 60 * 1000
+
+type AgendaFocusRow = {
+  id: number
+  patientId: number
+  scheduledStart: Date
+  scheduledEnd: Date | null
+  status: string
+  patientNameSnapshot: string | null
+  patient: { id: number; name: string; birthDate: Date | null; sex: string | null } | null
+}
+
+function appointmentEnd(row: Pick<AgendaFocusRow, "scheduledStart" | "scheduledEnd">): Date {
+  return row.scheduledEnd ?? new Date(row.scheduledStart.getTime() + DEFAULT_SLOT_MS)
+}
+
+function isWithinAppointmentSlot(
+  row: Pick<AgendaFocusRow, "scheduledStart" | "scheduledEnd">,
+  now: Date,
+): boolean {
+  const t = now.getTime()
+  return t >= row.scheduledStart.getTime() && t < appointmentEnd(row).getTime()
+}
+
+function isDoneStatus(status: string): boolean {
+  return (DONE as string[]).includes(status)
+}
+
+type FocusPick = { row: AgendaFocusRow; context: "in_progress" | "in_slot" | "next" | "day_first" | "fallback" }
+
+function pickFocusAppointment(
+  rows: AgendaFocusRow[],
+  now: Date,
+  referenceDate: string,
+  today: string,
+): FocusPick | null {
+  const active = rows
+    .filter((r) => r.status !== AppointmentStatus.Cancelled)
+    .sort((a, b) => a.scheduledStart.getTime() - b.scheduledStart.getTime())
+
+  if (active.length === 0) return null
+
+  const inProgress = active.find((r) => r.status === AppointmentStatus.InProgress)
+  if (inProgress) return { row: inProgress, context: "in_progress" }
+
+  const inSlotActive = active.find(
+    (r) =>
+      isWithinAppointmentSlot(r, now) &&
+      (r.status === AppointmentStatus.InProgress || r.status === AppointmentStatus.CheckIn),
+  )
+  if (inSlotActive) return { row: inSlotActive, context: "in_slot" }
+
+  const inSlot = active.find(
+    (r) => isWithinAppointmentSlot(r, now) && !isDoneStatus(r.status),
+  )
+  if (inSlot) return { row: inSlot, context: "in_slot" }
+
+  const upcoming = active.find(
+    (r) => r.scheduledStart.getTime() >= now.getTime() && !isDoneStatus(r.status),
+  )
+  if (upcoming) return { row: upcoming, context: "next" }
+
+  if (referenceDate !== today) {
+    const dayRows = active.filter((r) => toLocalDate(r.scheduledStart) === referenceDate)
+    if (dayRows.length > 0) return { row: dayRows[0], context: "day_first" }
+  }
+
+  const notDone = active.filter((r) => !isDoneStatus(r.status))
+  if (notDone.length > 0) return { row: notDone[0], context: "fallback" }
+
+  return { row: active[0], context: "fallback" }
+}
+
+const FOCUS_CONTEXT_LABEL: Record<FocusPick["context"], string> = {
+  in_progress: "Em atendimento",
+  in_slot: "Horário da consulta",
+  next: "Próxima consulta",
+  day_first: "Consulta do período",
+  fallback: "Agendamento",
+}
+
+function buildLastVisitFromRecord(
+  lastRecord: {
+    patient: { id: number; name: string; birthDate: Date | null; sex: string | null } | null
+    patientId: number
+    patientLabel: string | null
+    gender: string | null
+    clinicalDiagnosis: string | null
+    psychicExam: string | null
+    personalHistory: string | null
+    psychologicalConduct: string | null
+    psychologist: string | null
+    createdAt: Date
+    appointment: { scheduledStart: Date; professionalNameSnapshot: string | null } | null
+    prescriptions: { items: { drug: string; dosage: string | null; instructions: string | null }[] }[]
+  },
+) {
+  const p = lastRecord.patient
+  const age = ageFrom(p?.birthDate ? p.birthDate.toISOString().slice(0, 10) : null)
+  const demoParts = [p?.sex ?? lastRecord.gender, age != null ? `${age} anos` : null].filter(Boolean)
+  const visitDate = lastRecord.appointment?.scheduledStart
+    ? toLocalDate(lastRecord.appointment.scheduledStart)
+    : toLocalDate(lastRecord.createdAt)
+  const rxs = lastRecord.prescriptions.flatMap((rx) =>
+    rx.items.map((it) => ({
+      drug: it.drug,
+      instruction: [it.dosage, it.instructions].filter(Boolean).join(" — "),
+    })),
+  )
+  return {
+    patientName: p?.name ?? lastRecord.patientLabel ?? "Paciente",
+    demographics: demoParts.join(", "),
+    patientId: `#${String(p?.id ?? lastRecord.patientId).padStart(5, "0")}`,
+    lastChecked: {
+      doctor: lastRecord.appointment?.professionalNameSnapshot ?? lastRecord.psychologist ?? "—",
+      date: visitDate,
+    },
+    diagnosis: lastRecord.clinicalDiagnosis,
+    observation: lastRecord.psychicExam ?? lastRecord.personalHistory,
+    conduct: lastRecord.psychologicalConduct,
+    prescriptions: rxs,
+  }
+}
+
+function buildPatientDemographics(patient: {
+  birthDate: Date | null
+  sex: string | null
+} | null): string {
+  if (!patient) return ""
+  const age = ageFrom(patient.birthDate ? patient.birthDate.toISOString().slice(0, 10) : null)
+  return [patient.sex, age != null ? `${age} anos` : null].filter(Boolean).join(", ")
+}
+
 function buildWeekCalendar(
   weekDates: string[],
   today: string,
+  selectedDate: string,
   countMap: Map<string, number>,
   inPeriod: (date: string) => boolean,
 ) {
@@ -69,6 +224,7 @@ function buildWeekCalendar(
       day: dayNum,
       count: inPeriod(d) ? (countMap.get(d) ?? 0) : 0,
       isToday: d === today,
+      isSelected: d === selectedDate,
       inPeriod: inPeriod(d),
     }
   })
@@ -85,11 +241,20 @@ function buildMonthCalendar(y: number, m: number, today: string, countMap: Map<s
     day: number | null
     count: number
     isToday: boolean
+    isSelected: boolean
     inPeriod: boolean
   }[] = []
 
   for (let i = 0; i < startDow; i++) {
-    cells.push({ date: null, weekday: null, day: null, count: 0, isToday: false, inPeriod: false })
+    cells.push({
+      date: null,
+      weekday: null,
+      day: null,
+      count: 0,
+      isToday: false,
+      isSelected: false,
+      inPeriod: false,
+    })
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -101,6 +266,7 @@ function buildMonthCalendar(y: number, m: number, today: string, countMap: Map<s
       day: d,
       count: countMap.get(dateStr) ?? 0,
       isToday: dateStr === today,
+      isSelected: false,
       inPeriod: true,
     })
   }
@@ -115,16 +281,12 @@ export async function GET(request: NextRequest) {
 
     const period = parsePeriod(request.nextUrl.searchParams.get("period"))
     const today = getTodayYYYYMMDD()
-    const [y, m] = today.split("-").map(Number)
+    const referenceDate = parseReferenceDate(request.nextUrl.searchParams.get("date"), today)
+    const [refY, refM] = referenceDate.split("-").map(Number)
     const pad = (n: number) => String(n).padStart(2, "0")
 
-    const todayStart = startOfLocalDay(today)
-    const todayEnd = startOfNextLocalDay(today)
-
-    const todayDow = startOfLocalDay(today).getUTCDay()
-    const mondayOffset = todayDow === 0 ? -6 : 1 - todayDow
-    const weekStartStr = addDaysStr(today, mondayOffset)
-    const weekDates = Array.from({ length: 7 }, (_, i) => addDaysStr(weekStartStr, i))
+    const weekDates = weekDatesFrom(referenceDate)
+    const weekStartStr = weekDates[0]
     const weekStart = startOfLocalDay(weekDates[0])
     const weekEnd = startOfNextLocalDay(weekDates[6])
 
@@ -132,20 +294,20 @@ export async function GET(request: NextRequest) {
     let rangeEnd: Date
     let prevStart: Date
     let prevEnd: Date
-    if (period === "today") {
-      rangeStart = todayStart
-      rangeEnd = todayEnd
-      prevStart = startOfLocalDay(addDaysStr(today, -1))
-      prevEnd = todayStart
+    if (period === "day") {
+      rangeStart = startOfLocalDay(referenceDate)
+      rangeEnd = startOfNextLocalDay(referenceDate)
+      prevStart = startOfLocalDay(addDaysStr(referenceDate, -1))
+      prevEnd = rangeStart
     } else if (period === "week") {
       rangeStart = weekStart
       rangeEnd = weekEnd
       prevStart = startOfLocalDay(addDaysStr(weekStartStr, -7))
       prevEnd = weekStart
     } else {
-      const nextMonthStr = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`
-      const prevMonthStr = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`
-      rangeStart = startOfLocalDay(`${y}-${pad(m)}-01`)
+      const nextMonthStr = refM === 12 ? `${refY + 1}-01` : `${refY}-${pad(refM + 1)}`
+      const prevMonthStr = refM === 1 ? `${refY - 1}-12` : `${refY}-${pad(refM - 1)}`
+      rangeStart = startOfLocalDay(`${refY}-${pad(refM)}-01`)
       rangeEnd = startOfLocalDay(`${nextMonthStr}-01`)
       prevStart = startOfLocalDay(`${prevMonthStr}-01`)
       prevEnd = rangeStart
@@ -165,7 +327,6 @@ export async function GET(request: NextRequest) {
       agendaRows,
       patientsInRangeGroups,
       topDoctor,
-      lastRecord,
     ] = await Promise.all([
       db.patient.count({ where: { deletedAt: null, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
       db.appointment.count({
@@ -207,12 +368,13 @@ export async function GET(request: NextRequest) {
         orderBy: { scheduledStart: "asc" },
         select: {
           id: true,
+          patientId: true,
           scheduledStart: true,
           scheduledEnd: true,
           status: true,
           patientNameSnapshot: true,
           professionalNameSnapshot: true,
-          patient: { select: { name: true } },
+          patient: { select: { id: true, name: true, birthDate: true, sex: true } },
           doctor: { select: { name: true } },
         },
       }),
@@ -226,26 +388,6 @@ export async function GET(request: NextRequest) {
         where: { deletedAt: null, status: { in: DONE }, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
         orderBy: { _count: { doctorId: "desc" } },
         take: 1,
-      }),
-      db.medicalRecord.findFirst({
-        where: {
-          deletedAt: null,
-          ...(sessionDoctor
-            ? { appointment: { doctorId: sessionDoctor.id } }
-            : {}),
-          OR: [
-            { createdAt: { gte: rangeStart, lt: rangeEnd } },
-            { appointment: { scheduledStart: { gte: rangeStart, lt: rangeEnd } } },
-          ],
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-          patient: true,
-          appointment: {
-            select: { scheduledStart: true, professionalNameSnapshot: true },
-          },
-          prescriptions: { include: { items: true } },
-        },
       }),
     ])
 
@@ -280,12 +422,15 @@ export async function GET(request: NextRequest) {
     }
 
     const calendarMode = period === "month" ? "month" : "week"
+    const fmt = (d: string) => d.split("-").reverse().join("/")
     const calendarLabel =
-      period === "today"
-        ? `Hoje — ${today.split("-").reverse().join("/")}`
+      period === "day"
+        ? referenceDate === today
+          ? `Hoje — ${fmt(referenceDate)}`
+          : fmt(referenceDate)
         : period === "week"
-          ? `Semana ${weekDates[0].split("-").reverse().slice(0, 2).join("/")} – ${weekDates[6].split("-").reverse().slice(0, 2).join("/")}`
-          : `${MONTHS[m - 1]} ${y}`
+          ? `Semana ${fmt(weekDates[0]).slice(0, 5)} – ${fmt(weekDates[6]).slice(0, 5)}`
+          : `${MONTHS[refM - 1]} ${refY}`
 
     const inPeriod = (date: string) => {
       const d = startOfLocalDay(date).getTime()
@@ -294,8 +439,8 @@ export async function GET(request: NextRequest) {
 
     const calendar =
       period === "month"
-        ? buildMonthCalendar(y, m, today, countMap)
-        : buildWeekCalendar(weekDates, today, countMap, inPeriod)
+        ? buildMonthCalendar(refY, refM, today, countMap)
+        : buildWeekCalendar(weekDates, today, referenceDate, countMap, inPeriod)
 
     const periodAgenda = agendaRows.map((r) => ({
       id: r.id,
@@ -341,36 +486,58 @@ export async function GET(request: NextRequest) {
       conduct: string | null
       prescriptions: { drug: string; instruction: string }[]
     } | null = null
-    if (lastRecord) {
-      const p = lastRecord.patient
-      const age = ageFrom(p?.birthDate ? p.birthDate.toISOString().slice(0, 10) : null)
-      const demoParts = [p?.sex ?? lastRecord.gender, age != null ? `${age} anos` : null].filter(Boolean)
-      const visitDate = lastRecord.appointment?.scheduledStart
-        ? toLocalDate(lastRecord.appointment.scheduledStart)
-        : toLocalDate(lastRecord.createdAt)
-      const rxs = lastRecord.prescriptions.flatMap((rx) =>
-        rx.items.map((it) => ({
-          drug: it.drug,
-          instruction: [it.dosage, it.instructions].filter(Boolean).join(" — "),
-        }))
-      )
-      lastVisit = {
-        patientName: p?.name ?? lastRecord.patientLabel ?? "Paciente",
-        demographics: demoParts.join(", "),
-        patientId: `#${String(p?.id ?? lastRecord.patientId).padStart(5, "0")}`,
-        lastChecked: {
-          doctor: lastRecord.appointment?.professionalNameSnapshot ?? lastRecord.psychologist ?? "—",
-          date: visitDate,
+
+    let focusPatient: {
+      patientName: string
+      demographics: string
+      patientId: string
+      appointmentDate: string
+      appointmentTime: string
+      statusLabel: string
+      contextLabel: string
+    } | null = null
+
+    const now = new Date()
+    const focusPick = pickFocusAppointment(agendaRows, now, referenceDate, today)
+
+    if (focusPick) {
+      const { row, context } = focusPick
+      const patientName = row.patient?.name ?? row.patientNameSnapshot ?? "Paciente"
+      focusPatient = {
+        patientName,
+        demographics: buildPatientDemographics(row.patient),
+        patientId: `#${String(row.patient?.id ?? row.patientId).padStart(5, "0")}`,
+        appointmentDate: toLocalDate(row.scheduledStart),
+        appointmentTime: toLocalSlotTime(row.scheduledStart),
+        statusLabel: STATUS_LABEL[row.status] ?? row.status,
+        contextLabel: FOCUS_CONTEXT_LABEL[context],
+      }
+
+      const lastRecord = await db.medicalRecord.findFirst({
+        where: {
+          deletedAt: null,
+          patientId: row.patientId,
+          appointmentId: { not: row.id },
+          ...(sessionDoctor ? { appointment: { doctorId: sessionDoctor.id } } : {}),
         },
-        diagnosis: lastRecord.clinicalDiagnosis,
-        observation: lastRecord.psychicExam ?? lastRecord.personalHistory,
-        conduct: lastRecord.psychologicalConduct,
-        prescriptions: rxs,
+        orderBy: { createdAt: "desc" },
+        include: {
+          patient: true,
+          appointment: {
+            select: { scheduledStart: true, professionalNameSnapshot: true },
+          },
+          prescriptions: { include: { items: true } },
+        },
+      })
+
+      if (lastRecord) {
+        lastVisit = buildLastVisitFromRecord(lastRecord)
       }
     }
 
     return NextResponse.json({
       period,
+      referenceDate,
       periodLabel: PERIOD_LABEL[period],
       kpis: {
         patientsInRange,
@@ -389,6 +556,7 @@ export async function GET(request: NextRequest) {
       calendar,
       periodAgenda,
       featuredDoctor,
+      focusPatient,
       lastVisit,
       statusBreakdown,
     })

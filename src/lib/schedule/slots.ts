@@ -1,8 +1,6 @@
-/** Slots de 30 em 30 min conforme turno do médico. */
 export function gerarHorarios(turno?: string | null, data?: string): string[] {
   const slots: string[] = []
-  
-  // Determinar se é sábado ou domingo
+
   let isSabado = false
   let isDomingo = false
   if (data) {
@@ -11,12 +9,11 @@ export function gerarHorarios(turno?: string | null, data?: string): string[] {
     isDomingo = dayOfWeek === 0
     isSabado = dayOfWeek === 6
   }
-  
-  // Se for domingo, não gerar horários
+
   if (isDomingo) {
     return []
   }
-  
+
   const ranges =
     turno === "Manhã"
       ? [[8, 0, 12, 0]]
@@ -30,15 +27,14 @@ export function gerarHorarios(turno?: string | null, data?: string): string[] {
   for (const [sh, sm, eh, em] of ranges) {
     let h = sh
     let m = sm
-    
-    // Se for sábado, limitar até 12h
+
     let endHour = eh
     let endMin = em
     if (isSabado && eh > 12) {
       endHour = 12
       endMin = 0
     }
-    
+
     while (h < endHour || (h === endHour && m <= endMin)) {
       slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`)
       m += 30

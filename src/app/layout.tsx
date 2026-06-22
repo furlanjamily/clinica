@@ -1,4 +1,3 @@
- // layout.tsx
 import { Provider } from "@/components/provider";
 import { inter } from "@/utils/font";
 import type { Metadata } from "next";

@@ -6,11 +6,6 @@ import { AppointmentStatus } from "@/lib/schedule/status"
 import { startOfLocalDay } from "@/lib/datetime/appointment-time"
 import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
 
-/**
- * Métricas reais para os cards do dashboard (sem mock).
- * Todas as agregações usam os índices definidos no schema
- * (scheduledStart, status, competenceDate, createdAt).
- */
 export async function GET() {
   try {
     await requireSession()

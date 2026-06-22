@@ -6,11 +6,7 @@ import { cn } from "@/lib/utils"
 import { TaskProgress } from "./TaskProgress"
 import type { ClinicTask } from "./types"
 import { TaskList } from "./TaskList"
-import {
-  DASHBOARD_PANEL_BODY_H,
-  DASHBOARD_PANEL_EMPTY_MIN,
-  DASHBOARD_PANEL_SCROLL,
-} from "@/components/dashboard/dashboard-panel-layout"
+import { DASHBOARD_PANEL_BODY } from "@/components/dashboard/dashboard-panel-layout"
 
 type TaskCardProps = {
   tasks: ClinicTask[]
@@ -69,7 +65,10 @@ export function TaskCard({
           "relative bg-primary",
           !compact && "shadow-[0_24px_80px_rgba(107,114,128,0.3)]",
           compact
-            ? cn("flex flex-col rounded-[24px] p-4", fillHeight && "min-h-0 flex-1 overflow-hidden")
+            ? cn(
+                "flex flex-col rounded-[24px] p-4",
+                fillHeight && "min-h-0 flex-1 overflow-hidden"
+              )
             : "rounded-[40px] p-6 sm:p-8"
         )}
       >
@@ -112,16 +111,7 @@ export function TaskCard({
           </div>
         </div>
 
-        <div
-          className={cn(
-            DASHBOARD_PANEL_SCROLL,
-            compact &&
-              (fillHeight
-                ? cn("min-h-0 flex-1", DASHBOARD_PANEL_EMPTY_MIN)
-                : DASHBOARD_PANEL_BODY_H),
-            !compact && "max-h-[320px]"
-          )}
-        >
+        <div className={cn(compact && fillHeight ? DASHBOARD_PANEL_BODY : !compact && "max-h-[320px] overflow-y-auto overscroll-contain pr-1")}>
           <TaskList
             tasks={tasks}
             compact={compact}

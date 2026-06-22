@@ -210,7 +210,7 @@ export function TaskList({
 
   if (tasks.length === 0) {
     return (
-      <div className="flex min-h-[80px] flex-1 items-center justify-center py-4">
+      <div className="flex h-full items-center justify-center">
         <p className="text-center text-sm text-white/40">Nenhuma tarefa encontrada.</p>
       </div>
     )

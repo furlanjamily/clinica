@@ -7,10 +7,37 @@ import { CalendarCard } from "./CalendarCard"
 import { TimelineAgenda } from "./TimelineAgenda"
 import { LastVisitDetails } from "./LastVisitDetails"
 import { ProjectProgressCard } from "./ProjectProgressCard"
+import { DASHBOARD_PANELS_GRID, getDashboardPanelHeight } from "./dashboard-panel-layout"
 import { UserHeader } from "../ui/user-header"
 import { TaskDashboardPanel } from "../task-dashboard/TaskDashboardPage"
 import { DashboardWelcomeBar } from "./DashboardWelcomeBar"
-import { DashboardDataProvider } from "./DashboardDataProvider"
+import { DashboardDataProvider, useDashboard } from "./DashboardDataProvider"
+
+function DashboardMainGrid() {
+  const { period } = useDashboard()
+  const panelHeight = getDashboardPanelHeight(period)
+
+  return (
+    <div className="grid grid-cols-1 items-stretch gap-5 sm:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px]">
+      <div className="flex min-h-0 min-w-0 flex-col gap-5 sm:gap-6 lg:min-h-0">
+        <CalendarCard />
+        <div
+          className={DASHBOARD_PANELS_GRID}
+          style={{ gridTemplateRows: `repeat(2, ${panelHeight}px)` }}
+        >
+          <TimelineAgenda />
+          <TaskDashboardPanel />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-col gap-5 sm:gap-6 lg:h-full">
+        <FeaturedDoctorCard />
+        <LastVisitDetails />
+        <ProjectProgressCard />
+      </div>
+    </div>
+  )
+}
 
 export function DashboardPage() {
   return (
@@ -27,19 +54,7 @@ export function DashboardPage() {
 
           <ProjectOverviewCards />
 
-          <div className="grid grid-cols-1 items-stretch gap-5 sm:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px]">
-            <div className="flex min-h-0 min-w-0 flex-col gap-5 sm:gap-6 lg:h-full lg:min-h-0">
-              <CalendarCard />
-              <TimelineAgenda />
-              <TaskDashboardPanel />
-            </div>
-
-            <div className="flex min-h-0 min-w-0 flex-col gap-5 sm:gap-6 lg:h-full">
-              <FeaturedDoctorCard />
-              <LastVisitDetails />
-              <ProjectProgressCard />
-            </div>
-          </div>
+          <DashboardMainGrid />
         </motion.div>
       </div>
     </DashboardDataProvider>

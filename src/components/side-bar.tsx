@@ -114,7 +114,6 @@ function SideBarContent({ onCreate }: Props) {
 export function SideBar({ drawerOpen, onDrawerClose, ...props }: Props) {
   return (
     <>
-      {/* Mobile: drawer overlay */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
           <div className="flex h-dvh w-[min(280px,85vw)] flex-shrink-0 flex-col bg-white">
@@ -124,7 +123,6 @@ export function SideBar({ drawerOpen, onDrawerClose, ...props }: Props) {
         </div>
       )}
 
-      {/* Desktop: sidebar fixa */}
       <div className="hidden md:flex w-[216px] h-full flex-shrink-0">
         <SideBarContent {...props} />
       </div>
