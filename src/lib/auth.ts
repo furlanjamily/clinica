@@ -25,7 +25,7 @@ function timingSafeStringEqual(a: string, b: string): boolean {
 function tryAuthorizePortfolioDemo(
   email: string,
   password: string
-): { id: string; name: string; username: string; email: string; role: UserRoleType | null } | null {
+): { id: string; name: string; username: string; email: string; role: UserRoleType | null; doctorId: number | null } | null {
   if (!isDemoAuthEnabled()) return null
 
   const demo = resolvedDemoCredentials()
@@ -46,6 +46,7 @@ function tryAuthorizePortfolioDemo(
     username: "Dr.Teste",
     email: normalizeEmail(demo.email),
     role,
+    doctorId: null,
   }
 }
 
@@ -72,6 +73,14 @@ export const authOptions: NextAuthOptions = {
 
         const user = await db.user.findUnique({
           where: { email: credentials.email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            password: true,
+            doctorId: true,
+          },
         })
 
         if (!user || !user.password) return null
@@ -85,6 +94,7 @@ export const authOptions: NextAuthOptions = {
           username: user.name,
           email: user.email,
           role: user.role as UserRoleType | null,
+          doctorId: user.doctorId,
         }
       },
     }),
@@ -95,6 +105,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.username = user.username ?? user.name ?? null
         token.role = user.role ?? null
+        token.doctorId = user.doctorId ?? null
       }
       return token
     },
@@ -104,6 +115,7 @@ export const authOptions: NextAuthOptions = {
         session.user.username = token.username ?? null
         session.user.role = token.role as UserRoleType | null ?? null
         session.user.name = token.username ?? session.user.name ?? null
+        session.user.doctorId = token.doctorId ?? null
       }
       return session
     },

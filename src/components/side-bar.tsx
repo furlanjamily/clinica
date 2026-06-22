@@ -38,7 +38,7 @@ type Props = {
 function SideBarContent({ onCreate }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { canViewSchedule, isSuperAdmin } = useAuth()
+  const { canViewSchedule, canManageUsers } = useAuth()
 
   const links: LinkItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
@@ -50,8 +50,9 @@ function SideBarContent({ onCreate }: Props) {
       { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
     ] : [
       { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
+      { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },
     ]),
-    ...(isSuperAdmin ? [
+    ...(canManageUsers ? [
       { name: "Usuários", href: "/users", icon: <IconUsers size={24} /> },
     ] : []),
   ];

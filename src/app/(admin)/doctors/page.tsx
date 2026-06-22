@@ -3,6 +3,7 @@
 import { useMemo, useState, type ChangeEvent } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { Plus, Pencil, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useCRUD } from "@/hooks/useCRUD"
 import { Doctor } from "@/types"
@@ -192,7 +193,16 @@ export default function DoctorsPage() {
       await update(modal.editing.id, data, "Médico atualizado.")
     } else {
       const name = normalizeDoctorNameOnCreateInput(data.name)
-      await create({ ...data, name, active: true }, "Médico cadastrado com sucesso!")
+      const created = await create(
+        { ...data, name, active: true },
+        "Médico cadastrado com sucesso!"
+      ) as (Doctor & { loginAccount?: { email: string; temporaryPassword: string } }) | null
+      if (created?.loginAccount) {
+        toast.info(
+          `Usuário criado automaticamente: ${created.loginAccount.email} / senha ${created.loginAccount.temporaryPassword}`,
+          { duration: 12000 }
+        )
+      }
     }
     closeModal()
   }

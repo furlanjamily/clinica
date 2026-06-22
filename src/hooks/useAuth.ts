@@ -15,6 +15,7 @@ export function useAuth() {
     isSuperAdmin: role === "SUPER_ADMIN",
     isAdmin: role === "ADMIN",
     isMedico: role === "MEDICO",
+    canManageUsers: role === "SUPER_ADMIN" || role === "ADMIN",
     canViewSchedule: role !== "MEDICO",
   }
 }

@@ -109,6 +109,7 @@ model Specialty {
 model Doctor {
   id           Int       @id @default(autoincrement())
   name         String
+  users        User[]
   crm          String?
   cpf          String?   @db.VarChar(11)
   birthDate    DateTime? @db.Date
@@ -407,6 +408,8 @@ model User {
   image         String?
   role          String?   @default("MEDICO")
   password      String?
+  doctorId      Int?
+  doctor        Doctor?   @relation(fields: [doctorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -418,6 +421,7 @@ model User {
   transactions    Transaction[]
   statusChanges   AppointmentStatusHistory[]
 
+  @@index([doctorId])
   @@map("users")
 }
 

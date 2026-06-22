@@ -66,8 +66,8 @@ describe("papel insuficiente → 403", () => {
     expect(res.status).toBe(403)
   })
 
-  it("GET /api/user exige SUPER_ADMIN", async () => {
-    mockedGetServerSession.mockResolvedValue(asSession("ADMIN"))
+  it("GET /api/user exige SUPER_ADMIN ou ADMIN", async () => {
+    mockedGetServerSession.mockResolvedValue(asSession("MEDICO"))
     const res = await userRoute.GET()
     expect(res.status).toBe(403)
   })

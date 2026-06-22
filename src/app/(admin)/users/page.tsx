@@ -29,9 +29,21 @@ const roleColors: Record<UserRoleType, string> = {
   MEDICO: "bg-green-100 text-green-700",
 }
 
-export type UserType = { id: string; username: string; email: string; role: UserRoleType }
+export type UserType = {
+  id: string
+  username: string
+  email: string
+  role: UserRoleType
+  doctorName?: string | null
+}
 
-type UserFormValues = { username: string; email: string; password: string; role: UserRoleType }
+type UserFormValues = {
+  username: string
+  email: string
+  password: string
+  newPassword: string
+  role: UserRoleType
+}
 
 const QUERY_KEY = ["users"] as const
 
@@ -52,12 +64,20 @@ function UsersTable({
       const raw = Array.isArray(payload) ? payload : (payload as { users?: unknown })?.users
       if (!Array.isArray(raw)) return []
       return raw.map((u) => {
-        const row = u as { id: string; name?: string; username?: string; email: string; role: UserRoleType }
+        const row = u as {
+          id: string
+          name?: string
+          username?: string
+          email: string
+          role: UserRoleType
+          doctorName?: string | null
+        }
         return {
           id: row.id,
           username: row.username ?? row.name ?? "",
           email: row.email,
           role: row.role,
+          doctorName: row.doctorName ?? null,
         }
       })
     },
@@ -68,6 +88,7 @@ function UsersTable({
       headers={[
         { label: "Nome", sort: (u) => u.username },
         { label: "Email", sort: (u) => u.email },
+        { label: "Médico vinculado", sort: (u) => u.doctorName ?? "" },
         { label: "Permissão", sort: (u) => roleLabel[u.role] },
         { label: "Ações", align: "right" },
       ]}
@@ -77,6 +98,7 @@ function UsersTable({
         <tr key={u.id} className="transition-colors hover:bg-gray-50/80">
           <Td className="font-medium">{u.username}</Td>
           <Td className="text-gray-600">{u.email}</Td>
+          <Td className="text-gray-600">{u.doctorName ?? "—"}</Td>
           <Td>
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${roleColors[u.role]}`}>
               {roleLabel[u.role]}
@@ -103,7 +125,7 @@ function UsersTable({
 }
 
 export default function UsersPage() {
-  const { session, isSuperAdmin } = useAuth()
+  const { session, canManageUsers } = useAuth()
   const router = useRouter()
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
@@ -111,8 +133,8 @@ export default function UsersPage() {
   const { register, handleSubmit, reset, setValue } = useForm<UserFormValues>()
 
   useEffect(() => {
-    if (session && !isSuperAdmin) router.push("/dashboard")
-  }, [session, isSuperAdmin, router])
+    if (session && !canManageUsers) router.push("/dashboard")
+  }, [session, canManageUsers, router])
 
   function setUsers(updater: (prev: UserType[]) => UserType[]) {
     queryClient.setQueryData<UserType[]>(QUERY_KEY, (prev) => updater(prev ?? []))
@@ -120,24 +142,46 @@ export default function UsersPage() {
 
   async function handleSave(data: UserFormValues) {
     if (editing) {
+      const payload: { id: string; role: UserRoleType; password?: string } = {
+        id: editing.id,
+        role: data.role,
+      }
+      if (data.newPassword.trim()) {
+        payload.password = data.newPassword.trim()
+      }
+
       const res = await fetch(absoluteUrl("/api/user"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editing.id, role: data.role }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
-        toast.error((await res.json()).message ?? "Erro ao atualizar permissão.")
+        toast.error((await res.json()).message ?? "Erro ao atualizar usuário.")
         return
       }
-      const updated: { id: string; name?: string; email: string; role: UserRoleType } = await res.json()
+      const updated: {
+        id: string
+        name?: string
+        email: string
+        role: UserRoleType
+        doctorName?: string | null
+      } = await res.json()
       setUsers((prev) =>
         prev.map((u) =>
           u.id === updated.id
-            ? { id: updated.id, username: updated.name ?? u.username, email: updated.email, role: updated.role }
+            ? {
+                id: updated.id,
+                username: updated.name ?? u.username,
+                email: updated.email,
+                role: updated.role,
+                doctorName: updated.doctorName ?? u.doctorName,
+              }
             : u
         )
       )
-      toast.success("Permissão atualizada.")
+      toast.success(
+        data.newPassword.trim() ? "Usuário e senha atualizados." : "Usuário atualizado."
+      )
     } else {
       const res = await fetch(absoluteUrl("/api/user"), {
         method: "POST",
@@ -182,6 +226,7 @@ export default function UsersPage() {
   function openEdit(user: UserType) {
     setEditing(user)
     setValue("role", user.role)
+    setValue("newPassword", "")
     setShowModal(true)
   }
 
@@ -194,7 +239,7 @@ export default function UsersPage() {
       </Header>
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <TableSuspense cols={4} rows={5}>
+        <TableSuspense cols={5} rows={5}>
           <UsersTable
             currentUserId={session?.user?.id}
             onEdit={openEdit}
@@ -207,7 +252,7 @@ export default function UsersPage() {
         <ModalOverlay>
           <div className="max-h-[min(92vh,36rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
             <ModalHeader
-              title={editing ? "Editar permissão" : "Novo usuário"}
+              title={editing ? "Editar usuário" : "Novo usuário"}
               onClose={() => { setShowModal(false); setEditing(null); reset() }}
             />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
@@ -216,6 +261,22 @@ export default function UsersPage() {
                   <Input label="Nome" {...register("username", { required: true })} placeholder="Nome completo" />
                   <Input label="Email" type="email" {...register("email", { required: true })} placeholder="email@clinica.com" />
                   <Input label="Senha" type="password" {...register("password", { required: true })} placeholder="Mínimo 8 caracteres" />
+                </>
+              )}
+              {editing && (
+                <>
+                  <Input label="Nome" value={editing.username} disabled />
+                  <Input label="Email" value={editing.email} disabled />
+                  {editing.doctorName && (
+                    <Input label="Médico vinculado" value={editing.doctorName} disabled />
+                  )}
+                  <Input
+                    label="Nova senha"
+                    type="password"
+                    autoComplete="new-password"
+                    {...register("newPassword")}
+                    placeholder="Deixe em branco para manter a atual"
+                  />
                 </>
               )}
               <FormSelect label="Permissão" {...register("role")}>

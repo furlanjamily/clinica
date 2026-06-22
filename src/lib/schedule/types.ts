@@ -16,6 +16,8 @@ export type Appointment = {
   patientId?: number
   patientName?: string | null
 
+  doctorId?: number
+
   professionalName: string
 
   startTime?: string

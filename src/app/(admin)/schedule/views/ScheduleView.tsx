@@ -15,7 +15,7 @@ export function ScheduleView({ data, setData }: Props) {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
-      <Table rows={rows} setData={setData} />
+      <Table rows={rows} appointments={data} setData={setData} />
     </div>
   )
 }

@@ -18,6 +18,7 @@ import { TableCard, Td } from "@/components/ui/table/DataTable"
 import { useQueryClient } from "@tanstack/react-query"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 import { AppointmentStatus, STATUS_LABEL, STATUS_STYLE } from "@/lib/schedule/status"
+import { toast } from "sonner"
 
 function isDataRow(row: RowType): row is { type: "data" } & Appointment {
   return row.type === "data"
@@ -36,6 +37,7 @@ function isToday(dateStr: string) {
 
 type TableProps = {
   rows: RowType[]
+  appointments: Appointment[]
   setData: React.Dispatch<React.SetStateAction<Appointment[]>>
 }
 
@@ -43,11 +45,12 @@ const COLUMN_COUNT = 5
 
 const columnHelper = createColumnHelper<RowType>()
 
-function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
+function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActiveAttendanceForDoctor }: {
   original: Appointment
   updateItem: (id: number, changes: Partial<Appointment>) => Promise<void>
   onReschedule: (item: Appointment) => void
   onOpenPayment: (item: Appointment) => void
+  hasActiveAttendanceForDoctor: boolean
 }) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -75,12 +78,14 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
   }
 
   if (today && original.status === AppointmentStatus.Paid) {
+    const blocked = hasActiveAttendanceForDoctor
     return (
       <div className="flex justify-end">
         <Button
           variant="purple"
           className="text-xs sm:text-sm"
-          disabled={loading}
+          disabled={loading || blocked}
+          title={blocked ? "Finalize o atendimento em andamento antes de iniciar outro." : undefined}
           onClick={async () => {
             setLoading(true)
             try {
@@ -93,13 +98,16 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
                   startTime: new Date().toISOString(),
                 }),
               })
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                toast.error(err.message ?? "Não foi possível iniciar o atendimento.")
+                return
+              }
               const updated = await res.json()
 
-              // Atualiza o cache apenas se ele já existir (retornar undefined não altera nada)
               queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
                 prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item))
               )
-              // Garante que a página de atendimentos busque dados frescos ao montar
               queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY })
 
               router.push("/attendance")
@@ -108,7 +116,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
             }
           }}
         >
-          {loading ? "Aguarde..." : "Atender"}
+          {loading ? "Aguarde..." : blocked ? "Em atendimento" : "Atender"}
         </Button>
       </div>
     )
@@ -149,10 +157,21 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment }: {
   )
 }
 
-export function Table({ rows, setData }: TableProps) {
+export function Table({ rows, appointments, setData }: TableProps) {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [paymentFor, setPaymentFor] = useState<Appointment | null>(null)
   const queryClient = useQueryClient()
+
+  function doctorHasActiveAttendance(item: Appointment): boolean {
+    return appointments.some(
+      (appt) =>
+        appt.status === AppointmentStatus.InProgress &&
+        appt.id !== item.id &&
+        (item.doctorId != null
+          ? appt.doctorId === item.doctorId
+          : appt.professionalName === item.professionalName)
+    )
+  }
 
   const updateItem = async (id: number, changes: Partial<Appointment>) => {
     const res = await fetch("/api/schedule", {
@@ -233,6 +252,7 @@ export function Table({ rows, setData }: TableProps) {
             updateItem={updateItem}
             onReschedule={setSelected}
             onOpenPayment={setPaymentFor}
+            hasActiveAttendanceForDoctor={doctorHasActiveAttendance(original)}
           />
         )
       },

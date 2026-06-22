@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
 import { db } from "@/lib/db"
+import { authOptions } from "@/lib/auth"
+import { resolveAppointmentDoctorFilter } from "@/lib/auth/appointment-scope"
 import { findAppointmentConflict } from "@/lib/schedule/conflicts"
 import { toAppointment } from "@/lib/schedule/map-appointment"
 import { CreateAppointmentSchema } from "@/lib/validations/schedule"
@@ -26,8 +29,14 @@ export async function GET(req: Request) {
     const check = guard(req)
     if (!check.ok) return check.response
 
+    const session = await getServerSession(authOptions)
+    const doctorFilter = session ? await resolveAppointmentDoctorFilter(session) : undefined
+    const appointmentWhere =
+      doctorFilter !== undefined ? { doctorId: doctorFilter } : undefined
+
     const [appointments, doctors, patients] = await Promise.all([
       db.appointment.findMany({
+        where: appointmentWhere,
         select: {
           id: true,
           scheduledStart: true,
@@ -227,6 +236,22 @@ export async function PATCH(req: Request) {
       if (!linked) {
         throw new ValidationError(
           "Para marcar como pago, registre antes a receita vinculada a este agendamento (modal «Confirmar pagamento» na agenda)."
+        )
+      }
+    }
+
+    if (body.status === AppointmentStatus.InProgress) {
+      const activeForDoctor = await db.appointment.findFirst({
+        where: {
+          doctorId: current.doctorId,
+          status: AppointmentStatus.InProgress,
+          id: { not: body.id },
+        },
+        select: { id: true },
+      })
+      if (activeForDoctor) {
+        throw new ConflictError(
+          "Já existe um atendimento em andamento. Finalize-o antes de iniciar outro."
         )
       }
     }

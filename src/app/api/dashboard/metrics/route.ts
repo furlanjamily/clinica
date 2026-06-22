@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireSession } from "@/lib/auth/api-guard"
+import {
+  appointmentDoctorWhere,
+  medicalRecordDoctorWhere,
+  patientDoctorWhere,
+  resolveAppointmentDoctorFilter,
+  transactionDoctorWhere,
+} from "@/lib/auth/appointment-scope"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { AppointmentStatus } from "@/lib/schedule/status"
 import { startOfLocalDay } from "@/lib/datetime/appointment-time"
@@ -8,7 +15,12 @@ import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
 
 export async function GET() {
   try {
-    await requireSession()
+    const session = await requireSession()
+    const doctorFilter = await resolveAppointmentDoctorFilter(session)
+    const apptScope = appointmentDoctorWhere(doctorFilter)
+    const txScope = transactionDoctorWhere(doctorFilter)
+    const recordScope = medicalRecordDoctorWhere(doctorFilter)
+    const patientScope = patientDoctorWhere(doctorFilter)
 
     const today = getTodayYYYYMMDD()
     const [y, m] = today.split("-").map(Number)
@@ -32,15 +44,20 @@ export async function GET() {
       revenueAgg,
       revenuePrevAgg,
     ] = await Promise.all([
-      db.patient.count({ where: { deletedAt: null } }),
+      db.patient.count({ where: { deletedAt: null, ...patientScope } }),
       db.patient.count({
-        where: { deletedAt: null, createdAt: { gte: monthStart, lt: monthEnd } },
+        where: {
+          deletedAt: null,
+          createdAt: { gte: monthStart, lt: monthEnd },
+          ...patientScope,
+        },
       }),
       db.appointment.count({
         where: {
           deletedAt: null,
           status: { in: [AppointmentStatus.Completed, AppointmentStatus.Paid] },
           scheduledStart: { gte: monthStart, lt: monthEnd },
+          ...apptScope,
         },
       }),
       db.appointment.count({
@@ -48,6 +65,7 @@ export async function GET() {
           deletedAt: null,
           status: { in: [AppointmentStatus.Completed, AppointmentStatus.Paid] },
           scheduledStart: { gte: prevStart, lt: monthStart },
+          ...apptScope,
         },
       }),
       db.appointment.count({
@@ -61,6 +79,7 @@ export async function GET() {
             ],
           },
           scheduledStart: { gte: now },
+          ...apptScope,
         },
       }),
       db.appointment.count({
@@ -68,10 +87,15 @@ export async function GET() {
           deletedAt: null,
           status: AppointmentStatus.Cancelled,
           scheduledStart: { gte: monthStart, lt: monthEnd },
+          ...apptScope,
         },
       }),
       db.medicalRecord.count({
-        where: { deletedAt: null, createdAt: { gte: monthStart, lt: monthEnd } },
+        where: {
+          deletedAt: null,
+          createdAt: { gte: monthStart, lt: monthEnd },
+          ...recordScope,
+        },
       }),
       db.transaction.aggregate({
         _sum: { amount: true },
@@ -80,6 +104,7 @@ export async function GET() {
           type: "Receita",
           status: "Confirmado",
           competenceDate: { gte: monthStart, lt: monthEnd },
+          ...txScope,
         },
       }),
       db.transaction.aggregate({
@@ -89,6 +114,7 @@ export async function GET() {
           type: "Receita",
           status: "Confirmado",
           competenceDate: { gte: prevStart, lt: monthStart },
+          ...txScope,
         },
       }),
     ])

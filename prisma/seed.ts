@@ -2,6 +2,7 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
+import { hashSync } from "bcrypt"
 import { addDays, format } from "date-fns"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { DESPESA_CATEGORIAS, RECEITA_CATEGORIAS } from "../src/lib/finance/categories"
@@ -27,6 +28,8 @@ const TIME_SLOTS = [
 ]
 
 const PAYMENT_METHODS = ["Pix", "Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Convênio"]
+
+const DEFAULT_DOCTOR_PASSWORD = "Medico123!"
 
 type SeedSex = "Masculino" | "Feminino" | "Outro"
 
@@ -584,9 +587,52 @@ async function main() {
 
   await prisma.transaction.createMany({ data: standaloneTx })
 
+  console.log("Criando usuários vinculados aos médicos...")
+  const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_PASSWORD, 10)
+  for (let i = 0; i < doctors.length; i++) {
+    const doctor = doctors[i]
+    await prisma.user.upsert({
+      where: { email: doctor.email ?? `medico.${doctor.id}@clinicademo.local` },
+      create: {
+        name: doctor.name,
+        email: doctor.email ?? `medico.${doctor.id}@clinicademo.local`,
+        password: doctorPasswordHash,
+        role: i === 0 ? "SUPER_ADMIN" : "MEDICO",
+        doctorId: doctor.id,
+      },
+      update: {
+        name: doctor.name,
+        role: i === 0 ? "SUPER_ADMIN" : "MEDICO",
+        doctorId: doctor.id,
+      },
+    })
+  }
+
+  console.log("Garantindo no máximo um atendimento em andamento por médico...")
+  const inProgressRows = await prisma.appointment.findMany({
+    where: { status: AppointmentStatus.InProgress },
+    orderBy: { id: "asc" },
+    select: { id: true, doctorId: true, scheduledStart: true },
+  })
+  const doctorsWithActive = new Set<number>()
+  for (const row of inProgressRows) {
+    if (doctorsWithActive.has(row.doctorId)) {
+      await prisma.appointment.update({
+        where: { id: row.id },
+        data: {
+          status: AppointmentStatus.Completed,
+          endedAt: row.scheduledStart,
+        },
+      })
+      continue
+    }
+    doctorsWithActive.add(row.doctorId)
+  }
+
   console.log(
     `Concluído: ${doctors.length} médicos, ${patients.length} pacientes, ~${apptCounter} agendamentos, ` +
-      `${standaloneTx.length} transações avulsas + vínculos em consultas concluídas.`
+      `${standaloneTx.length} transações avulsas + vínculos em consultas concluídas. ` +
+      `Usuários médicos: e-mail medico.N@clinicademo.local / senha ${DEFAULT_DOCTOR_PASSWORD}`
   )
 }
 

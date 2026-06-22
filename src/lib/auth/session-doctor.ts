@@ -16,6 +16,15 @@ export function sessionProfessionalLabel(session: Session): string | null {
 }
 
 export async function resolveDoctorForSession(session: Session) {
+  const sessionDoctorId = session.user.doctorId
+  if (sessionDoctorId != null) {
+    const linked = await db.doctor.findFirst({
+      where: { id: sessionDoctorId, deletedAt: null, active: true },
+      select: { id: true, name: true },
+    })
+    if (linked) return linked
+  }
+
   const label = sessionProfessionalLabel(session)
   if (!label) return null
 

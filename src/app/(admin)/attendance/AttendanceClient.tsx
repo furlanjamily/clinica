@@ -9,13 +9,10 @@ import type { Appointment } from "@/types/types"
 import { AttendanceTable } from "./AttendanceTable"
 
 export function AttendanceClient() {
-  const { session, isSuperAdmin } = useAuth()
-  const username = session?.user?.name ?? ""
-  const role = session?.user?.role ?? ""
+  const { isSuperAdmin } = useAuth()
 
   const { data: allData } = useSuspenseQuery<Appointment[]>({
     queryKey: SCHEDULE_QUERY_KEY,
-    // Suspense + lista vazia em caso de falha (evita quebrar a página inteira)
     queryFn: () => fetchSchedule().catch(() => []),
   })
 
@@ -32,22 +29,15 @@ export function AttendanceClient() {
     setDate(new Date())
   }
 
-  // Em andamento independe do período selecionado no navegador de datas
   const active = allData.filter((item) => item.status === AppointmentStatus.InProgress)
   const completed = inPeriod.filter((item) => item.status === AppointmentStatus.Completed)
-
-  const history = isSuperAdmin
-    ? completed
-    : completed.filter((item) =>
-        item.professionalName?.toLowerCase().includes(username.toLowerCase())
-      )
 
   return (
     <AttendanceTable
       data={active}
-      history={history}
+      history={completed}
       loadingHistory={false}
-      isSuperAdmin={role === "SUPER_ADMIN"}
+      isSuperAdmin={isSuperAdmin}
       date={date}
       view={view}
       onChangeDate={setDate}

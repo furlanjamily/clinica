@@ -10,6 +10,7 @@ export type AppointmentRowInput = {
   scheduledStart: Date
   status?: string | null
   patientId?: number | null
+  doctorId?: number | null
   patientNameSnapshot?: string | null
   professionalNameSnapshot?: string | null
   doctor?: DoctorInput
@@ -63,6 +64,7 @@ export function toAppointment(row: AppointmentRowInput): Appointment {
     status: row.status ?? "Agendado",
     patient,
     patientId: row.patientId ?? undefined,
+    doctorId: row.doctorId ?? undefined,
     patientName: row.patientNameSnapshot ?? null,
     professionalName,
     startTime: isoOrUndefined(row.startedAt),

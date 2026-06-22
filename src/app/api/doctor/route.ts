@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole, requireSession } from "@/lib/auth/api-guard"
+import {
+  createUserForDoctor,
+  removeUserForDoctor,
+  syncUserForDoctor,
+} from "@/lib/auth/doctor-user"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { parseWith } from "@/lib/validations/parse"
 import {
@@ -33,7 +38,11 @@ export async function POST(req: Request) {
       data: doctorInputToDb(data) as unknown as Prisma.DoctorCreateInput,
       include: { specialty: true },
     })
-    return NextResponse.json(toDoctorDTO(doctor), { status: 201 })
+    const loginAccount = await createUserForDoctor(doctor)
+    return NextResponse.json(
+      { ...toDoctorDTO(doctor), loginAccount },
+      { status: 201 }
+    )
   } catch (error) {
     return handleApiError(error)
   }
@@ -48,6 +57,7 @@ export async function PATCH(req: Request) {
       data: doctorInputToDb(data),
       include: { specialty: true },
     })
+    await syncUserForDoctor(doctor)
     return NextResponse.json(toDoctorDTO(doctor))
   } catch (error) {
     return handleApiError(error)
@@ -58,6 +68,7 @@ export async function DELETE(req: Request) {
   try {
     await requireRole("ADMIN", "SUPER_ADMIN")
     const { id } = parseWith(DeleteDoctorSchema, await req.json())
+    await removeUserForDoctor(id)
     // Soft delete: preserva agendamentos/histórico (FK Restrict).
     await db.doctor.update({ where: { id }, data: { deletedAt: new Date(), active: false } })
     return NextResponse.json({ success: true })

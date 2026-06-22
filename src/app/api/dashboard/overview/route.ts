@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { db } from "@/lib/db"
 import { requireSession } from "@/lib/auth/api-guard"
-import { resolveDoctorForSession } from "@/lib/auth/session-doctor"
+import {
+  appointmentDoctorWhere,
+  medicalRecordDoctorWhere,
+  patientDoctorWhere,
+  resolveAppointmentDoctorFilter,
+  transactionDoctorWhere,
+} from "@/lib/auth/appointment-scope"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { AppointmentStatus, STATUS_LABEL } from "@/lib/schedule/status"
 import {
@@ -277,7 +283,11 @@ function buildMonthCalendar(y: number, m: number, today: string, countMap: Map<s
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession()
-    const sessionDoctor = await resolveDoctorForSession(session)
+    const doctorFilter = await resolveAppointmentDoctorFilter(session)
+    const apptScope = appointmentDoctorWhere(doctorFilter)
+    const txScope = transactionDoctorWhere(doctorFilter)
+    const recordScope = medicalRecordDoctorWhere(doctorFilter)
+    const patientScope = patientDoctorWhere(doctorFilter)
 
     const period = parsePeriod(request.nextUrl.searchParams.get("period"))
     const today = getTodayYYYYMMDD()
@@ -328,43 +338,96 @@ export async function GET(request: NextRequest) {
       patientsInRangeGroups,
       topDoctor,
     ] = await Promise.all([
-      db.patient.count({ where: { deletedAt: null, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      db.appointment.count({
-        where: { deletedAt: null, status: { in: DONE }, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+      db.patient.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: rangeStart, lt: rangeEnd },
+          ...patientScope,
+        },
       }),
       db.appointment.count({
-        where: { deletedAt: null, status: { in: DONE }, scheduledStart: { gte: prevStart, lt: prevEnd } },
+        where: {
+          deletedAt: null,
+          status: { in: DONE },
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
       }),
       db.appointment.count({
-        where: { deletedAt: null, status: { in: PENDING }, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          status: { in: DONE },
+          scheduledStart: { gte: prevStart, lt: prevEnd },
+          ...apptScope,
+        },
       }),
       db.appointment.count({
-        where: { deletedAt: null, status: AppointmentStatus.Cancelled, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          status: { in: PENDING },
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
       }),
-      db.medicalRecord.count({ where: { deletedAt: null, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
+      db.appointment.count({
+        where: {
+          deletedAt: null,
+          status: AppointmentStatus.Cancelled,
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
+      }),
+      db.medicalRecord.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: rangeStart, lt: rangeEnd },
+          ...recordScope,
+        },
+      }),
       db.transaction.aggregate({
         _sum: { amount: true },
-        where: { deletedAt: null, type: "Receita", status: "Confirmado", competenceDate: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          type: "Receita",
+          status: "Confirmado",
+          competenceDate: { gte: rangeStart, lt: rangeEnd },
+          ...txScope,
+        },
       }),
       db.transaction.aggregate({
         _sum: { amount: true },
-        where: { deletedAt: null, type: "Receita", status: "Confirmado", competenceDate: { gte: prevStart, lt: prevEnd } },
+        where: {
+          deletedAt: null,
+          type: "Receita",
+          status: "Confirmado",
+          competenceDate: { gte: prevStart, lt: prevEnd },
+          ...txScope,
+        },
       }),
       db.appointment.groupBy({
         by: ["status"],
         _count: true,
-        where: { deletedAt: null, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
       }),
       db.appointment.findMany({
         where: {
           deletedAt: null,
           status: { not: AppointmentStatus.Cancelled },
           scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
         },
         select: { scheduledStart: true },
       }),
       db.appointment.findMany({
-        where: { deletedAt: null, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
         orderBy: { scheduledStart: "asc" },
         select: {
           id: true,
@@ -380,15 +443,25 @@ export async function GET(request: NextRequest) {
       }),
       db.appointment.groupBy({
         by: ["patientId"],
-        where: { deletedAt: null, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
+        where: {
+          deletedAt: null,
+          scheduledStart: { gte: rangeStart, lt: rangeEnd },
+          ...apptScope,
+        },
       }),
-      db.appointment.groupBy({
-        by: ["doctorId"],
-        _count: true,
-        where: { deletedAt: null, status: { in: DONE }, scheduledStart: { gte: rangeStart, lt: rangeEnd } },
-        orderBy: { _count: { doctorId: "desc" } },
-        take: 1,
-      }),
+      doctorFilter === undefined
+        ? db.appointment.groupBy({
+            by: ["doctorId"],
+            _count: true,
+            where: {
+              deletedAt: null,
+              status: { in: DONE },
+              scheduledStart: { gte: rangeStart, lt: rangeEnd },
+            },
+            orderBy: { _count: { doctorId: "desc" } },
+            take: 1,
+          })
+        : Promise.resolve([]),
     ])
 
     const patientsInRange = patientsInRangeGroups.length
@@ -460,7 +533,22 @@ export async function GET(request: NextRequest) {
       shift: string | null
       completedCount: number
     } | null = null
-    if (topDoctor.length > 0) {
+
+    if (doctorFilter !== undefined && doctorFilter > 0) {
+      const doc = await db.doctor.findUnique({
+        where: { id: doctorFilter },
+        include: { specialty: true },
+      })
+      if (doc) {
+        featuredDoctor = {
+          name: doc.name,
+          specialty: doc.specialty?.name ?? "Clínica",
+          qualification: doc.crm ? `CRM ${doc.crm}` : doc.specialty?.name ?? null,
+          shift: doc.shift,
+          completedCount: completedRange,
+        }
+      }
+    } else if (topDoctor.length > 0) {
       const doc = await db.doctor.findUnique({
         where: { id: topDoctor[0].doctorId },
         include: { specialty: true },
@@ -518,7 +606,7 @@ export async function GET(request: NextRequest) {
           deletedAt: null,
           patientId: row.patientId,
           appointmentId: { not: row.id },
-          ...(sessionDoctor ? { appointment: { doctorId: sessionDoctor.id } } : {}),
+          ...recordScope,
         },
         orderBy: { createdAt: "desc" },
         include: {

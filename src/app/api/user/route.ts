@@ -9,6 +9,7 @@ import { parseWith } from "@/lib/validations/parse"
 import { USER_ROLES } from "@/types/auth"
 
 const PASSWORD_HASH_ROUNDS = 10
+const MANAGE_USERS_ROLES = ["SUPER_ADMIN", "ADMIN"] as const
 
 const CreateUserSchema = z.object({
   name: z.string().min(1).max(100),
@@ -19,21 +20,47 @@ const CreateUserSchema = z.object({
 
 const UpdateUserSchema = z.object({
   id: z.string().min(1),
-  role: z.enum(USER_ROLES),
+  role: z.enum(USER_ROLES).optional(),
+  password: z.string().min(8).optional(),
 })
 
 const DeleteUserSchema = z.object({
   id: z.string().min(1),
 })
 
+function toSafeUser(user: {
+  id: string
+  name: string | null
+  email: string
+  role: string | null
+  doctorId: number | null
+  doctor?: { name: string } | null
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    doctorId: user.doctorId,
+    doctorName: user.doctor?.name ?? null,
+  }
+}
+
 export async function GET() {
   try {
-    await requireRole("SUPER_ADMIN")
+    await requireRole(...MANAGE_USERS_ROLES)
     const users = await db.user.findMany({
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        doctorId: true,
+        doctor: { select: { name: true } },
+      },
       orderBy: { name: "asc" },
     })
-    return NextResponse.json(users)
+    return NextResponse.json(users.map(toSafeUser))
   } catch (error) {
     return handleApiError(error)
   }
@@ -41,7 +68,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireRole("SUPER_ADMIN")
+    await requireRole(...MANAGE_USERS_ROLES)
     const { email, name, password, role } = parseWith(CreateUserSchema, await req.json())
 
     const existingEmail = await db.user.findUnique({ where: { email } })
@@ -61,15 +88,30 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    await requireRole("SUPER_ADMIN")
-    const { id, role } = parseWith(UpdateUserSchema, await req.json())
-    const user = await db.user.update({ where: { id }, data: { role } })
-    return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
+    await requireRole(...MANAGE_USERS_ROLES)
+    const { id, role, password } = parseWith(UpdateUserSchema, await req.json())
+
+    if (role == null && password == null) {
+      throw new ConflictError("Informe a permissão ou a nova senha.")
+    }
+
+    const user = await db.user.update({
+      where: { id },
+      data: {
+        ...(role != null ? { role } : {}),
+        ...(password != null ? { password: hashSync(password, PASSWORD_HASH_ROUNDS) } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        doctorId: true,
+        doctor: { select: { name: true } },
+      },
     })
+
+    return NextResponse.json(toSafeUser(user))
   } catch (error) {
     return handleApiError(error)
   }
@@ -77,7 +119,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    await requireRole("SUPER_ADMIN")
+    await requireRole(...MANAGE_USERS_ROLES)
     const { id } = parseWith(DeleteUserSchema, await req.json())
     await db.user.delete({ where: { id } })
     return NextResponse.json({ success: true })
