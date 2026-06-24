@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { Appointment } from "@/types/types"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { calcElapsedMs } from "@/lib/schedule/appointment-utils"
 import { AppointmentStatus } from "@/lib/schedule/status"
 
@@ -15,6 +16,7 @@ import { AppointmentStatus } from "@/lib/schedule/status"
  */
 export function useAttendanceActions() {
   const queryClient = useQueryClient()
+  const { patchAppointment } = useScheduleMutations()
 
   const setAppointment = useCallback(
     (id: number, changes: Partial<Appointment>) => {
@@ -29,21 +31,14 @@ export function useAttendanceActions() {
     async (id: number, changes: Partial<Appointment>, errorMsg = "Erro ao atualizar atendimento. Tente novamente.") => {
       setAppointment(id, changes)
 
-      try {
-        const res = await fetch("/api/schedule", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, ...changes }),
-        })
-        if (!res.ok) throw new Error(errorMsg)
-        return true
-      } catch {
-        toast.error(errorMsg)
+      const updated = await patchAppointment(id, changes, errorMsg)
+      if (!updated) {
         queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY })
         return false
       }
+      return true
     },
-    [queryClient, setAppointment]
+    [queryClient, patchAppointment, setAppointment]
   )
 
   const finalize = useCallback(

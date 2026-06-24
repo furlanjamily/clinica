@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { Plus, Trash2, Pencil } from "lucide-react"
+import { Plus, Trash2, Pencil, UserCheck, UserX } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -11,31 +11,20 @@ import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
-import type { UserRoleType } from "@/types/auth"
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query"
+import { UserRole, type UserRoleType } from "@/types/auth"
+import {
+  useUsers,
+  useUsersMutations,
+  USER_ROLE_FILTER_OPTIONS,
+  USER_ROLE_LABEL,
+  USER_ROLE_COLORS,
+  type UserRow,
+} from "@/hooks/useUsers"
 import { TableSuspense } from "@/components/ui/TableSuspense"
 import { DataTable, Td } from "@/components/ui/table/DataTable"
-import { absoluteUrl } from "@/lib/absolute-url"
-
-const roleLabel: Record<UserRoleType, string> = {
-  SUPER_ADMIN: "Super Admin",
-  ADMIN: "Admin",
-  MEDICO: "Médico",
-}
-
-const roleColors: Record<UserRoleType, string> = {
-  SUPER_ADMIN: "bg-purple-100 text-purple-700",
-  ADMIN: "bg-blue-100 text-blue-700",
-  MEDICO: "bg-green-100 text-green-700",
-}
-
-export type UserType = {
-  id: string
-  username: string
-  email: string
-  role: UserRoleType
-  doctorName?: string | null
-}
+import { FilterField, GlobalFilters } from "@/components/ui/table/GlobalFilters"
+import { Collapse } from "@/components/ui/Collapse"
+import { useTableFilters } from "@/hooks/useTableFilters"
 
 type UserFormValues = {
   username: string
@@ -45,67 +34,103 @@ type UserFormValues = {
   role: UserRoleType
 }
 
-const QUERY_KEY = ["users"] as const
+const USER_FILTER_CONFIG: FilterField[] = [
+  { name: "username", type: "input", placeholder: "Nome..." },
+  { name: "email", type: "input", placeholder: "E-mail..." },
+  {
+    name: "role",
+    type: "select",
+    options: [...USER_ROLE_FILTER_OPTIONS],
+    placeholder: "Permissão...",
+  },
+]
+
+type UserFilters = {
+  username: string
+  email: string
+  role: string
+}
 
 function UsersTable({
   currentUserId,
+  isSuperAdmin,
+  filters,
   onEdit,
   onDelete,
+  onToggleActive,
 }: {
   currentUserId?: string
-  onEdit: (u: UserType) => void
+  isSuperAdmin: boolean
+  filters: UserFilters
+  onEdit: (u: UserRow) => void
   onDelete: (id: string) => void
+  onToggleActive: (u: UserRow) => void
 }) {
-  const { data: users } = useSuspenseQuery<UserType[]>({
-    queryKey: QUERY_KEY,
-    queryFn: async () => {
-      const res = await fetch(absoluteUrl("/api/user"))
-      const payload: unknown = await res.json()
-      const raw = Array.isArray(payload) ? payload : (payload as { users?: unknown })?.users
-      if (!Array.isArray(raw)) return []
-      return raw.map((u) => {
-        const row = u as {
-          id: string
-          name?: string
-          username?: string
-          email: string
-          role: UserRoleType
-          doctorName?: string | null
-        }
-        return {
-          id: row.id,
-          username: row.username ?? row.name ?? "",
-          email: row.email,
-          role: row.role,
-          doctorName: row.doctorName ?? null,
-        }
-      })
-    },
-  })
+  const { data: users } = useUsers()
+
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((u) => {
+        const matchUsername = filters.username
+          ? u.username.toLowerCase().includes(filters.username.toLowerCase())
+          : true
+        const matchEmail = filters.email
+          ? u.email.toLowerCase().includes(filters.email.toLowerCase())
+          : true
+        const matchRole = filters.role ? u.role === filters.role : true
+        return matchUsername && matchEmail && matchRole
+      }),
+    [users, filters]
+  )
 
   return (
-    <DataTable<UserType>
+    <DataTable<UserRow>
       headers={[
         { label: "Nome", sort: (u) => u.username },
         { label: "Email", sort: (u) => u.email },
-        { label: "Médico vinculado", sort: (u) => u.doctorName ?? "" },
-        { label: "Permissão", sort: (u) => roleLabel[u.role] },
+        { label: "Permissão", sort: (u) => USER_ROLE_LABEL[u.role] },
+        { label: "Status", sort: (u) => (u.active ? "Ativo" : "Inativo") },
         { label: "Ações", align: "right" },
       ]}
-      data={users}
+      data={filteredUsers}
       emptyMessage="Nenhum usuário cadastrado"
       renderRow={(u) => (
-        <tr key={u.id} className="transition-colors hover:bg-gray-50/80">
+        <tr key={u.id} className={`transition-colors hover:bg-gray-50/80 ${!u.active ? "opacity-40" : ""}`}>
           <Td className="font-medium">{u.username}</Td>
           <Td className="text-gray-600">{u.email}</Td>
-          <Td className="text-gray-600">{u.doctorName ?? "—"}</Td>
           <Td>
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${roleColors[u.role]}`}>
-              {roleLabel[u.role]}
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${USER_ROLE_COLORS[u.role]}`}>
+              {USER_ROLE_LABEL[u.role]}
+            </span>
+          </Td>
+          <Td>
+            <span
+              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {u.active ? "Ativo" : "Inativo"}
             </span>
           </Td>
           <Td>
             <div className="flex items-center justify-end gap-3">
+              {isSuperAdmin && (
+                <Button
+                  variant="ghost"
+                  onClick={() => onToggleActive(u)}
+                  disabled={u.id === currentUserId}
+                >
+                  {u.active ? (
+                    <>
+                      <UserX size={14} /> Desativar
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={14} /> Ativar
+                    </>
+                  )}
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => onEdit(u)}>
                 <Pencil size={14} /> Editar
               </Button>
@@ -125,20 +150,21 @@ function UsersTable({
 }
 
 export default function UsersPage() {
-  const { session, canManageUsers } = useAuth()
+  const { session, canManageUsers, isSuperAdmin } = useAuth()
   const router = useRouter()
-  const queryClient = useQueryClient()
+  const { createUser, updateUser, removeUser, toggleActive } = useUsersMutations()
+  const { filters, handleFilterChange } = useTableFilters<UserFilters>({
+    username: "",
+    email: "",
+    role: "",
+  })
   const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState<UserType | null>(null)
+  const [editing, setEditing] = useState<UserRow | null>(null)
   const { register, handleSubmit, reset, setValue } = useForm<UserFormValues>()
 
   useEffect(() => {
     if (session && !canManageUsers) router.push("/dashboard")
   }, [session, canManageUsers, router])
-
-  function setUsers(updater: (prev: UserType[]) => UserType[]) {
-    queryClient.setQueryData<UserType[]>(QUERY_KEY, (prev) => updater(prev ?? []))
-  }
 
   async function handleSave(data: UserFormValues) {
     if (editing) {
@@ -150,59 +176,20 @@ export default function UsersPage() {
         payload.password = data.newPassword.trim()
       }
 
-      const res = await fetch(absoluteUrl("/api/user"), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        toast.error((await res.json()).message ?? "Erro ao atualizar usuário.")
-        return
-      }
-      const updated: {
-        id: string
-        name?: string
-        email: string
-        role: UserRoleType
-        doctorName?: string | null
-      } = await res.json()
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === updated.id
-            ? {
-                id: updated.id,
-                username: updated.name ?? u.username,
-                email: updated.email,
-                role: updated.role,
-                doctorName: updated.doctorName ?? u.doctorName,
-              }
-            : u
-        )
-      )
+      const updated = await updateUser(payload)
+      if (!updated) return
+
       toast.success(
         data.newPassword.trim() ? "Usuário e senha atualizados." : "Usuário atualizado."
       )
     } else {
-      const res = await fetch(absoluteUrl("/api/user"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.username,
-          email: data.email,
-          password: data.password,
-          role: data.role,
-        }),
+      const created = await createUser({
+        name: data.username,
+        email: data.email,
+        password: data.password,
+        role: data.role,
       })
-      if (!res.ok) {
-        toast.error((await res.json()).message ?? "Erro ao criar usuário.")
-        return
-      }
-      const created: { id: string; name?: string; email: string; role: UserRoleType } = await res.json()
-      setUsers((prev) => [
-        ...prev,
-        { id: created.id, username: created.name ?? "", email: created.email, role: created.role },
-      ])
-      toast.success("Usuário criado com sucesso!")
+      if (!created) return
     }
     setShowModal(false)
     setEditing(null)
@@ -210,20 +197,14 @@ export default function UsersPage() {
   }
 
   async function handleDelete(id: string) {
-    const res = await fetch(absoluteUrl("/api/user"), {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-    if (!res.ok) {
-      toast.error("Erro ao remover usuário.")
-      return
-    }
-    setUsers((prev) => prev.filter((u) => u.id !== id))
-    toast.success("Usuário removido.")
+    await removeUser(id)
   }
 
-  function openEdit(user: UserType) {
+  async function handleToggleActive(user: UserRow) {
+    await toggleActive(user)
+  }
+
+  function openEdit(user: UserRow) {
     setEditing(user)
     setValue("role", user.role)
     setValue("newPassword", "")
@@ -238,14 +219,29 @@ export default function UsersPage() {
         </Button>
       </Header>
 
-      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <TableSuspense cols={5} rows={5}>
-          <UsersTable
-            currentUserId={session?.user?.id}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-          />
-        </TableSuspense>
+      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
+        <div className="flex shrink-0 flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+          <Collapse label="Filtros" unboundedPanel>
+            <GlobalFilters
+              values={filters}
+              onChange={(name, value) => handleFilterChange(name as keyof UserFilters, value)}
+              filters={USER_FILTER_CONFIG}
+            />
+          </Collapse>
+        </div>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <TableSuspense cols={5} rows={5}>
+            <UsersTable
+              currentUserId={session?.user?.id}
+              isSuperAdmin={isSuperAdmin}
+              filters={filters}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onToggleActive={handleToggleActive}
+            />
+          </TableSuspense>
+        </div>
       </div>
 
       {showModal && (
@@ -280,9 +276,9 @@ export default function UsersPage() {
                 </>
               )}
               <FormSelect label="Permissão" {...register("role")}>
-                <option value="SUPER_ADMIN">Super Admin</option>
-                <option value="ADMIN">Admin (Recepcionista)</option>
-                <option value="MEDICO">Médico</option>
+                <option value={UserRole.SuperAdmin}>Super Admin</option>
+                <option value={UserRole.Admin}>Admin (Recepcionista)</option>
+                <option value={UserRole.Medico}>Médico</option>
               </FormSelect>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <Button type="button" variant="ghost" onClick={() => { setShowModal(false); setEditing(null); reset() }}>

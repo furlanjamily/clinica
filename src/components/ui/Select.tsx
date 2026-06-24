@@ -17,6 +17,7 @@ type TableCellInfo = {
 interface SelectProps {
   options: Option[]
   showStatusDot?: boolean
+  className?: string
 
   info?: TableCellInfo
 
@@ -29,7 +30,8 @@ export default function Select({
   value,
   onChange,
   options,
-  showStatusDot = false
+  showStatusDot = false,
+  className,
 }: SelectProps) {
 
   const currentValue = info ? info.getValue() : value
@@ -59,8 +61,7 @@ export default function Select({
       <select
         value={currentValue}
         onChange={(e) => handleChange(e.target.value)}
-        className={`appearance-none cursor-pointer h-10 text-[12px] text-gray-700 bg-white py-2 pl-3 pr-8 rounded-3xl font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px]
-        ${showStatusDot ? "pl-8" : ""}`}
+        className={`appearance-none cursor-pointer h-10 text-[12px] text-gray-700 bg-white py-2 pl-3 pr-8 rounded-3xl font-medium border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all min-w-[160px] ${showStatusDot ? "pl-8" : ""} ${className ?? ""}`}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

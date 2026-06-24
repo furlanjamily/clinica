@@ -5,13 +5,13 @@ import { Pool } from "pg"
 import { hashSync } from "bcrypt"
 import { addDays, format } from "date-fns"
 import { PrismaClient } from "../src/generated/prisma/client"
-import { DESPESA_CATEGORIAS, RECEITA_CATEGORIAS } from "../src/lib/finance/categories"
 import {
   combineLocalDateTime,
   localDateOnly,
   dateOnlyToString,
 } from "../src/lib/datetime/appointment-time"
 import { AppointmentStatus } from "../src/lib/schedule/status"
+import { buildStandaloneFinanceSeed } from "./finance-demo-data"
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não definido. Configure o .env antes de rodar o seed.")
@@ -396,6 +396,7 @@ async function main() {
   await prisma.medicalRecord.deleteMany()
   await prisma.appointment.deleteMany()
   await prisma.patient.deleteMany()
+  await prisma.user.updateMany({ where: { doctorId: { not: null } }, data: { doctorId: null } })
   await prisma.doctor.deleteMany()
   await prisma.specialty.deleteMany()
   await prisma.procedure.deleteMany()
@@ -475,16 +476,6 @@ async function main() {
 
   let apptCounter = 0
   const testeDoctor = doctors[0]
-  const standaloneTx: Array<{
-    type: "Receita" | "Despesa"
-    category: string
-    description: string
-    amount: number
-    competenceDate: Date
-    paymentMethod?: string
-    status: "Confirmado" | "Pendente"
-    paidAt?: Date
-  }> = []
 
   for (let offset = -52; offset <= 28; offset++) {
     const day = addDays(TODAY, offset)
@@ -492,7 +483,7 @@ async function main() {
     if (dow === 0 || dow === 6) continue
 
     const dateStr = format(day, "yyyy-MM-dd")
-    const density = 7 + (Math.abs(offset) % 5)
+    const density = 7 + (Math.abs(offset) % 5) + (offset >= -45 ? 4 : 0)
 
     for (let k = 0; k < density; k++) {
       const doctor =
@@ -521,7 +512,7 @@ async function main() {
     if (dow === 0 || dow === 6) continue
 
     const dateStr = format(day, "yyyy-MM-dd")
-    const extraDensity = offset >= -21 ? 10 : 6
+    const extraDensity = offset >= -21 ? 12 : 8
 
     for (let k = 0; k < extraDensity; k++) {
       const patient = patients[mod(apptCounter + testeExtra + k * 7, patients.length)]
@@ -544,46 +535,9 @@ async function main() {
 
   console.log(`Dr.Teste: +${testeExtra} agendamentos adicionais.`)
 
-  console.log("Lançamentos financeiros avulsos (últimos meses)...")
+  console.log("Lançamentos financeiros avulsos (últimos 12 meses)...")
 
-  for (let m = 0; m < 4; m++) {
-    const baseMonth = addDays(TODAY, -30 * m)
-    const y = baseMonth.getFullYear()
-    const mo = String(baseMonth.getMonth() + 1).padStart(2, "0")
-
-    for (let i = 0; i < 6; i++) {
-      const day = 3 + ((m * 7 + i * 5) % 25)
-      const entryDate = `${y}-${mo}-${String(day).padStart(2, "0")}`
-      const cat = RECEITA_CATEGORIAS[(m + i) % RECEITA_CATEGORIAS.length]
-      const status = i % 5 === 0 ? "Pendente" : "Confirmado"
-      standaloneTx.push({
-        type: "Receita",
-        category: cat,
-        description: `Receita avulsa — ${cat.toLowerCase()} (demo)`,
-        amount: Math.round((80 + i * 37 + m * 12) * 100) / 100,
-        competenceDate: localDateOnly(entryDate),
-        paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
-        status,
-        paidAt: status === "Confirmado" ? localDateOnly(entryDate) : undefined,
-      })
-    }
-
-    for (let i = 0; i < 8; i++) {
-      const day = 2 + ((m * 3 + i * 4) % 26)
-      const entryDate = `${y}-${mo}-${String(day).padStart(2, "0")}`
-      const cat = DESPESA_CATEGORIAS[(m + i * 2) % DESPESA_CATEGORIAS.length]
-      standaloneTx.push({
-        type: "Despesa",
-        category: cat,
-        description: `Despesa — ${cat.toLowerCase()} (demo)`,
-        amount: Math.round((450 + i * 120 + m * 55) * 100) / 100,
-        competenceDate: localDateOnly(entryDate),
-        paymentMethod: i % 4 === 0 ? "Transferência" : "Não aplicável",
-        status: "Confirmado",
-        paidAt: localDateOnly(entryDate),
-      })
-    }
-  }
+  const standaloneTx = buildStandaloneFinanceSeed(TODAY)
 
   await prisma.transaction.createMany({ data: standaloneTx })
 

@@ -1,9 +1,18 @@
 import { z } from "zod"
+import { TransactionStatus, TransactionType } from "@/lib/finance/types"
 
 const consultOrFollowUpCategories = ["Consulta", "Retorno"] as const
 
+const transactionTypes = [TransactionType.Income, TransactionType.Expense] as const
+const transactionStatuses = [
+  TransactionStatus.Confirmed,
+  TransactionStatus.Pending,
+  TransactionStatus.Cancelled,
+  TransactionStatus.Overdue,
+] as const
+
 export const CreateTransactionSchema = z.object({
-  type: z.enum(["Receita", "Despesa"]),
+  type: z.enum(transactionTypes),
   category: z.string().trim().min(1).max(120),
   description: z.string().min(1).max(500),
   amount: z.number().positive(),
@@ -14,7 +23,7 @@ export const CreateTransactionSchema = z.object({
     .optional()
     .nullable()
     .transform((s) => (s?.trim() ? s.trim() : undefined)),
-  status: z.enum(["Confirmado", "Pendente", "Cancelado", "Vencido"]).default("Confirmado"),
+  status: z.enum(transactionStatuses).default(TransactionStatus.Confirmed),
   appointmentId: z.number().int().positive().optional(),
 })
 

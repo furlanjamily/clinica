@@ -15,10 +15,8 @@ import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
 import { Button } from "@/components/ui/button"
 import { TableCard, Td } from "@/components/ui/table/DataTable"
-import { useQueryClient } from "@tanstack/react-query"
-import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { AppointmentStatus, STATUS_LABEL, STATUS_STYLE } from "@/lib/schedule/status"
-import { toast } from "sonner"
 
 function isDataRow(row: RowType): row is { type: "data" } & Appointment {
   return row.type === "data"
@@ -45,15 +43,14 @@ const COLUMN_COUNT = 5
 
 const columnHelper = createColumnHelper<RowType>()
 
-function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActiveAttendanceForDoctor }: {
+function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActiveAttendanceForDoctor, onStartAttendance }: {
   original: Appointment
   updateItem: (id: number, changes: Partial<Appointment>) => Promise<void>
   onReschedule: (item: Appointment) => void
   onOpenPayment: (item: Appointment) => void
   hasActiveAttendanceForDoctor: boolean
+  onStartAttendance: (item: Appointment) => Promise<void>
 }) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
   const today = isToday(original.date)
   const [loading, setLoading] = useState(false)
 
@@ -89,28 +86,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActi
           onClick={async () => {
             setLoading(true)
             try {
-              const res = await fetch("/api/schedule", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  id: original.id,
-                  status: AppointmentStatus.InProgress,
-                  startTime: new Date().toISOString(),
-                }),
-              })
-              if (!res.ok) {
-                const err = await res.json().catch(() => ({}))
-                toast.error(err.message ?? "Não foi possível iniciar o atendimento.")
-                return
-              }
-              const updated = await res.json()
-
-              queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-                prev?.map((item) => (item.id === original.id ? { ...item, ...updated } : item))
-              )
-              queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY })
-
-              router.push("/attendance")
+              await onStartAttendance(original)
             } finally {
               setLoading(false)
             }
@@ -160,7 +136,8 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActi
 export function Table({ rows, appointments, setData }: TableProps) {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [paymentFor, setPaymentFor] = useState<Appointment | null>(null)
-  const queryClient = useQueryClient()
+  const router = useRouter()
+  const { patchAppointment, syncCache } = useScheduleMutations()
 
   function doctorHasActiveAttendance(item: Appointment): boolean {
     return appointments.some(
@@ -174,18 +151,25 @@ export function Table({ rows, appointments, setData }: TableProps) {
   }
 
   const updateItem = async (id: number, changes: Partial<Appointment>) => {
-    const res = await fetch("/api/schedule", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...changes }),
-    })
-    const updated = await res.json()
+    const updated = await patchAppointment(id, changes)
+    if (!updated) return
 
     setData((prev) => prev.map((item) => item.id === id ? { ...item, ...updated } : item))
+  }
 
-    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-      prev?.map((item) => (item.id === id ? { ...item, ...updated } : item))
+  const startAttendance = async (item: Appointment) => {
+    const updated = await patchAppointment(
+      item.id,
+      {
+        status: AppointmentStatus.InProgress,
+        startTime: new Date().toISOString(),
+      },
+      "Não foi possível iniciar o atendimento."
     )
+    if (!updated) return
+
+    setData((prev) => prev.map((appt) => (appt.id === item.id ? { ...item, ...updated } : appt)))
+    router.push("/attendance")
   }
 
   const columns = [
@@ -253,6 +237,7 @@ export function Table({ rows, appointments, setData }: TableProps) {
             onReschedule={setSelected}
             onOpenPayment={setPaymentFor}
             hasActiveAttendanceForDoctor={doctorHasActiveAttendance(original)}
+            onStartAttendance={startAttendance}
           />
         )
       },
@@ -332,9 +317,7 @@ export function Table({ rows, appointments, setData }: TableProps) {
           onClose={() => setPaymentFor(null)}
           onSuccess={(updated) => {
             setData((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
-            queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-              prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
-            )
+            syncCache(updated.id, updated)
           }}
         />
       )}

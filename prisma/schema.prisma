@@ -408,6 +408,7 @@ model User {
   image         String?
   role          String?   @default("MEDICO")
   password      String?
+  active        Boolean   @default(true)
   doctorId      Int?
   doctor        Doctor?   @relation(fields: [doctorId], references: [id], onDelete: SetNull)
 
@@ -421,6 +422,7 @@ model User {
   transactions    Transaction[]
   statusChanges   AppointmentStatusHistory[]
 
+  @@index([active])
   @@index([doctorId])
   @@map("users")
 }

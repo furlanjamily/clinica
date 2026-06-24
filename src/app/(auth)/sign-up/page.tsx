@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import Link from "next/link"
-import { toast } from "sonner"
+import { useSignUp } from "@/hooks/useSignUp"
 import { Input } from "@/components/ui/Input"
 import Image from "next/image"
 
@@ -23,28 +23,18 @@ type FormData = z.infer<typeof schema>
 
 export default function SignUp() {
   const router = useRouter()
+  const { registerAccount } = useSignUp()
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
   async function onSubmit(data: FormData) {
-    const res = await fetch("/api/user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: data.username,
-        email: data.email,
-        password: data.password,
-      }),
+    const ok = await registerAccount({
+      name: data.username,
+      email: data.email,
+      password: data.password,
     })
-
-    if (res.ok) {
-      toast.success("Conta criada com sucesso! Faça login.")
-      router.push("/sign-in")
-    } else {
-      const body = await res.json()
-      toast.error(body.message ?? "Erro ao cadastrar.")
-    }
+    if (ok) router.push("/sign-in")
   }
 
   return (
@@ -58,6 +48,7 @@ export default function SignUp() {
           height={27}
           className="absolute left-6 top-8 sm:left-10 sm:top-9 lg:left-[68px]"
           priority
+          unoptimized
         />
 
         <div className="mb-4">

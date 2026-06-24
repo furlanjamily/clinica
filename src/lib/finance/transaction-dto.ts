@@ -1,15 +1,19 @@
 import type { Transaction as PrismaTransaction, Prisma } from "@/generated/prisma/client"
 import { dateOnlyToString, localDateOnly } from "@/lib/datetime/appointment-time"
-import type { FinanceTransaction } from "./types"
+import type {
+  FinanceTransaction,
+  TransactionStatusValue,
+  TransactionTypeValue,
+} from "./types"
 
 type TransactionWriteInput = {
-  type?: "Receita" | "Despesa"
+  type?: TransactionTypeValue
   category?: string
   description?: string
   amount?: number
   date?: string
   paymentMethod?: string | null
-  status?: "Confirmado" | "Pendente" | "Cancelado" | "Vencido"
+  status?: TransactionStatusValue
 }
 
 /** Contrato da UI -> banco (date -> competenceDate, amount -> Decimal). */

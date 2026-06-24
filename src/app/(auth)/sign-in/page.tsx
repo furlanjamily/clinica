@@ -62,6 +62,7 @@ export default function SignIn() {
           height={27}
           className="absolute left-6 top-8 sm:left-10 sm:top-9 lg:left-[68px] lg:top-9"
           priority
+          unoptimized
         />
 
         <div>

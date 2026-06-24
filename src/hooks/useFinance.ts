@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { absoluteUrl } from "@/lib/absolute-url"
 import type { FinanceTransaction } from "@/lib/finance/types"
 import type { FinancialConfigValues } from "@/lib/finance/config"
+import type { Appointment } from "@/types/types"
 
 export const FINANCE_CONFIG_QUERY_KEY = ["finance", "config"] as const
 
@@ -116,4 +117,33 @@ export function useFinanceMutations(month: string, typeFilter: string) {
   }
 
   return { createTransaction, removeTransaction, saveConfig }
+}
+
+type AppointmentPaymentInput = Omit<FinanceTransaction, "id"> & { appointmentId: number }
+
+type AppointmentPaymentResult = {
+  transaction: FinanceTransaction
+  appointment: Appointment
+}
+
+/** Registra receita vinculada a um agendamento (fluxo da agenda). */
+export function useAppointmentPayment() {
+  async function registerPayment(
+    data: AppointmentPaymentInput
+  ): Promise<AppointmentPaymentResult | null> {
+    const res = await fetch(absoluteUrl("/api/finance/transactions"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+
+    if (!res.ok) {
+      toast.error(await readErrorMessage(res, "Não foi possível registrar o pagamento."))
+      return null
+    }
+
+    return res.json()
+  }
+
+  return { registerPayment }
 }

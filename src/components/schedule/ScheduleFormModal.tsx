@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import type { Appointment } from "@/types/types"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useScheduleOptions } from "@/hooks/useScheduleOptions"
+import { useScheduleAvailability } from "@/hooks/useScheduleAvailability"
+import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { ScheduleFormFields } from "@/components/schedule/ScheduleFormFields"
@@ -19,9 +21,7 @@ type Props = {
 
 export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
   const { doctors = [], patients = [] } = useScheduleOptions()
-
-  const [availableSlots, setAvailableSlots] = useState<string[]>([])
-  const [loadingSlots, setLoadingSlots] = useState(false)
+  const { createAppointment, patchAppointment } = useScheduleMutations()
   const [loading, setLoading] = useState(false)
 
   const isReschedule = mode === "reschedule" && !!item
@@ -41,32 +41,15 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
     [doctors, form.doctorId]
   )
 
-  useEffect(() => {
-    if (!selectedDoctor || !form.date) {
-      setAvailableSlots([])
-      return
-    }
+  const { data: rawSlots = [], isPending: loadingSlots } = useScheduleAvailability(
+    selectedDoctor?.name,
+    form.date
+  )
 
-    setLoadingSlots(true)
-
-    fetch(
-      `/api/schedule/availability?doctorName=${encodeURIComponent(
-        selectedDoctor.name
-      )}&date=${form.date}`
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        const slots = data?.availableTimes ?? []
-
-        const filtered = Array.isArray(slots)
-          ? filterAvailableSlots(slots, form.date, todayIso, nowTime)
-          : []
-
-        setAvailableSlots(filtered)
-      })
-      .catch(() => setAvailableSlots([]))
-      .finally(() => setLoadingSlots(false))
-  }, [selectedDoctor, form.date, todayIso, nowTime])
+  const availableSlots = useMemo(
+    () => filterAvailableSlots(rawSlots, form.date, todayIso, nowTime),
+    [rawSlots, form.date, todayIso, nowTime]
+  )
 
   const patientOptions = useMemo(
     () => [
@@ -140,34 +123,24 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
     setLoading(true)
 
     try {
-      const res = await fetch("/api/schedule", {
-        method: isReschedule ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: item?.id,
-          date: form.date,
-          slotTime: form.slotTime,
-
-          patient: {
-            id: selectedPatient.id,
-            name: selectedPatient.name,
-          },
-
-          professional: {
-            id: doctorForSubmit.id,
-            name: doctorForSubmit.name,
-          },
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        toast.error(err?.message ?? "Erro ao salvar")
-        return
+      const payload = {
+        date: form.date,
+        slotTime: form.slotTime,
+        patient: {
+          id: selectedPatient.id,
+          name: selectedPatient.name,
+        },
+        professional: {
+          id: doctorForSubmit.id,
+          name: doctorForSubmit.name,
+        },
       }
 
-      const saved = await res.json()
-      toast.success("Agendamento salvo!")
+      const saved = isReschedule && item
+        ? await patchAppointment(item.id, payload)
+        : await createAppointment(payload)
+
+      if (!saved) return
 
       onSuccess(saved)
       onClose()

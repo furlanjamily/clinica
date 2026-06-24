@@ -10,12 +10,11 @@ import {
   IconUsers,
   IconReportMedical,
 } from "@tabler/icons-react";
-import { LayoutDashboard } from "lucide-react";
+import { CirclePlus, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Logo from "../../public/logo.svg";
 import { LinkSideBar } from "./link-side-bar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,9 +65,17 @@ function SideBarContent({ onCreate }: Props) {
         )}
       >
         <div className="flex flex-col items-center gap-6 md:gap-8">
-          <Image className="max-w-[100px] md:max-w-[139px]" src={Logo} alt="Logo" />
+          <Image
+            className="max-w-[100px] md:max-w-[139px]"
+            src="/logo.svg"
+            alt="Logo"
+            width={140}
+            height={27}
+            priority
+            unoptimized
+          />
           <Button onClick={() => setOpen(true)}>
-            <IconPlus size={16} />
+            <CirclePlus size={16} />
             <span className="hidden md:inline">Novo Agendamento</span>
           </Button>
         </div>

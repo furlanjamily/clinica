@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, memo, useMemo } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import Image from "next/image"
 import { toast } from "sonner"
 import { Pause, Play, FileText, Download, Pencil } from "lucide-react"
@@ -13,7 +12,7 @@ import type { ViewMode } from "@/hooks/useSchedule"
 
 import { useTableFilters } from "@/hooks/useTableFilters"
 import { useAttendanceActions } from "@/hooks/useAttendanceActions"
-import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { useMedicalRecordMutations } from "@/hooks/useMedicalRecord"
 
 import { getPatientName } from "@/lib/schedule/appointment-utils"
 import { flattenAppointmentsByDay } from "@/lib/schedule/group-by-day"
@@ -51,8 +50,8 @@ export function AttendanceTableComponent({
   onChangeDate,
   onChangeView,
 }: Props) {
-  const queryClient = useQueryClient()
   const { finalize, pause, resume, restart } = useAttendanceActions()
+  const { saveRecord } = useMedicalRecordMutations()
 
   const [modalItem, setModalItem] = useState<Appointment | null>(null)
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | undefined>()
@@ -104,27 +103,12 @@ export function AttendanceTableComponent({
   async function handleSaveClinicalChart(formData: Partial<MedicalRecord> & { appointmentId: number }) {
     if (!modalItem) return
 
-    const method = editingRecord ? "PATCH" : "POST"
-    const res = await fetch("/api/medical-record", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        editingRecord ? { ...formData, id: editingRecord.id } : formData
-      ),
+    const saved = await saveRecord(formData, {
+      editingId: editingRecord?.id,
+      syncSchedule: true,
     })
 
-    if (!res.ok) {
-      toast.error("Erro ao salvar prontuário. Tente novamente.")
-      return
-    }
-
-    const saved = await res.json()
-
-    queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-      prev?.map((item) =>
-        item.id === modalItem.id ? { ...item, clinicalChart: saved } : item
-      ) ?? []
-    )
+    if (!saved) return
 
     toast.success(editingRecord ? "Atualizado!" : "Criado!")
     closeRecordModal()

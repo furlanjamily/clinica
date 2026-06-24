@@ -1,13 +1,29 @@
 /** Valores persistidos no banco — não traduzir. */
-export type TransactionType = "Receita" | "Despesa"
+export const TransactionType = {
+  Income: "Receita",
+  Expense: "Despesa",
+} as const
+
+export type TransactionTypeValue =
+  (typeof TransactionType)[keyof typeof TransactionType]
+
+export const TransactionStatus = {
+  Confirmed: "Confirmado",
+  Pending: "Pendente",
+  Cancelled: "Cancelado",
+  Overdue: "Vencido",
+} as const
+
+export type TransactionStatusValue =
+  (typeof TransactionStatus)[keyof typeof TransactionStatus]
 
 export type FinanceTransaction = {
   id: number
-  type: TransactionType
+  type: TransactionTypeValue
   category: string
   description: string
   amount: number
   date: string
   paymentMethod?: string | null
-  status: string
+  status: TransactionStatusValue
 }

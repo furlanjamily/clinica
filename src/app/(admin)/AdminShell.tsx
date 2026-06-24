@@ -25,7 +25,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {!isDashboard ? <UserHeader /> : null}
           <div
             className={cn(
-              "flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto",
+              "@container/main flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto [container-type:size]",
               isDashboard
                 ? "p-0"
                 : "px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"

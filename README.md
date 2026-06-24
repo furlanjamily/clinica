@@ -1,118 +1,143 @@
+# ClinySOFT
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Sistema de gestão clínica para recepção, atendimento e administração. Cobre cadastro de pacientes e médicos, agenda, fluxo de atendimento com timer, prontuário eletrônico, dashboard analítico e módulo financeiro.
 
-## Getting Started
+## Funcionalidades
 
-First, run the development server:
+| Módulo | Rota | Descrição |
+|---|---|---|
+| Dashboard | `/dashboard` | Visão geral com métricas, agenda do dia e indicadores |
+| Agenda | `/schedule` | Agendamento, confirmação e gestão de consultas |
+| Atendimentos | `/attendance` | Fila de atendimento com timer e transição de status |
+| Pacientes | `/new-patient` | Cadastro e edição de pacientes |
+| Médicos | `/doctors` | Cadastro de profissionais e especialidades |
+| Prontuário | `/medical-record` | Registro clínico vinculado à consulta (PDF) |
+| Financeiro | `/finance` | Receitas, despesas, repasses e configuração de taxas |
+| Usuários | `/users` | Gestão de contas (ADMIN / SUPER_ADMIN) |
+| Configurações | `/settings` | Preferências do usuário logado |
+
+## Stack
+
+- **Framework:** Next.js 15 (App Router) + React 19 + TypeScript
+- **Banco:** PostgreSQL + Prisma 7
+- **Auth:** NextAuth.js (JWT, credenciais)
+- **UI:** Tailwind CSS, Radix UI, TanStack Table, Recharts
+- **Dados no cliente:** TanStack React Query
+- **Validação:** Zod
+- **Testes:** Vitest + Testing Library + Supertest
+
+## Pré-requisitos
+
+- Node.js 20+
+- PostgreSQL 14+
+- npm
+
+## Configuração
+
+### 1. Instalar dependências
+
+```bash
+npm install
+```
+
+O script `postinstall` roda `prisma generate` automaticamente e gera o client em `src/generated/prisma`.
+
+### 2. Variáveis de ambiente
+
+Copie o exemplo e ajuste os valores:
+
+```bash
+cp .env.example .env
+```
+
+Variáveis obrigatórias:
+
+| Variável | Descrição |
+|---|---|
+| `DATABASE_URL` | Connection string PostgreSQL (pooler / runtime) |
+| `DIRECT_URL` | Connection string direta (migrations e seed) |
+| `NEXTAUTH_SECRET` | Segredo para assinar tokens JWT |
+| `NEXTAUTH_URL` | URL base da aplicação (ex.: `http://localhost:3000`) |
+
+Consulte [`.env.example`](.env.example) para variáveis opcionais (fuso horário, demo de portfólio, cron, APIs externas da agenda).
+
+### 3. Banco de dados
+
+```bash
+npx prisma migrate deploy   # ou: npx prisma migrate dev
+npm run db:seed             # dados fictícios para desenvolvimento
+```
+
+Após o seed, use as credenciais de demo:
+
+- **E-mail:** `medico.1@clinicademo.local`
+- **Senha:** `Medico123!`
+- **Papel:** `SUPER_ADMIN` (Dr.Teste)
+
+Demais médicos: `medico.N@clinicademo.local` com a mesma senha e papel `MEDICO`.
+
+### 4. Desenvolvimento
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run start` | Servidor de produção |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest em modo watch |
+| `npx vitest run` | Testes uma vez (CI) |
+| `npx tsc --noEmit` | Checagem de tipos |
+| `npm run db:seed` | Seed completo (pacientes, agenda, finanças) |
+| `npm run db:seed-finance` | Dados financeiros adicionais |
+| `npm run db:seed-receita` | Receitas adicionais |
 
-## Learn More
+## Papéis de acesso
 
-To learn more about Next.js, take a look at the following resources:
+| Papel | Permissões |
+|---|---|
+| `SUPER_ADMIN` | Acesso total, incluindo gestão de usuários |
+| `ADMIN` | Gestão de usuários; demais módulos administrativos |
+| `MEDICO` | Agenda e atendimentos do próprio vínculo (`doctorId`) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+A lógica de permissão no cliente está em `src/hooks/useAuth.ts`. Rotas protegidas usam `requireSession()` / `requireRole()` no servidor.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estrutura do projeto
 
-## Deploy on Vercel
+```
+src/
+├── app/
+│   ├── (admin)/          # Páginas autenticadas (dashboard, agenda, finanças…)
+│   ├── (auth)/           # Login e cadastro
+│   └── api/              # Rotas REST (patient, schedule, finance…)
+├── components/           # UI reutilizável (sem regra de negócio)
+├── hooks/                # React Query + mutações
+├── lib/                  # Regras de negócio, validações Zod, utilitários
+├── types/                # Tipos compartilhados
+└── generated/prisma/     # Client Prisma (gerado — não editar)
+prisma/
+├── schema.prisma         # Modelo de dados
+├── migrations/           # Histórico de migrations
+└── seed.ts               # Seed de desenvolvimento
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Testes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx vitest run
+```
 
-Ola Jamily
+- Unitários de `lib/` e schemas Zod: `src/__tests__/lib/`
+- Integração de API: `src/__tests__/api/`
+- Rotas protegidas devem ter cobertura 401 (`auth-protection.test.ts`)
 
-Precisa de um sistema 
-Que a recepção pudesse cadastrar os pacientes com foto ,nome , tipo de convênio, número de carteirinha do convênio,profissional que iria atender nome e crp, o tipo de consulta, agendamento, confirmação de presença do paciente 
+## Contribuindo
 
-Em uma aba ADM
-Filtrar as informações 
-Se houve o atendimento 
-Quantos atendimentos
-Quem atendeu
-Qual o convênio 
-O valor a ser repassado ao profissional (cada atendimento um valor diferente) 
- 
-Valor total da clínica e e valor de repasse
-
-Quantidade de pacientes da clínica ativos
-
-
-
-GPT
-
-Requisitos Funcionais
-Recepção
-Cadastrar pacientes com as seguintes informações:
-Foto
-Nome completo
-Tipo de convênio
-Número da carteirinha do convênio
-Nome do profissional que irá atender
-Número do CRP do profissional
-Tipo de consulta
-Agendar consultas para os pacientes.
-Confirmar a presença do paciente no momento da consulta.
-Exibir a lista de pacientes cadastrados e permitir busca por nome, convênio ou profissional.
-Editar ou excluir cadastro de pacientes.
-Permitir visualização do histórico de consultas de cada paciente.
-Administração (ABA ADM)
-Filtrar informações sobre:
-Pacientes atendidos.
-Quantidade de atendimentos realizados.
-Profissionais que atenderam.
-Convênios associados aos atendimentos.
-Calcular e exibir:
-Valor total de repasse para cada profissional (considerando valores diferentes por atendimento).
-Valor total da clínica (soma dos atendimentos).
-Exibir a quantidade total de pacientes ativos da clínica.
-Gerar relatórios detalhados com base nos filtros aplicados:
-Relatório por período (semanal, mensal, anual).
-Relatório por convênio ou profissional.
-Requisitos Não Funcionais
-Interface Usuário
-
-Interface intuitiva e responsiva, compatível com computadores, tablets e celulares.
-Design limpo com categorização clara para a recepção e administração.
-Exibição de gráficos para relatórios na aba ADM (ex.: quantidade de atendimentos por mês, valores de repasse).
-Desempenho
-
-Respostas rápidas aos comandos de filtro e geração de relatórios, com tempo de carregamento inferior a 3 segundos.
-Sistema capaz de gerenciar, no mínimo, 10.000 cadastros sem queda de desempenho.
-Segurança
-
-Controle de acesso baseado em funções (ex.: recepção e administração com níveis de acesso diferentes).
-Criptografia para armazenar dados sensíveis, como fotos e informações dos pacientes.
-Backup automático dos dados a cada 24 horas.
-Escalabilidade
-
-Sistema preparado para suportar aumento no número de pacientes, profissionais e dados ao longo do tempo.
-Infraestrutura ajustável para atender mais usuários simultaneamente.
-Manutenibilidade
-
-Código-fonte modular para facilitar atualizações futuras.
-Documentação clara do sistema para suporte técnico e futuras integrações.
-Conformidade Legal
-
-Adequação às normas de proteção de dados (ex.: LGPD no Brasil).
-Consentimento dos pacientes para armazenamento de informações pessoais.
-Integração
-
-Possibilidade de exportar relatórios em formatos como PDF e Excel.
-Integração com sistemas de pagamento para repasse aos profissionais, se necessário.
+Leia o [Guia de contribuição](CONTRIBUTING.md) para convenções de código, arquitetura em camadas e checklist antes do PR.

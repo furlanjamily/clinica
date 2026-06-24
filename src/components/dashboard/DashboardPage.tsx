@@ -31,8 +31,10 @@ function DashboardMainGrid() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-col gap-5 sm:gap-6 lg:h-full">
-        <FeaturedDoctorCard />
-        <LastVisitDetails />
+        <div className="hidden flex-col gap-5 sm:gap-6 lg:flex">
+          <FeaturedDoctorCard />
+          <LastVisitDetails />
+        </div>
         <ProjectProgressCard />
       </div>
     </div>
@@ -53,6 +55,11 @@ export function DashboardPage() {
           <DashboardWelcomeBar />
 
           <ProjectOverviewCards />
+
+          <div className="flex flex-col gap-5 sm:gap-6 lg:hidden">
+            <FeaturedDoctorCard />
+            <LastVisitDetails />
+          </div>
 
           <DashboardMainGrid />
         </motion.div>

@@ -2,8 +2,9 @@ import type { Session } from "next-auth"
 import type { Prisma } from "@/generated/prisma/client"
 import { resolveDoctorForSession } from "@/lib/auth/session-doctor"
 import type { UserRoleType } from "@/types/auth"
+import { UserRole } from "@/types/auth"
 
-const UNRESTRICTED_ROLES: UserRoleType[] = ["SUPER_ADMIN", "ADMIN"]
+const UNRESTRICTED_ROLES: UserRoleType[] = [UserRole.SuperAdmin, UserRole.Admin]
 
 /**
  * Retorna `undefined` quando o usuário vê todos os agendamentos.

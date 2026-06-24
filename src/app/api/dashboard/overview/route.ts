@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth/appointment-scope"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { AppointmentStatus, STATUS_LABEL } from "@/lib/schedule/status"
+import { TransactionStatus, TransactionType } from "@/lib/finance/types"
 import {
   startOfLocalDay,
   startOfNextLocalDay,
@@ -388,8 +389,8 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
         where: {
           deletedAt: null,
-          type: "Receita",
-          status: "Confirmado",
+          type: TransactionType.Income,
+          status: TransactionStatus.Confirmed,
           competenceDate: { gte: rangeStart, lt: rangeEnd },
           ...txScope,
         },
@@ -398,8 +399,8 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
         where: {
           deletedAt: null,
-          type: "Receita",
-          status: "Confirmado",
+          type: TransactionType.Income,
+          status: TransactionStatus.Confirmed,
           competenceDate: { gte: prevStart, lt: prevEnd },
           ...txScope,
         },

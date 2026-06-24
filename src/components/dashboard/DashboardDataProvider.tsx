@@ -4,11 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
   type ReactNode,
 } from "react"
 import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
+import { useDashboardOverview } from "@/hooks/useDashboardOverview"
 
 export type DashboardPeriod = "day" | "week" | "month"
 
@@ -140,10 +140,10 @@ const DashboardContext = createContext<DashboardContextValue>({
 })
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<DashboardOverview | null>(null)
-  const [loading, setLoading] = useState(true)
   const [period, setPeriodState] = useState<DashboardPeriod>("day")
   const [referenceDate, setReferenceDate] = useState(getTodayYYYYMMDD)
+
+  const { data = null, isPending } = useDashboardOverview(period, referenceDate)
 
   const setPeriod = useCallback((next: DashboardPeriod) => {
     setReferenceDate(getTodayYYYYMMDD())
@@ -162,33 +162,11 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     setReferenceDate(date)
   }, [])
 
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    fetch(`/api/dashboard/overview?period=${period}&date=${referenceDate}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("overview failed")
-        return res.json()
-      })
-      .then((json: DashboardOverview) => {
-        if (active) {
-          setData(json)
-          setLoading(false)
-        }
-      })
-      .catch(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [period, referenceDate])
-
   return (
     <DashboardContext.Provider
       value={{
         data,
-        loading,
+        loading: isPending,
         period,
         setPeriod,
         navigatePrevious,

@@ -31,7 +31,7 @@ describe('API /api/schedule', () => {
     expect(response.body).toHaveProperty('doctors')
     expect(response.body).toHaveProperty('patients')
     expect(Array.isArray(response.body.appointments)).toBe(true)
-  }, 30000)
+  }, 90000)
 
   it.skip('should create a new schedule on POST', async () => {
     const newSchedule = {

@@ -79,11 +79,13 @@ export const authOptions: NextAuthOptions = {
             email: true,
             role: true,
             password: true,
+            active: true,
             doctorId: true,
           },
         })
 
         if (!user || !user.password) return null
+        if (!user.active) return null
 
         const passwordMatch = await compare(credentials.password, user.password)
         if (!passwordMatch) return null

@@ -52,10 +52,6 @@ export function DashboardWelcomeBar() {
 
       <div className="flex flex-wrap items-center gap-3">
         <ActionButton
-          label="Exportar CSV"
-          icon={<Download size={14} />}
-        />
-        <ActionButton
           label="Gerar Relatório"
           icon={<FileText size={14} />}
         />

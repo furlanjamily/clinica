@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { financeText } from "./src/components/finance/theme";
 
 export default {
     darkMode: ["class"],
@@ -10,6 +11,11 @@ export default {
   theme: {
   	extend: {
   		colors: {
+  			finance: {
+  				heading: financeText.heading,
+  				body: financeText.body,
+  				muted: financeText.muted,
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

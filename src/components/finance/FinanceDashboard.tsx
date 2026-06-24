@@ -1,0 +1,296 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
+import { Settings } from "lucide-react"
+import { FinanceTransactionsTable } from "@/components/finance/FinanceTransactionsTable"
+import { TableSkeleton } from "@/components/ui/TableSkeleton"
+import { TableCard } from "@/components/ui/table/DataTable"
+import { Button } from "@/components/ui/button"
+import { Header } from "@/components/ui/PageHeader"
+import { ModalHeader } from "@/components/ui/ModalHeader"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { Input, FormSelect } from "@/components/ui/Input"
+import {
+  DESPESA_CATEGORIAS,
+  RECEITA_CATEGORIAS,
+  TRANSACTION_PAYMENT_METHODS,
+} from "@/lib/finance/categories"
+import { DEFAULT_FINANCIAL_CONFIG, type FinancialConfigValues } from "@/lib/finance/config"
+import {
+  TransactionStatus,
+  TransactionType,
+  type FinanceTransaction,
+} from "@/lib/finance/types"
+import { summarizeTransactions } from "@/lib/finance/summary"
+import {
+  EMPTY_TRANSACTION_FILTERS,
+  TRANSACTION_FILTER_FIELDS,
+  filterTransactions,
+} from "@/lib/finance/transaction-filters"
+import {
+  useFinanceTransactions,
+  useFinancialConfig,
+  useFinanceMutations,
+} from "@/hooks/useFinance"
+import { Collapse } from "@/components/ui/Collapse"
+import { GlobalFilters } from "@/components/ui/table/GlobalFilters"
+import { useTableFilters } from "@/hooks/useTableFilters"
+import type { RecordPeriod } from "@/lib/finance/period-filter"
+import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
+import { useClientMounted } from "@/hooks/useClientMounted"
+import { FinancialRecord } from "./FinancialRecord"
+import { MoneyFlow } from "./MoneyFlow"
+import { MyCard } from "./MyCard"
+
+type TransactionForm = Omit<FinanceTransaction, "id">
+
+function emptyTransactionForm(): TransactionForm {
+  return {
+    type: TransactionType.Income,
+    status: TransactionStatus.Confirmed,
+    date: getTodayYYYYMMDD(),
+    category: "",
+    description: "",
+    amount: 0,
+    paymentMethod: "",
+  }
+}
+
+function currentMonth(): string {
+  return getTodayYYYYMMDD().slice(0, 7)
+}
+
+export function FinanceDashboard() {
+  const [showModal, setShowModal] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [recordPeriod, setRecordPeriod] = useState<RecordPeriod>("mes")
+  const [month] = useState(currentMonth)
+  const [typeFilter] = useState("")
+  const mounted = useClientMounted()
+  const { filters, handleFilterChange } = useTableFilters(EMPTY_TRANSACTION_FILTERS)
+
+  const { data: transactions = [], isPending: loadingTransactions } =
+    useFinanceTransactions(month, typeFilter)
+  const { data: config = DEFAULT_FINANCIAL_CONFIG } = useFinancialConfig()
+  const { createTransaction, removeTransaction, saveConfig } =
+    useFinanceMutations(month, typeFilter)
+
+  const { register, handleSubmit, reset, watch } = useForm<TransactionForm>({
+    defaultValues: emptyTransactionForm(),
+  })
+  const {
+    register: registerConfig,
+    handleSubmit: submitConfig,
+    reset: resetConfig,
+  } = useForm<FinancialConfigValues>()
+
+  const selectedType = watch("type")
+  const categoryOptions =
+    selectedType === TransactionType.Income ? RECEITA_CATEGORIAS : DESPESA_CATEGORIAS
+
+  useEffect(() => {
+    resetConfig(config)
+  }, [config, resetConfig])
+
+  const filteredTransactions = useMemo(
+    () => filterTransactions(transactions, filters),
+    [transactions, filters]
+  )
+
+  const { balance } = summarizeTransactions(transactions, config.doctorCommissionRate)
+  const financeLoading = loadingTransactions || !mounted
+
+  async function handleSave(data: TransactionForm) {
+    const created = await createTransaction(data)
+    if (!created) return
+    setShowModal(false)
+    reset(emptyTransactionForm())
+  }
+
+  async function handleSaveConfig(data: FinancialConfigValues) {
+    const updated = await saveConfig(data)
+    if (!updated) return
+    setShowConfig(false)
+  }
+
+  function closeTransactionModal() {
+    setShowModal(false)
+    reset(emptyTransactionForm())
+  }
+
+  return (
+    <div className="-mx-1 flex flex-col gap-3 px-6 sm:gap-4">
+      <div className="shrink-0">
+        <Header title="Financeiro">
+          <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
+            <Settings size={15} /> Configurações
+          </Button>
+        </Header>
+      </div>
+
+      <div className="shrink-0">
+        <MyCard
+          balance={balance}
+          isLoading={financeLoading}
+          onNewTransaction={() => {
+            reset(emptyTransactionForm())
+            setShowModal(true)
+          }}
+        />
+      </div>
+
+      <div className="shrink-0">
+        <FinancialRecord
+          transactions={transactions}
+          commissionRate={config.doctorCommissionRate}
+          period={recordPeriod}
+          onPeriodChange={setRecordPeriod}
+          isLoading={financeLoading}
+        />
+      </div>
+
+      <div className="shrink-0">
+        <MoneyFlow
+          transactions={transactions}
+          period={recordPeriod}
+          commissionRate={config.doctorCommissionRate}
+          isLoading={financeLoading}
+        />
+      </div>
+
+      <div className="flex h-[100cqh] min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
+        <div className="flex shrink-0 flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+          <Collapse label="Filtros" unboundedPanel>
+            <GlobalFilters
+              values={filters}
+              onChange={(name, value) =>
+                handleFilterChange(name as keyof typeof filters, value)
+              }
+              filters={TRANSACTION_FILTER_FIELDS}
+            />
+          </Collapse>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {loadingTransactions ? (
+            <TableCard>
+              <div className="p-2 sm:p-3">
+                <TableSkeleton cols={6} rows={5} />
+              </div>
+            </TableCard>
+          ) : (
+            <FinanceTransactionsTable
+              transactions={filteredTransactions}
+              onRemove={removeTransaction}
+            />
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <ModalOverlay>
+          <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+            <ModalHeader title="Nova transação" onClose={closeTransactionModal} />
+            <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormSelect label="Tipo" {...register("type")}>
+                  <option value={TransactionType.Income}>Receita</option>
+                  <option value={TransactionType.Expense}>Despesa</option>
+                </FormSelect>
+                <FormSelect
+                  key={selectedType}
+                  label="Categoria"
+                  {...register("category", { required: true })}
+                >
+                  <option value="">Selecione a categoria</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </FormSelect>
+              </div>
+              <Input
+                label="Descrição"
+                {...register("description", { required: true })}
+                placeholder="Descrição da transação"
+              />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input
+                  label="Valor (R$)"
+                  type="number"
+                  step="0.01"
+                  {...register("amount", { required: true, valueAsNumber: true })}
+                  placeholder="0,00"
+                />
+                <Input label="Data" type="date" {...register("date", { required: true })} />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormSelect
+                  label="Forma de pagamento (opcional em despesas)"
+                  {...register("paymentMethod")}
+                >
+                  <option value="">Não informado</option>
+                  {TRANSACTION_PAYMENT_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </FormSelect>
+                <FormSelect label="Status" {...register("status")}>
+                  <option value={TransactionStatus.Confirmed}>Confirmado</option>
+                  <option value={TransactionStatus.Pending}>Pendente</option>
+                </FormSelect>
+              </div>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                <Button type="button" variant="ghost" onClick={closeTransactionModal}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="md">
+                  Registrar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {showConfig && (
+        <ModalOverlay>
+          <div className="max-h-[min(92vh,32rem)] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+            <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
+            <form onSubmit={submitConfig(handleSaveConfig)} className="flex flex-col gap-4">
+              <Input
+                label="Valor da consulta (R$)"
+                type="number"
+                step="0.01"
+                {...registerConfig("consultationFee", { valueAsNumber: true })}
+              />
+              <Input
+                label="Valor do retorno (R$)"
+                type="number"
+                step="0.01"
+                {...registerConfig("followUpFee", { valueAsNumber: true })}
+              />
+              <Input
+                label="Comissão médico (%)"
+                type="number"
+                step="0.1"
+                {...registerConfig("doctorCommissionRate", { valueAsNumber: true })}
+              />
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                <Button type="button" variant="ghost" onClick={() => setShowConfig(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="md">
+                  Salvar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </ModalOverlay>
+      )}
+    </div>
+  )
+}

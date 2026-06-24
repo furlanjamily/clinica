@@ -7,6 +7,15 @@ import type { Appointment } from "@/types/types"
 import { ScheduleNavigator } from "./components/ScheduleNavigator"
 import { ScheduleView } from "./views/ScheduleView"
 import { Header } from "@/components/ui/PageHeader"
+import { AppointmentStatus, STATUS_LABEL } from "@/lib/schedule/status"
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "Todos os status" },
+  ...Object.values(AppointmentStatus).map((status) => ({
+    value: status,
+    label: STATUS_LABEL[status] ?? status,
+  })),
+]
 
 type Props = {
   data: Appointment[]
@@ -27,16 +36,7 @@ const FILTER_CONFIG = [
   {
     name: "status",
     type: "select",
-    options: [
-      { value: "", label: "Todos os status" },
-      { value: "Agendado", label: "Agendado" },
-      { value: "AguardandoConfirmacao", label: "Aguardando confirmação" },
-      { value: "Confirmado", label: "Confirmado" },
-      { value: "Em Atendimento", label: "Em Atendimento" },
-      { value: "Reagendado", label: "Reagendado" },
-      { value: "Cancelado", label: "Cancelado" },
-      { value: "Concluido", label: "Concluído" },
-    ],
+    options: STATUS_FILTER_OPTIONS,
   },
   {
     name: "patient",

@@ -8,7 +8,7 @@ import { FeaturedDoctorCardSkeleton } from "./FeaturedDoctorCardSkeleton"
 import { Card } from "../ui/card"
 import { useSession } from "next-auth/react"
 
-const FEATURED_DOCTOR_IMAGE = "/images/featured-doctor-female.png"
+const FEATURED_DOCTOR_IMAGE = "/featured-doctor-female.png"
 
 export function FeaturedDoctorCard() {
   const { data, loading } = useDashboard()

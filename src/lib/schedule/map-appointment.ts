@@ -2,6 +2,7 @@ import type { MedicalRecord } from "@/types"
 import type { Appointment, AppointmentPatient } from "./types"
 import { toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
 import { mapMedicalRecordFromDb } from "@/lib/medical-record/map-prontuario"
+import { AppointmentStatus } from "@/lib/schedule/status"
 
 export type DoctorInput = string | { id: number; name: string } | null | undefined
 
@@ -61,7 +62,7 @@ export function toAppointment(row: AppointmentRowInput): Appointment {
     id: row.id,
     date: toLocalDate(row.scheduledStart),
     slotTime: toLocalSlotTime(row.scheduledStart),
-    status: row.status ?? "Agendado",
+    status: row.status ?? AppointmentStatus.Scheduled,
     patient,
     patientId: row.patientId ?? undefined,
     doctorId: row.doctorId ?? undefined,

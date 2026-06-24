@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
+import { fetchPortfolioCredentials } from "@/hooks/usePortfolioDemo"
 
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard"
@@ -20,10 +21,10 @@ function PortfolioAutoInner() {
     ran.current = true
 
     void (async () => {
-      const res = await fetch("/api/auth/portfolio-credentials", { cache: "no-store" })
-      if (!res.ok) {
+      const result = await fetchPortfolioCredentials()
+      if (!result.ok) {
         toast.error(
-          res.status === 404
+          result.status === 404
             ? "Modo visitante desligado no servidor."
             : "Não foi possível carregar credenciais de demonstração."
         )
@@ -31,20 +32,7 @@ function PortfolioAutoInner() {
         return
       }
 
-      let body: { email?: string; password?: string }
-      try {
-        body = (await res.json()) as { email?: string; password?: string }
-      } catch {
-        router.replace("/sign-in")
-        return
-      }
-
-      const email = body.email
-      const password = body.password
-      if (!email || password == null) {
-        router.replace("/sign-in")
-        return
-      }
+      const { email, password } = result.credentials
 
       const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"))
       const signInData = await signIn("credentials", {

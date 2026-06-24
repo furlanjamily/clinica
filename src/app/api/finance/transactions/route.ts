@@ -12,6 +12,7 @@ import { ValidationError, ConflictError, NotFoundError } from "@/lib/errors/cust
 import { requireSession } from "@/lib/auth/api-guard"
 import { parseWith } from "@/lib/validations/parse"
 import { AppointmentStatus } from "@/lib/schedule/status"
+import { TransactionStatus, TransactionType } from "@/lib/finance/types"
 import { toTransactionDTO, transactionWriteToDb } from "@/lib/finance/transaction-dto"
 import { localDateOnly, startOfLocalDay } from "@/lib/datetime/appointment-time"
 import type { Prisma } from "@/generated/prisma/client"
@@ -58,7 +59,7 @@ export async function GET(req: Request) {
         lt: startOfLocalDay(`${nextMonth}-01`),
       }
     }
-    if (type === "Receita" || type === "Despesa") where.type = type
+    if (type === TransactionType.Income || type === TransactionType.Expense) where.type = type
 
     const transactions = await db.transaction.findMany({
       where,
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
           competenceDate: localDateOnly(body.date),
           paymentMethod: body.paymentMethod ?? undefined,
           status: body.status,
-          paidAt: body.status === "Confirmado" ? new Date() : undefined,
+          paidAt: body.status === TransactionStatus.Confirmed ? new Date() : undefined,
         },
       })
       return NextResponse.json(toTransactionDTO(transaction), { status: 201 })
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
         throw new ConflictError("Este agendamento já possui transação vinculada.")
       }
 
-      if (body.type !== "Receita") {
+      if (body.type !== TransactionType.Income) {
         throw new ValidationError("O pagamento da consulta deve ser uma receita.")
       }
 
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
         throw new ValidationError("Para pagamento de consulta, a categoria deve ser Consulta ou Retorno.")
       }
 
-      if (body.status !== "Confirmado") {
+      if (body.status !== TransactionStatus.Confirmed) {
         throw new ValidationError("Para liberar o Appointment, o status da transação deve ser Confirmado.")
       }
 

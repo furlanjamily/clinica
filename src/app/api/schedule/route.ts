@@ -2,12 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { db } from "@/lib/db"
 import { authOptions } from "@/lib/auth"
+import { requireSession } from "@/lib/auth/api-guard"
 import { resolveAppointmentDoctorFilter } from "@/lib/auth/appointment-scope"
 import { findAppointmentConflict } from "@/lib/schedule/conflicts"
 import { toAppointment } from "@/lib/schedule/map-appointment"
-import { CreateAppointmentSchema } from "@/lib/validations/schedule"
+import { CreateAppointmentSchema, UpdateAppointmentSchema } from "@/lib/validations/schedule"
+import { parseWith } from "@/lib/validations/parse"
 import { handleApiError } from "@/lib/errors/error-handler"
-import { ValidationError, ConflictError, NotFoundError } from "@/lib/errors/custom-errors"
+import { ValidationError, ConflictError, NotFoundError, ForbiddenError } from "@/lib/errors/custom-errors"
 import { createApiGuard } from "@/lib/api/rate-limit"
 import { AppointmentStatus } from "@/lib/schedule/status"
 import { combineLocalDateTime, toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
@@ -147,12 +149,7 @@ export async function POST(req: Request) {
 
     const body = await req.json()
 
-    const parsed = CreateAppointmentSchema.safeParse(body)
-    if (!parsed.success) {
-      throw new ValidationError("Dados inválidos", parsed.error.issues)
-    }
-
-    const data = parsed.data
+    const data = parseWith(CreateAppointmentSchema, body)
 
     const patient = await resolvePatient(data.patient)
     const doctor = await resolveDoctor(data.professional)
@@ -195,11 +192,8 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const body = await req.json()
-
-    if (!body.id) {
-      throw new ValidationError("ID obrigatório")
-    }
+    const session = await requireSession()
+    const body = parseWith(UpdateAppointmentSchema, await req.json())
 
     const current = await db.appointment.findUnique({
       where: { id: body.id },
@@ -208,6 +202,11 @@ export async function PATCH(req: Request) {
 
     if (!current) {
       throw new NotFoundError("Agendamento não encontrado")
+    }
+
+    const doctorFilter = await resolveAppointmentDoctorFilter(session)
+    if (doctorFilter !== undefined && current.doctorId !== doctorFilter) {
+      throw new ForbiddenError()
     }
 
     const currentDate = toLocalDate(current.scheduledStart)

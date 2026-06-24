@@ -11,13 +11,14 @@ import { TaskCard } from "./TaskCard"
 import { CreateTaskModal } from "./CreateTaskModal"
 import { EditTaskModal } from "./EditTaskModal"
 import { TaskDashboardPanelSkeleton } from "./TaskDashboardPanelSkeleton"
+import { AppointmentStatus } from "@/lib/schedule/status"
 import type { ClinicTask, TaskFilter, TaskFormData, TaskIcon, TaskStatus } from "./types"
 
 let nextId = 100000
 
 function statusToTask(status: string): TaskStatus {
-  if (status === "Concluido" || status === "Pago") return "completed"
-  if (status === "EmAtendimento" || status === "RegistrarChegada") return "in_progress"
+  if (status === AppointmentStatus.Completed || status === AppointmentStatus.Paid) return "completed"
+  if (status === AppointmentStatus.InProgress || status === AppointmentStatus.CheckIn) return "in_progress"
   return "pending"
 }
 
@@ -243,8 +244,4 @@ function TaskDashboardContentLoaded({ compact = false }: TaskDashboardContentPro
 
 export function TaskDashboardPanel() {
   return <TaskDashboardContent compact />
-}
-
-export function TaskDashboardPage() {
-  return <TaskDashboardContent />
 }

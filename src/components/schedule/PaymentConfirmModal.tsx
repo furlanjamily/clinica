@@ -9,7 +9,8 @@ import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
 import { PAYMENT_METHODS } from "@/lib/finance/categories"
-import { useFinancialConfig } from "@/hooks/useFinance"
+import { TransactionStatus, TransactionType } from "@/lib/finance/types"
+import { useFinancialConfig, useAppointmentPayment } from "@/hooks/useFinance"
 
 type PaymentForm = {
   category: string
@@ -27,6 +28,7 @@ type Props = {
 
 export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   const { data: feeConfig, isError: configError } = useFinancialConfig()
+  const { registerPayment } = useAppointmentPayment()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, reset, watch, setValue } = useForm<PaymentForm>({
@@ -65,30 +67,21 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   async function onSubmit(data: PaymentForm) {
     setLoading(true)
     try {
-      const res = await fetch("/api/finance/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "Receita",
-          category: data.category,
-          description: data.description.trim(),
-          amount: data.amount,
-          date: data.date,
-          paymentMethod: data.paymentMethod,
-          status: "Confirmado",
-          appointmentId: item.id,
-        }),
+      const result = await registerPayment({
+        type: TransactionType.Income,
+        category: data.category,
+        description: data.description.trim(),
+        amount: data.amount,
+        date: data.date,
+        paymentMethod: data.paymentMethod,
+        status: TransactionStatus.Confirmed,
+        appointmentId: item.id,
       })
 
-      const body = await res.json().catch(() => null)
-      if (!res.ok) {
-        toast.error(body?.message ?? "Não foi possível registrar o pagamento.")
-        return
-      }
+      if (!result) return
 
-      const updated = body.appointment as Appointment
       toast.success("Pagamento registrado. Status atualizado para pago.")
-      onSuccess(updated)
+      onSuccess(result.appointment)
       onClose()
     } finally {
       setLoading(false)

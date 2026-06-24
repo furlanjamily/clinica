@@ -21,7 +21,7 @@ export function TableSkeleton({ cols = 5, rows = 6 }: { cols?: number; rows?: nu
                 <div
                   className="h-3 bg-gray-100 rounded animate-pulse"
                   style={{
-                    width: widths[(i + j) % widths.length], // 🔥 determinístico
+                    width: widths[(i + j) % widths.length],
                   }}
                 />
               </td>

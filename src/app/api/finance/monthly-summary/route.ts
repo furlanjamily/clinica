@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { requireSession } from "@/lib/auth/api-guard"
 import { startOfLocalDay } from "@/lib/datetime/appointment-time"
+import { TransactionStatus, TransactionType } from "@/lib/finance/types"
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"] as const
 
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     const currentMonthPrefix = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
     const datesRows = await db.transaction.findMany({
-      where: { status: "Confirmado", deletedAt: null },
+      where: { status: TransactionStatus.Confirmed, deletedAt: null },
       select: { competenceDate: true },
     })
 
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
     const [yearTxs, monthTxs] = await Promise.all([
       db.transaction.findMany({
         where: {
-          status: "Confirmado",
+          status: TransactionStatus.Confirmed,
           deletedAt: null,
           competenceDate: {
             gte: startOfLocalDay(`${year}-01-01`),
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
       }),
       db.transaction.findMany({
         where: {
-          status: "Confirmado",
+          status: TransactionStatus.Confirmed,
           deletedAt: null,
           competenceDate: {
             gte: startOfLocalDay(`${currentMonthPrefix}-01`),
@@ -80,15 +81,15 @@ export async function GET(req: Request) {
     for (const t of yearTxs) {
       const m = t.competenceDate.getUTCMonth()
       if (m < 0 || m > 11) continue
-      if (t.type === "Receita") months[m].receitas += Number(t.amount)
-      else if (t.type === "Despesa") months[m].despesas += Number(t.amount)
+      if (t.type === TransactionType.Income) months[m].receitas += Number(t.amount)
+      else if (t.type === TransactionType.Expense) months[m].despesas += Number(t.amount)
     }
 
     let monthRevenue = 0
     let monthExpense = 0
     for (const t of monthTxs) {
-      if (t.type === "Receita") monthRevenue += Number(t.amount)
-      else if (t.type === "Despesa") monthExpense += Number(t.amount)
+      if (t.type === TransactionType.Income) monthRevenue += Number(t.amount)
+      else if (t.type === TransactionType.Expense) monthExpense += Number(t.amount)
     }
 
     const totalRevenueYear = months.reduce((acc, m) => acc + m.receitas, 0)

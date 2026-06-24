@@ -1,7 +1,7 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import type { UserRoleType } from "@/types/auth"
+import { UserRole, type UserRoleType } from "@/types/auth"
 
 export function useAuth() {
   const { data: session, status } = useSession()
@@ -12,10 +12,10 @@ export function useAuth() {
     status,
     role,
     isAuthenticated: status === "authenticated",
-    isSuperAdmin: role === "SUPER_ADMIN",
-    isAdmin: role === "ADMIN",
-    isMedico: role === "MEDICO",
-    canManageUsers: role === "SUPER_ADMIN" || role === "ADMIN",
-    canViewSchedule: role !== "MEDICO",
+    isSuperAdmin: role === UserRole.SuperAdmin,
+    isAdmin: role === UserRole.Admin,
+    isMedico: role === UserRole.Medico,
+    canManageUsers: role === UserRole.SuperAdmin || role === UserRole.Admin,
+    canViewSchedule: role !== UserRole.Medico,
   }
 }
