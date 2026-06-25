@@ -44,7 +44,7 @@ export function DashboardWelcomeBar() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+      className="relative z-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <h1 className="text-xl font-semibold text-gray-600 sm:text-2xl">
         Bem vindo de volta, {session?.user?.name}!

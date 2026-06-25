@@ -1,56 +1,17 @@
 "use client"
 
-import { useMemo, useState, type ChangeEvent } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useMemo, useState } from "react"
 import { Plus, Pencil, Trash2 } from "lucide-react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useCRUD } from "@/hooks/useCRUD"
 import { Doctor } from "@/types"
 import { Header } from "@/components/ui/PageHeader"
-import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
-import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
 import { FilterField, GlobalFilters } from "@/components/ui/table/GlobalFilters"
 import { Collapse } from "@/components/ui/Collapse"
 import { useTableFilters } from "@/hooks/useTableFilters"
-import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
-
-/** Título neutro obrigatório no cadastro de novo médico (Dr./Dra.). */
-const DOCTOR_NAME_PREFIX = "Dr(a). "
-
-function normalizeDoctorNameOnCreateInput(value: string): string {
-  if (value.startsWith(DOCTOR_NAME_PREFIX)) return value
-  const rest = value
-    .trimStart()
-    .replace(/^(dr\(a\)\.?\s*|dr\.?\s*|dra\.?\s*)/i, "")
-    .trimStart()
-  return DOCTOR_NAME_PREFIX + rest
-}
-
-function doctorFormEmpty(): Omit<Doctor, "id" | "active"> {
-  return {
-    name: "",
-    crm: "",
-    specialty: "",
-    shift: "",
-    gender: "",
-    cpf: "",
-    birthDate: "",
-    phone: "",
-    email: "",
-    zipCode: "",
-    street: "",
-    number: "",
-    complement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    notes: "",
-  }
-}
+import { DoctorFormModal } from "@/components/doctor/DoctorFormModal"
 
 function DoctorsTable({
   doctors,
@@ -122,7 +83,7 @@ const DOCTOR_FILTER_CONFIG: FilterField[] = [
 ]
 
 export default function DoctorsPage() {
-  const { items: doctors, remove, create, update, isPending } = useCRUD<Doctor>("/api/doctor")
+  const { items: doctors, remove, isPending } = useCRUD<Doctor>("/api/doctor")
   const { filters, handleFilterChange } = useTableFilters({
     id: "",
     name: "",
@@ -133,30 +94,22 @@ export default function DoctorsPage() {
     shift: "",
   })
   const [modal, setModal] = useState<{ open: boolean; editing: Doctor | null }>({ open: false, editing: null })
-  type DoctorForm = Omit<Doctor, "id" | "active">
-  const { register, handleSubmit, reset, setValue, control, getValues, formState: { isSubmitting } } =
-    useForm<DoctorForm>({ defaultValues: doctorFormEmpty() })
 
   function openCreate() {
-    reset({ ...doctorFormEmpty(), name: DOCTOR_NAME_PREFIX })
     setModal({ open: true, editing: null })
   }
+
   function openEdit(d: Doctor) {
-    reset(doctorFormEmpty())
-    Object.entries(d)
-      .filter(([k]) => k !== "id" && k !== "active")
-      .forEach(([k, v]) => setValue(k as keyof DoctorForm, (v ?? "") as never))
     setModal({ open: true, editing: d })
   }
+
   function closeModal() {
     setModal({ open: false, editing: null })
-    reset(doctorFormEmpty())
   }
 
   const filterConfig = useMemo<FilterField[]>(() => {
     const specialties = [...new Set(doctors.map((d) => d.specialty).filter(Boolean))] as string[]
     return DOCTOR_FILTER_CONFIG.map((field) =>
-      
       field.name === "specialty"
         ? {
             ...field,
@@ -187,25 +140,6 @@ export default function DoctorsPage() {
       }),
     [doctors, filters]
   )
-
-  async function handleSave(data: DoctorForm) {
-    if (modal.editing) {
-      await update(modal.editing.id, data, "Médico atualizado.")
-    } else {
-      const name = normalizeDoctorNameOnCreateInput(data.name)
-      const created = await create(
-        { ...data, name, active: true },
-        "Médico cadastrado com sucesso!"
-      ) as (Doctor & { loginAccount?: { email: string; temporaryPassword: string } }) | null
-      if (created?.loginAccount) {
-        toast.info(
-          `Usuário criado automaticamente: ${created.loginAccount.email} / senha ${created.loginAccount.temporaryPassword}`,
-          { duration: 12000 }
-        )
-      }
-    }
-    closeModal()
-  }
 
   return (
     <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
@@ -240,90 +174,10 @@ export default function DoctorsPage() {
       </div>
 
       {modal.open && (
-        <ModalOverlay>
-          <div className="max-h-[min(92vh,44rem)] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
-            <ModalHeader title={modal.editing ? "Editar médico" : "Novo médico"} onClose={closeModal} />
-            <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dados profissionais</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  {modal.editing ? (
-                    <Input label="Nome completo" {...register("name", { required: true })} placeholder="Dr(a). Nome Sobrenome" />
-                  ) : (
-                    <Controller
-                      name="name"
-                      control={control}
-                      rules={{ required: true }}
-                      render={({ field }) => (
-                        <Input
-                          label="Nome completo"
-                          placeholder="Nome e sobrenome após Dr(a)."
-                          value={field.value}
-                          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                            field.onChange(normalizeDoctorNameOnCreateInput(e.target.value))
-                          }
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      )}
-                    />
-                  )}
-                </div>
-                <Input label="CRM" {...register("crm", { required: true })} placeholder="CRM/UF 000000" />
-                <Input label="Especialidade" {...register("specialty", { required: true })} placeholder="Ex: Psicologia" />
-                <FormSelect label="Turno" {...register("shift")}>
-                  <option value="">Selecione</option>
-                  <option value="Manhã">Manhã</option>
-                  <option value="Tarde">Tarde</option>
-                  <option value="Integral">Integral</option>
-                </FormSelect>
-                <FormSelect label="Sexo" {...register("gender")}>
-                  <option value="">Selecione</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
-                  <option value="Outro">Outro</option>
-                </FormSelect>
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dados pessoais</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Controller
-                  name="cpf"
-                  control={control}
-                  render={({ field }) => (
-                    <Input mask="cpf" label="CPF" placeholder="000.000.000-00" {...field} />
-                  )}
-                />
-                <Input label="Data de nascimento" type="date" {...register("birthDate")} />
-                <Controller
-                  name="phone"
-                  control={control}
-                  render={({ field }) => (
-                    <Input mask="telefone" label="Telefone" placeholder="(00) 00000-0000" {...field} />
-                  )}
-                />
-                <Input label="Email" type="email" {...register("email")} placeholder="medico@clinica.com" />
-                <div className="col-span-2">
-                  <CepEnderecoBlock<DoctorForm>
-                    control={control}
-                    register={register}
-                    setValue={setValue}
-                    getValues={getValues}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Textarea label="Observações" rows={2} {...register("notes")} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-2">
-                <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
-                <Button type="submit" size="md" disabled={isSubmitting}>
-                  {modal.editing ? "Salvar alterações" : "Cadastrar médico"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </ModalOverlay>
+        <DoctorFormModal
+          doctor={modal.editing ?? undefined}
+          onClose={closeModal}
+        />
       )}
     </div>
   )

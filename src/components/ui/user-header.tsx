@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion"
-import { Bell, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
@@ -9,10 +9,11 @@ import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
 import { useAdminShell } from "@/hooks/useAdminShell";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi"
+import { HeaderWeatherWidget } from "@/components/ui/header-weather-widget";
+import { HeaderQuickActions } from "@/components/ui/header-quick-actions";
+import { cn } from "@/lib/utils";
 
-export function UserHeader() {
-  const shell = useAdminShell()
+function UserAccountMenu({ className }: { className?: string }) {
   const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
   const displayEmail = session?.user?.email ?? "";
@@ -30,98 +31,106 @@ export function UserHeader() {
   }, []);
 
   return (
+    <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-3", open && "z-50", className)}>
+      <button
+        type="button"
+        aria-label="Notificações"
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:h-10 sm:w-10"
+      >
+        <Bell size={18} className="sm:h-5 sm:w-5" />
+        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 sm:right-2 sm:top-2" />
+      </button>
+
+      <div
+        className="relative shrink-0 rounded-full border border-gray-200/90 bg-white px-1.5 py-1 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.04] hover:shadow-[0_6px_18px_rgba(151,71,255,0.14)] active:translate-y-0 sm:px-2 sm:py-1"
+        ref={ref}
+      >
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen((prev) => !prev)}
+          className="flex max-w-[9.5rem] items-center gap-1.5 rounded-full min-[400px]:max-w-[11rem] min-[480px]:max-w-[13rem] sm:max-w-none sm:gap-2 lg:gap-3"
+        >
+          <Image
+            src={AVATAR_PLACEHOLDER_URL}
+            alt={displayName}
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 rounded-full object-cover sm:h-10 sm:w-10"
+          />
+          <div className="hidden min-w-0 text-left min-[400px]:block">
+            <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
+          </div>
+          <span
+            className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 transition-transform duration-200 sm:h-7 sm:w-7",
+              open && "rotate-180"
+            )}
+          >
+            <ChevronDown size={14} className="text-gray-500" />
+          </span>
+        </button>
+
+        {open && (
+          <div className="absolute right-0 top-full z-[60] mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg">
+            <div className="border-b px-3 py-2">
+              <p className="truncate text-xs font-semibold text-gray-700">{displayName}</p>
+              <p className="truncate text-[10px] text-gray-400">{displayEmail}</p>
+            </div>
+            <Button
+              variant="ghost-danger"
+              onClick={() => signOut({ callbackUrl: "/portfolio-auto" })}
+              className="w-full justify-start px-3 py-2"
+            >
+              <LogOut size={13} />
+              Sair
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function UserHeader() {
+  const shell = useAdminShell()
+
+  return (
     <motion.div
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      className="relative z-40 min-w-0"
     >
+      <Card className="relative isolate min-w-0 overflow-visible rounded-[20px] border-0 bg-transparent p-3 sm:p-4 lg:p-5">
+        <div className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6">
+          <div className="relative z-30 flex min-w-0 items-center justify-between gap-2 lg:z-auto lg:justify-start lg:gap-3">
+            <div className="min-w-0 flex-1 overflow-hidden pr-2">
+              <HeaderWeatherWidget />
+            </div>
 
-      <Card className="flex flex-col gap-4 rounded-[20px] border-0 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.05)] sm:flex-row sm:items-center sm:justify-between sm:p-5">
-       
-      <div className="flex flex-1 items-center gap-3">
-          {shell ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden shrink-0 text-gray-500 hover:text-gray-900"
-              onClick={() => shell.openMobileMenu()}
-            >
-              <Menu size={20} />
-            </Button>
-          ) : null}
-
-          <div className="hidden items-center gap-1 sm:flex">
-            <button
-              type="button"
-              aria-label="Voltar"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              <FiArrowLeft size={16} />
-            </button>
-            <button
-              type="button"
-              aria-label="Avançar"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              <FiArrowRight size={16} />
-            </button>
+            <UserAccountMenu className="lg:hidden" />
           </div>
 
-          <div className="relative flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Search"
-              className="h-10 w-full rounded-full border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-300 focus:bg-white"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 sm:min-w-[240px]">
-          <button
-            type="button"
-            aria-label="Notificações"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <Bell size={20} />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-          </button>
-
-          <div className="relative" ref={ref}>
-            <button
-              type="button"
-              onClick={() => setOpen((prev) => !prev)}
-              className="flex items-center gap-3 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-gray-50"
-            >
-              <Image
-                src={AVATAR_PLACEHOLDER_URL}
-                alt={displayName}
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-              <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold text-gray-900">{displayName}</p>
-              </div>
-              <ChevronDown size={16} className="text-gray-400" />
-            </button>
-
-            {open && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-40 rounded-xl border border-gray-200 bg-white shadow-md">
-                <div className="border-b px-3 py-2">
-                  <p className="truncate text-xs font-semibold text-gray-700">{displayName}</p>
-                  <p className="truncate text-[10px] text-gray-400">{displayEmail}</p>
-                </div>
+          <div className="relative z-0 flex min-w-0 justify-center lg:justify-self-center">
+            <div className="flex max-w-full min-w-0 items-center justify-center gap-2 sm:gap-2.5">
+              {shell ? (
                 <Button
-                  variant="ghost-danger"
-                  onClick={() => signOut({ callbackUrl: "/portfolio-auto" })}
-                  className="w-full justify-start px-3 py-2"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 text-gray-500 hover:text-gray-900 md:hidden sm:h-10 sm:w-10"
+                  onClick={() => shell.openMobileMenu()}
                 >
-                  <LogOut size={13} />
-                  Sair
+                  <Menu size={18} className="sm:h-5 sm:w-5" />
                 </Button>
-              </div>
-            )}
+              ) : null}
+              <HeaderQuickActions className="min-w-0 max-w-full" />
+            </div>
+          </div>
+
+          <div className="relative z-50 hidden min-w-0 shrink-0 items-center justify-end gap-3 lg:flex">
+            <UserAccountMenu />
           </div>
         </div>
       </Card>
