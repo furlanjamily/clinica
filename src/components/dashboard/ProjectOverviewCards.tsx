@@ -1,9 +1,9 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ProjectOverviewCard } from "./ProjectOverviewCard"
+import { ProjectOverviewCard, type ProjectOverviewCardData } from "./ProjectOverviewCard"
 import { ProjectOverviewCardSkeleton } from "./ProjectOverviewCardSkeleton"
-import { useDashboard } from "./DashboardDataProvider"
+import { useDashboard, type DashboardKpis } from "./DashboardDataProvider"
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -11,7 +11,7 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 })
 
-function buildCards(kpis, periodLabel) {
+function buildCards(kpis: DashboardKpis, periodLabel: string): ProjectOverviewCardData[] {
   return [
     {
       id: 1,
@@ -70,9 +70,11 @@ export function ProjectOverviewCards() {
               featured={index === 0}
             />
           ))
-        : buildCards(data?.kpis, data?.periodLabel ?? "no período").map((card, index) => (
-            <ProjectOverviewCard key={card.id} card={card} index={index} />
-          ))}
+        : data
+          ? buildCards(data.kpis, data.periodLabel ?? "no período").map((card, index) => (
+              <ProjectOverviewCard key={card.id} card={card} index={index} />
+            ))
+          : null}
     </motion.div>
   )
 }

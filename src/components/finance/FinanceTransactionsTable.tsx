@@ -1,7 +1,6 @@
 "use client"
 
 import { Trash2 } from "lucide-react"
-import { financeRecordCards } from "@/components/finance/theme"
 import { DataTable, Td } from "@/components/ui/table/DataTable"
 import { Button } from "@/components/ui/button"
 import { formatBRL } from "@/lib/finance/summary"
@@ -10,10 +9,27 @@ import {
   TransactionType,
   type FinanceTransaction,
 } from "@/lib/finance/types"
+import { cn } from "@/lib/utils"
 
 type FinanceTransactionsTableProps = {
   transactions: FinanceTransaction[]
   onRemove: (id: number) => void
+}
+
+function typeBadgeClass(type: FinanceTransaction["type"]): string {
+  return type === TransactionType.Income
+    ? "bg-finance-light-bg text-primary"
+    : "bg-finance-secondary-bg text-secondary"
+}
+
+function statusBadgeClass(status: FinanceTransaction["status"]): string {
+  if (status === TransactionStatus.Confirmed) {
+    return "bg-finance-light-bg text-primary"
+  }
+  if (status === TransactionStatus.Pending) {
+    return "bg-amber-100 text-amber-700"
+  }
+  return "bg-finance-secondary-bg text-secondary"
 }
 
 export function FinanceTransactionsTable({
@@ -45,17 +61,10 @@ export function FinanceTransactionsTable({
           <Td className="text-finance-body">{transaction.date}</Td>
           <Td>
             <span
-              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                transaction.type === TransactionType.Income
-                  ? "text-primary"
-                  : "text-secondary"
-              }`}
-              style={{
-                backgroundColor:
-                  transaction.type === TransactionType.Income
-                    ? financeRecordCards.income.bg
-                    : financeRecordCards.expense.bg,
-              }}
+              className={cn(
+                "rounded-full px-2 py-1 text-xs font-medium",
+                typeBadgeClass(transaction.type)
+              )}
             >
               {transaction.type}
             </span>
@@ -66,32 +75,20 @@ export function FinanceTransactionsTable({
           </Td>
           <Td className="text-finance-body">{transaction.paymentMethod ?? "—"}</Td>
           <Td
-            className={`font-semibold ${
-              transaction.type === TransactionType.Income
-                ? "text-primary"
-                : "text-secondary"
-            }`}
+            className={cn(
+              "font-semibold",
+              transaction.type === TransactionType.Income ? "text-primary" : "text-secondary"
+            )}
           >
             {transaction.type === TransactionType.Expense ? "- " : ""}
             {formatBRL(transaction.amount)}
           </Td>
           <Td>
             <span
-              className={`rounded-full px-2 py-1 text-xs ${
-                transaction.status === TransactionStatus.Confirmed
-                  ? "text-primary"
-                  : transaction.status === TransactionStatus.Pending
-                    ? "text-amber-700"
-                    : "text-secondary"
-              }`}
-              style={{
-                backgroundColor:
-                  transaction.status === TransactionStatus.Confirmed
-                    ? financeRecordCards.income.bg
-                    : transaction.status === TransactionStatus.Pending
-                      ? "#FEF3C7"
-                      : financeRecordCards.expense.bg,
-              }}
+              className={cn(
+                "rounded-full px-2 py-1 text-xs",
+                statusBadgeClass(transaction.status)
+              )}
             >
               {transaction.status}
             </span>

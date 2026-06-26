@@ -27,3 +27,13 @@ export type FinanceTransaction = {
   paymentMethod?: string | null
   status: TransactionStatusValue
 }
+
+export const TRANSACTION_TYPE_OPTIONS = [
+  { value: TransactionType.Income, label: TransactionType.Income },
+  { value: TransactionType.Expense, label: TransactionType.Expense },
+] as const
+
+export const TRANSACTION_STATUS_OPTIONS = [
+  { value: TransactionStatus.Confirmed, label: TransactionStatus.Confirmed },
+  { value: TransactionStatus.Pending, label: TransactionStatus.Pending },
+] as const

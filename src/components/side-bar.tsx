@@ -60,7 +60,7 @@ function SideBarContent({ onCreate }: Props) {
     <>
       <div
         className={cn(
-          "flex h-full w-full flex-col items-center gap-8 overflow-y-auto bg-white py-9 md:gap-12",
+          "flex h-full w-full flex-col items-center gap-8 overflow-y-auto overscroll-y-contain bg-white py-9 [-webkit-overflow-scrolling:touch] touch-pan-y md:gap-12",
           "md:rounded-3xl md:border md:border-gray-200"
         )}
       >
@@ -123,11 +123,15 @@ export function SideBar({ drawerOpen, onDrawerClose, ...props }: Props) {
   return (
     <>
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
+        <div className="fixed inset-0 z-[90] flex md:hidden">
           <div className="flex h-dvh w-[min(280px,85vw)] flex-shrink-0 flex-col bg-white">
             <SideBarContent {...props} />
           </div>
-          <div className="flex-1 bg-black/40" onClick={onDrawerClose} aria-hidden />
+          <div
+            className="flex-1 bg-black/40 backdrop-blur-sm"
+            onClick={onDrawerClose}
+            aria-hidden
+          />
         </div>
       )}
 

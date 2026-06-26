@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo } from "react"
-import { financeColors } from "@/components/finance/theme"
 import { filterTransactionsByPeriod, type RecordPeriod } from "@/lib/finance/period-filter"
 import { formatBRL, getTotalExpenses, summarizeTransactions } from "@/lib/finance/summary"
 import type { FinanceTransaction } from "@/lib/finance/types"
@@ -27,30 +26,21 @@ function Legend({
   return (
     <>
       <span className="flex items-center gap-2 text-sm text-finance-body">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: financeColors.primary }}
-        />
+        <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
         <span>
           Receita Total:{" "}
           <strong className="text-finance-heading">{formatBRL(totalIncome)}</strong>
         </span>
       </span>
       <span className="flex items-center gap-2 text-sm text-finance-body">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: financeColors.secondary }}
-        />
+        <span className="h-2 w-2 shrink-0 rounded-full bg-secondary" />
         <span>
           Despesa Total:{" "}
           <strong className="text-finance-heading">{formatBRL(totalExpense)}</strong>
         </span>
       </span>
       <span className="flex items-center gap-2 text-sm text-finance-body">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: financeColors.balance }}
-        />
+        <span className="h-2 w-2 shrink-0 rounded-full bg-finance-balance" />
         <span>
           Saldo:{" "}
           <strong className="text-finance-heading">{formatBRL(totalBalance)}</strong>

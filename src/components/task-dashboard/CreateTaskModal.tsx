@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
 import type { TaskFormData } from "./types"
@@ -35,7 +35,7 @@ export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps)
 
   return (
     <ModalOverlay>
-      <div className="max-h-[100dvh] min-h-[50dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:max-h-[min(92vh,40rem)] sm:min-h-0 sm:rounded-xl sm:p-6">
+      <ModalPanel>
         <ModalHeader title="Nova tarefa" onClose={onClose} />
         <form
           onSubmit={handleSubmit((data) => {
@@ -71,7 +71,7 @@ export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps)
             <Button type="submit">Salvar</Button>
           </div>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

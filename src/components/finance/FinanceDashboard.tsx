@@ -9,7 +9,7 @@ import { TableCard } from "@/components/ui/table/DataTable"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
 import {
   DESPESA_CATEGORIAS,
@@ -20,6 +20,8 @@ import { DEFAULT_FINANCIAL_CONFIG, type FinancialConfigValues } from "@/lib/fina
 import {
   TransactionStatus,
   TransactionType,
+  TRANSACTION_STATUS_OPTIONS,
+  TRANSACTION_TYPE_OPTIONS,
   type FinanceTransaction,
 } from "@/lib/finance/types"
 import { summarizeTransactions } from "@/lib/finance/summary"
@@ -30,15 +32,21 @@ import {
 } from "@/lib/finance/transaction-filters"
 import {
   useFinanceTransactions,
+  useFinanceYearTransactions,
   useFinancialConfig,
   useFinanceMutations,
 } from "@/hooks/useFinance"
 import { Collapse } from "@/components/ui/Collapse"
 import { GlobalFilters } from "@/components/ui/table/GlobalFilters"
 import { useTableFilters } from "@/hooks/useTableFilters"
-import type { RecordPeriod } from "@/lib/finance/period-filter"
+import {
+  filterTransactionsByPeriod,
+  getPreviousMonthKey,
+  type RecordPeriod,
+} from "@/lib/finance/period-filter"
 import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
 import { useClientMounted } from "@/hooks/useClientMounted"
+import { UserHeader } from "@/components/ui/user-header"
 import { FinancialRecord } from "./FinancialRecord"
 import { MoneyFlow } from "./MoneyFlow"
 import { MyCard } from "./MyCard"
@@ -70,8 +78,18 @@ export function FinanceDashboard() {
   const mounted = useClientMounted()
   const { filters, handleFilterChange } = useTableFilters(EMPTY_TRANSACTION_FILTERS)
 
+  const previousMonth = useMemo(() => getPreviousMonthKey(month), [month])
+  const currentYear = useMemo(() => month.slice(0, 4), [month])
+  const previousYear = useMemo(() => String(Number(currentYear) - 1), [currentYear])
+
   const { data: transactions = [], isPending: loadingTransactions } =
     useFinanceTransactions(month, typeFilter)
+  const { data: previousTransactions = [], isPending: loadingPreviousTransactions } =
+    useFinanceTransactions(previousMonth, typeFilter)
+  const { data: yearTransactions = [], isPending: loadingYearTransactions } =
+    useFinanceYearTransactions(currentYear, typeFilter)
+  const { data: previousYearTransactions = [], isPending: loadingPreviousYearTransactions } =
+    useFinanceYearTransactions(previousYear, typeFilter)
   const { data: config = DEFAULT_FINANCIAL_CONFIG } = useFinancialConfig()
   const { createTransaction, removeTransaction, saveConfig } =
     useFinanceMutations(month, typeFilter)
@@ -93,13 +111,34 @@ export function FinanceDashboard() {
     resetConfig(config)
   }, [config, resetConfig])
 
+  const recordTransactions = useMemo(
+    () => [...yearTransactions, ...previousYearTransactions],
+    [yearTransactions, previousYearTransactions]
+  )
+
+  const periodTransactions = useMemo(
+    () => filterTransactionsByPeriod(yearTransactions, recordPeriod),
+    [yearTransactions, recordPeriod]
+  )
+
   const filteredTransactions = useMemo(
-    () => filterTransactions(transactions, filters),
-    [transactions, filters]
+    () => filterTransactions(periodTransactions, filters),
+    [periodTransactions, filters]
   )
 
   const { balance } = summarizeTransactions(transactions, config.doctorCommissionRate)
-  const financeLoading = loadingTransactions || !mounted
+  const { balance: previousBalance } = summarizeTransactions(
+    previousTransactions,
+    config.doctorCommissionRate
+  )
+  const financeLoading =
+    loadingTransactions ||
+    loadingPreviousTransactions ||
+    loadingYearTransactions ||
+    loadingPreviousYearTransactions ||
+    !mounted
+  const overviewLoading =
+    loadingYearTransactions || loadingPreviousYearTransactions || !mounted
 
   async function handleSave(data: TransactionForm) {
     const created = await createTransaction(data)
@@ -120,7 +159,10 @@ export function FinanceDashboard() {
   }
 
   return (
-    <div className="-mx-1 flex flex-col gap-3 px-6 sm:gap-4">
+    <div className="-mx-1 flex flex-col px-6">
+      <div className="flex flex-col gap-6">
+      <UserHeader />
+
       <div className="shrink-0">
         <Header title="Financeiro">
           <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
@@ -132,6 +174,7 @@ export function FinanceDashboard() {
       <div className="shrink-0">
         <MyCard
           balance={balance}
+          previousBalance={previousBalance}
           isLoading={financeLoading}
           onNewTransaction={() => {
             reset(emptyTransactionForm())
@@ -142,20 +185,20 @@ export function FinanceDashboard() {
 
       <div className="shrink-0">
         <FinancialRecord
-          transactions={transactions}
+          transactions={recordTransactions}
           commissionRate={config.doctorCommissionRate}
           period={recordPeriod}
           onPeriodChange={setRecordPeriod}
-          isLoading={financeLoading}
+          isLoading={overviewLoading}
         />
       </div>
 
       <div className="shrink-0">
         <MoneyFlow
-          transactions={transactions}
+          transactions={yearTransactions}
           period={recordPeriod}
           commissionRate={config.doctorCommissionRate}
-          isLoading={financeLoading}
+          isLoading={overviewLoading}
         />
       </div>
 
@@ -173,7 +216,7 @@ export function FinanceDashboard() {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {loadingTransactions ? (
+          {loadingYearTransactions ? (
             <TableCard>
               <div className="p-2 sm:p-3">
                 <TableSkeleton cols={6} rows={5} />
@@ -190,13 +233,16 @@ export function FinanceDashboard() {
 
       {showModal && (
         <ModalOverlay>
-          <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+          <ModalPanel>
             <ModalHeader title="Nova transação" onClose={closeTransactionModal} />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormSelect label="Tipo" {...register("type")}>
-                  <option value={TransactionType.Income}>Receita</option>
-                  <option value={TransactionType.Expense}>Despesa</option>
+                  {TRANSACTION_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </FormSelect>
                 <FormSelect
                   key={selectedType}
@@ -239,8 +285,11 @@ export function FinanceDashboard() {
                   ))}
                 </FormSelect>
                 <FormSelect label="Status" {...register("status")}>
-                  <option value={TransactionStatus.Confirmed}>Confirmado</option>
-                  <option value={TransactionStatus.Pending}>Pendente</option>
+                  {TRANSACTION_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </FormSelect>
               </div>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
@@ -252,13 +301,13 @@ export function FinanceDashboard() {
                 </Button>
               </div>
             </form>
-          </div>
+          </ModalPanel>
         </ModalOverlay>
       )}
 
       {showConfig && (
         <ModalOverlay>
-          <div className="max-h-[min(92vh,32rem)] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+          <ModalPanel size="sm">
             <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
             <form onSubmit={submitConfig(handleSaveConfig)} className="flex flex-col gap-4">
               <Input
@@ -288,9 +337,10 @@ export function FinanceDashboard() {
                 </Button>
               </div>
             </form>
-          </div>
+          </ModalPanel>
         </ModalOverlay>
       )}
+      </div>
     </div>
   )
 }

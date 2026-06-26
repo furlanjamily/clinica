@@ -111,7 +111,7 @@ export function TaskCard({
           </div>
         </div>
 
-        <div className={cn(compact && fillHeight ? DASHBOARD_PANEL_BODY : !compact && "max-h-[320px] overflow-y-auto overscroll-contain pr-1")}>
+        <div className={cn(compact && fillHeight ? DASHBOARD_PANEL_BODY : !compact && "max-h-[320px] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]")}>
           <TaskList
             tasks={tasks}
             compact={compact}

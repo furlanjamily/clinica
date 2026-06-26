@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 type WeatherData = {
   temperature: number
   weatherCode: number
+  isDay: boolean
 }
 
 export type LocationSource = "gps" | "ip" | "default"
@@ -37,24 +38,29 @@ async function fetchWeather(latitude: number, longitude: number): Promise<Weathe
   const url = new URL("https://api.open-meteo.com/v1/forecast")
   url.searchParams.set("latitude", String(latitude))
   url.searchParams.set("longitude", String(longitude))
-  url.searchParams.set("current", "temperature_2m,weather_code")
+  url.searchParams.set("current", "temperature_2m,weather_code,is_day")
   url.searchParams.set("timezone", "auto")
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error("weather fetch failed")
 
   const body = (await res.json()) as {
-    current?: { temperature_2m?: number; weather_code?: number }
+    current?: { temperature_2m?: number; weather_code?: number; is_day?: number }
   }
 
   const temperature = body.current?.temperature_2m
   const weatherCode = body.current?.weather_code
+  const isDay = body.current?.is_day
 
-  if (typeof temperature !== "number" || typeof weatherCode !== "number") {
+  if (
+    typeof temperature !== "number" ||
+    typeof weatherCode !== "number" ||
+    typeof isDay !== "number"
+  ) {
     throw new Error("invalid weather payload")
   }
 
-  return { temperature: Math.round(temperature), weatherCode }
+  return { temperature: Math.round(temperature), weatherCode, isDay: isDay === 1 }
 }
 
 function getCoordsFromGeolocation(): Promise<ResolvedLocation | null> {

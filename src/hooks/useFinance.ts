@@ -13,6 +13,18 @@ export function transactionsQueryKey(month: string, typeFilter: string) {
   return ["finance", "transactions", { month, typeFilter }] as const
 }
 
+export function transactionsQueryKeyByYear(year: string, typeFilter: string) {
+  return ["finance", "transactions", { year, typeFilter }] as const
+}
+
+async function fetchTransactions(params: URLSearchParams): Promise<FinanceTransaction[]> {
+  const res = await fetch(absoluteUrl(`/api/finance/transactions?${params}`))
+  if (!res.ok) throw new Error("Erro ao buscar transações")
+
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
+}
+
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const body = await res.json()
@@ -22,19 +34,27 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   }
 }
 
-/** Transações do mês (e tipo, opcional). Mantém dados anteriores ao trocar filtros. */
+/** Transações do mês (e tipo, opcional). */
 export function useFinanceTransactions(month: string, typeFilter: string) {
   return useQuery<FinanceTransaction[]>({
     queryKey: transactionsQueryKey(month, typeFilter),
     queryFn: async () => {
       const params = new URLSearchParams({ mes: month })
       if (typeFilter) params.set("tipo", typeFilter)
+      return fetchTransactions(params)
+    },
+    placeholderData: keepPreviousData,
+  })
+}
 
-      const res = await fetch(absoluteUrl(`/api/finance/transactions?${params}`))
-      if (!res.ok) throw new Error("Erro ao buscar transações")
-
-      const data = await res.json()
-      return Array.isArray(data) ? data : []
+/** Transações do ano (e tipo, opcional). */
+export function useFinanceYearTransactions(year: string, typeFilter: string) {
+  return useQuery<FinanceTransaction[]>({
+    queryKey: transactionsQueryKeyByYear(year, typeFilter),
+    queryFn: async () => {
+      const params = new URLSearchParams({ ano: year })
+      if (typeFilter) params.set("tipo", typeFilter)
+      return fetchTransactions(params)
     },
     placeholderData: keepPreviousData,
   })
@@ -52,10 +72,13 @@ export function useFinancialConfig() {
   })
 }
 
-/** Mutações de finanças com atualização do cache do React Query e feedback via toast. */
 export function useFinanceMutations(month: string, typeFilter: string) {
   const queryClient = useQueryClient()
   const listKey = transactionsQueryKey(month, typeFilter)
+
+  function invalidateTransactionLists() {
+    queryClient.invalidateQueries({ queryKey: ["finance", "transactions"] })
+  }
 
   function setTransactions(updater: (prev: FinanceTransaction[]) => FinanceTransaction[]) {
     queryClient.setQueryData<FinanceTransaction[]>(listKey, (prev) => updater(prev ?? []))
@@ -74,9 +97,10 @@ export function useFinanceMutations(month: string, typeFilter: string) {
     }
 
     const body = await res.json()
-    // POST vinculado a agendamento devolve { transaction, appointment }
+    // POST vinculado a agendamento retorna { transaction, appointment }
     const created: FinanceTransaction = body.transaction ?? body
     setTransactions((prev) => [created, ...prev])
+    invalidateTransactionLists()
     toast.success("Transação registrada!")
     return created
   }
@@ -94,6 +118,7 @@ export function useFinanceMutations(month: string, typeFilter: string) {
     }
 
     setTransactions((prev) => prev.filter((t) => t.id !== id))
+    invalidateTransactionLists()
     toast.success("Transação removida.")
     return true
   }
@@ -126,7 +151,6 @@ type AppointmentPaymentResult = {
   appointment: Appointment
 }
 
-/** Registra receita vinculada a um agendamento (fluxo da agenda). */
 export function useAppointmentPayment() {
   async function registerPayment(
     data: AppointmentPaymentInput

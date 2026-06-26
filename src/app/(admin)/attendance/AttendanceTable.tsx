@@ -25,9 +25,17 @@ import { GlobalFilters, FilterField } from "@/components/ui/table/GlobalFilters"
 import { Collapse } from "@/components/ui/Collapse"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { DataTable, TableCard, Td } from "@/components/ui/table/DataTable"
+import { PAGE_SIZE_OPTIONS } from "@/components/ui/table/TablePagination"
 import { Button } from "@/components/ui/button"
 import { ScheduleNavigator } from "@/app/(admin)/schedule/components/ScheduleNavigator"
 import { TimerCell } from "./TimerCell"
+import {
+  attendanceMobileRootClass,
+  attendanceTopSectionClass,
+  attendanceHistorySectionClass,
+  attendanceHistoryPanelClass,
+} from "@/lib/layout/filter-table-layout"
+import { cn } from "@/lib/utils"
 
 type Props = {
   data: Appointment[]
@@ -55,6 +63,8 @@ export function AttendanceTableComponent({
 
   const [modalItem, setModalItem] = useState<Appointment | null>(null)
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | undefined>()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0])
 
   const { filters, handleFilterChange } = useTableFilters({
     id: "",
@@ -83,12 +93,20 @@ export function AttendanceTableComponent({
     return matchPatient && matchProfessional && matchVisitDate && matchId
   })
 
-  const historyRows: RowType[] = useMemo(
-    () => flattenAppointmentsByDay(filteredHistory),
-    [filteredHistory]
+  const historyTotal = filteredHistory.length
+  const historySafePage = Math.min(page, Math.max(1, Math.ceil(historyTotal / pageSize)))
+
+  const pageHistory = useMemo(
+    () => filteredHistory.slice((historySafePage - 1) * pageSize, historySafePage * pageSize),
+    [filteredHistory, historySafePage, pageSize]
   )
 
-  const historyColCount = isSuperAdmin ? 5 : 4
+  const historyRows: RowType[] = useMemo(
+    () => flattenAppointmentsByDay(pageHistory),
+    [pageHistory]
+  )
+
+  const historyColCount = isSuperAdmin ? 6 : 5
 
   function openRecordModal(item: Appointment) {
     setModalItem(item)
@@ -129,13 +147,13 @@ export function AttendanceTableComponent({
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden sm:gap-6">
-      <section className="flex max-h-[42dvh] shrink-0 flex-col gap-3 overflow-hidden">
+    <div className={attendanceMobileRootClass}>
+      <section className={attendanceTopSectionClass}>
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
           atendimento em andamento
         </p>
 
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1 sm:flex-row sm:items-stretch">
+        <div className="flex flex-col gap-3 max-md:overflow-visible sm:flex-row sm:items-stretch lg:min-h-0 lg:overflow-y-auto">
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             {data.length === 0 ? (
               <div className="flex min-w-0 items-center justify-center rounded-3xl border border-gray-200 bg-white p-4 text-center sm:p-5">
@@ -287,20 +305,36 @@ export function AttendanceTableComponent({
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col gap-3">
+      <section className={attendanceHistorySectionClass}>
         <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
 
+        <div className={attendanceHistoryPanelClass}>
         {loadingHistory ? (
-          <TableCard>
+          <TableCard className="max-md:h-full md:h-full md:min-h-0">
             <div className="p-2 sm:p-3">
               <TableSkeleton cols={historyColCount} rows={4} />
             </div>
           </TableCard>
         ) : (
           <DataTable
+            className="max-md:h-full md:h-full md:min-h-0"
             headers={["ID Agendamento", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", { label: "Prontuário", align: "right" }]}
             isEmpty={filteredHistory.length === 0}
             emptyMessage="Nenhum atendimento encontrado neste período..."
+            pagination={
+              historyTotal > 0
+                ? {
+                    page: historySafePage,
+                    pageSize,
+                    total: historyTotal,
+                    onPageChange: setPage,
+                    onPageSizeChange: (size) => {
+                      setPageSize(size)
+                      setPage(1)
+                    },
+                  }
+                : undefined
+            }
           >
             {historyRows.map((row, rowIndex) => {
               if (row.type === "day") {
@@ -370,6 +404,7 @@ export function AttendanceTableComponent({
             })}
           </DataTable>
         )}
+        </div>
       </section>
 
       {modalItem && (

@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
 import { useCRUD } from "@/hooks/useCRUD"
 import type { Doctor } from "@/types"
@@ -101,7 +101,7 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
 
   return (
     <ModalOverlay>
-      <div className="max-h-[min(92vh,44rem)] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+      <ModalPanel size="lg">
         <ModalHeader
           title={isEditing ? "Editar médico" : "Novo médico"}
           onClose={onClose}
@@ -197,7 +197,7 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
             </Button>
           </div>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

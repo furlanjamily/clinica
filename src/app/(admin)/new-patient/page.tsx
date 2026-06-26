@@ -35,7 +35,7 @@ function PatientsTable({
       ]}
       data={patients}
       emptyMessage="Nenhum paciente cadastrado"
-      minWidthClassName="min-w-[min(100%,31rem)] sm:min-w-[500px]"
+      minWidthClassName="min-w-[31rem]"
       renderRow={(p) => (
         <tr key={p.id} className="transition-colors hover:bg-gray-50/80">
           <Td className="font-medium">{p.id}</Td>

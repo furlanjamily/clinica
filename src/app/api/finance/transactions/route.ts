@@ -48,6 +48,7 @@ export async function GET(req: Request) {
     await requireSession()
     const { searchParams } = new URL(req.url)
     const month = searchParams.get("mes")
+    const year = searchParams.get("ano")
     const type = searchParams.get("tipo")
 
     const where: Prisma.TransactionWhereInput = { deletedAt: null }
@@ -57,6 +58,11 @@ export async function GET(req: Request) {
       where.competenceDate = {
         gte: startOfLocalDay(`${month}-01`),
         lt: startOfLocalDay(`${nextMonth}-01`),
+      }
+    } else if (year) {
+      where.competenceDate = {
+        gte: startOfLocalDay(`${year}-01-01`),
+        lt: startOfLocalDay(`${Number(year) + 1}-01-01`),
       }
     }
     if (type === TransactionType.Income || type === TransactionType.Expense) where.type = type

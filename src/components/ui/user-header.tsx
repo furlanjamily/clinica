@@ -12,18 +12,30 @@ import { useAdminShell } from "@/hooks/useAdminShell";
 import { HeaderWeatherWidget } from "@/components/ui/header-weather-widget";
 import { HeaderQuickActions } from "@/components/ui/header-quick-actions";
 import { cn } from "@/lib/utils";
+import { UserHeaderSkeleton } from "@/components/ui/UserHeaderSkeleton";
 
-function UserAccountMenu({ className }: { className?: string }) {
+function UserAccountMenu({
+  className,
+  onOpenChange,
+}: {
+  className?: string
+  onOpenChange?: (open: boolean) => void
+}) {
   const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
   const displayEmail = session?.user?.email ?? "";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  function updateOpen(next: boolean) {
+    setOpen(next)
+    onOpenChange?.(next)
+  }
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
+        updateOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -31,7 +43,7 @@ function UserAccountMenu({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-3", open && "z-50", className)}>
+    <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-3", open && "z-[70]", className)}>
       <button
         type="button"
         aria-label="Notificações"
@@ -49,7 +61,7 @@ function UserAccountMenu({ className }: { className?: string }) {
           type="button"
           aria-expanded={open}
           aria-haspopup="menu"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={() => updateOpen(!open)}
           className="flex max-w-[9.5rem] items-center gap-1.5 rounded-full min-[400px]:max-w-[11rem] min-[480px]:max-w-[13rem] sm:max-w-none sm:gap-2 lg:gap-3"
         >
           <Image
@@ -73,7 +85,7 @@ function UserAccountMenu({ className }: { className?: string }) {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full z-[60] mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="absolute right-0 top-full z-[70] mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg">
             <div className="border-b px-3 py-2">
               <p className="truncate text-xs font-semibold text-gray-700">{displayName}</p>
               <p className="truncate text-[10px] text-gray-400">{displayEmail}</p>
@@ -95,13 +107,19 @@ function UserAccountMenu({ className }: { className?: string }) {
 
 export function UserHeader() {
   const shell = useAdminShell()
+  const { status } = useSession()
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+
+  if (status === "loading") {
+    return <UserHeaderSkeleton showMobileMenu={Boolean(shell)} />
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative z-40 min-w-0"
+      className={cn("relative min-w-0 shrink-0", accountMenuOpen ? "z-[70]" : "z-50")}
     >
       <Card className="relative isolate min-w-0 overflow-visible rounded-[20px] border-0 bg-transparent p-3 sm:p-4 lg:p-5">
         <div className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6">
@@ -110,7 +128,7 @@ export function UserHeader() {
               <HeaderWeatherWidget />
             </div>
 
-            <UserAccountMenu className="lg:hidden" />
+            <UserAccountMenu className="lg:hidden" onOpenChange={setAccountMenuOpen} />
           </div>
 
           <div className="relative z-0 flex min-w-0 justify-center lg:justify-self-center">
@@ -130,7 +148,7 @@ export function UserHeader() {
           </div>
 
           <div className="relative z-50 hidden min-w-0 shrink-0 items-center justify-end gap-3 lg:flex">
-            <UserAccountMenu />
+            <UserAccountMenu onOpenChange={setAccountMenuOpen} />
           </div>
         </div>
       </Card>

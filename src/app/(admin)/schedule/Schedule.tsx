@@ -7,7 +7,14 @@ import type { Appointment } from "@/types/types"
 import { ScheduleNavigator } from "./components/ScheduleNavigator"
 import { ScheduleView } from "./views/ScheduleView"
 import { Header } from "@/components/ui/PageHeader"
+import {
+  filterTableBodyClass,
+  filterTableFiltersClass,
+  filterTablePageClass,
+  filterTablePanelClass,
+} from "@/lib/layout/filter-table-layout"
 import { AppointmentStatus, STATUS_LABEL } from "@/lib/schedule/status"
+import { cn } from "@/lib/utils"
 
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "Todos os status" },
@@ -67,10 +74,10 @@ export default function Schedule({ data, onChangeData }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
+    <div className={filterTablePageClass}>
       <Header title="Agenda" />
 
-      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:mt-4 sm:gap-4">
+      <div className={filterTableBodyClass}>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <ScheduleNavigator
             date={date}
@@ -80,7 +87,12 @@ export default function Schedule({ data, onChangeData }: Props) {
           />
         </div>
 
-        <div className="flex shrink-0 flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5">
+        <div
+          className={cn(
+            "flex flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5",
+            filterTableFiltersClass
+          )}
+        >
           <Collapse label="Filtros" unboundedPanel>
             <GlobalFilters
               values={filters}
@@ -90,7 +102,7 @@ export default function Schedule({ data, onChangeData }: Props) {
           </Collapse>
         </div>
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <main className={filterTablePanelClass}>
           <ScheduleView data={filteredData} setData={onChangeData} />
         </main>
       </div>

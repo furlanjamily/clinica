@@ -111,6 +111,12 @@ export function getConfirmedTransactionsForPeriod(
   )
 }
 
+export function getPreviousMonthKey(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number)
+  if (m === 1) return `${y - 1}-12`
+  return `${y}-${String(m - 1).padStart(2, "0")}`
+}
+
 export function formatPercentChange(current: number, previous: number): string {
   if (previous === 0) {
     return current === 0 ? "0%" : "100%"

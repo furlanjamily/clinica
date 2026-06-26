@@ -33,7 +33,7 @@ function MedicalRecordsTable({
       ]}
       data={records}
       emptyMessage="Nenhum prontuário cadastrado"
-      minWidthClassName="min-w-[min(100%,32.5rem)] sm:min-w-[520px]"
+      minWidthClassName="min-w-[32.5rem]"
       renderRow={(r) => (
         <tr key={r.id} className="transition-colors hover:bg-gray-50/80">
           <Td className="max-w-[12rem] break-words font-medium">{r.patientDetails?.name || "—"}</Td>

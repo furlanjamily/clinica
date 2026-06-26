@@ -1,14 +1,19 @@
+import { Suspense } from "react"
 import { AttendanceClient } from "./AttendanceClient"
-import { TableSuspense } from "@/components/ui/TableSuspense"
+import { AttendanceSkeleton } from "./AttendanceSkeleton"
 import { Header } from "@/components/ui/PageHeader"
+import { attendancePageClass } from "@/lib/layout/filter-table-layout"
+import { cn } from "@/lib/utils"
 
 export default function AttendancePage() {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden sm:gap-3">
-      <Header title="Atendimentos" />
-      <TableSuspense cols={5} rows={4}>
+    <div className={cn(attendancePageClass, "gap-4 sm:gap-3")}>
+      <div className="shrink-0">
+        <Header title="Atendimentos" />
+      </div>
+      <Suspense fallback={<AttendanceSkeleton />}>
         <AttendanceClient />
-      </TableSuspense>
+      </Suspense>
     </div>
   )
 }

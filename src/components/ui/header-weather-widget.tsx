@@ -19,15 +19,25 @@ function formatHeaderDate(date: Date) {
   return `${capitalize(weekday)}, ${day} ${capitalize(month)}`
 }
 
-function WeatherIconDisplay({ code, loading }: { code: number | null; loading: boolean }) {
-  const iconClass = weatherIconClassForCode(code)
+function WeatherIconDisplay({
+  code,
+  isDay,
+  loading,
+}: {
+  code: number | null
+  isDay: boolean
+  loading: boolean
+}) {
+  const iconClass = weatherIconClassForCode(code, isDay)
 
-  return createElement(weatherIconForCode(code), {
+  return createElement(weatherIconForCode(code, isDay), {
     size: 20,
     strokeWidth: 2.25,
     className: cn(
       "shrink-0 sm:h-[22px] sm:w-[22px]",
-      loading ? "animate-pulse text-amber-300" : iconClass
+      loading
+        ? cn("animate-pulse", isDay ? "text-amber-300" : "text-indigo-200")
+        : iconClass
     ),
     "aria-hidden": true,
   })
@@ -36,6 +46,10 @@ function WeatherIconDisplay({ code, loading }: { code: number | null; loading: b
 export function HeaderWeatherWidget({ className }: { className?: string }) {
   const { data, loading } = useLocalWeather()
   const dateLabel = useMemo(() => formatHeaderDate(new Date()), [])
+  const isDay = data?.isDay ?? (() => {
+    const hour = new Date().getHours()
+    return hour >= 6 && hour < 18
+  })()
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-0.5", className)}>
@@ -44,7 +58,11 @@ export function HeaderWeatherWidget({ className }: { className?: string }) {
       </p>
 
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-        <WeatherIconDisplay code={data?.weatherCode ?? null} loading={loading} />
+        <WeatherIconDisplay
+          code={data?.weatherCode ?? null}
+          isDay={isDay}
+          loading={loading}
+        />
         <p className="truncate text-lg font-bold tabular-nums tracking-tight text-gray-600 sm:text-xl lg:text-2xl">
           {loading ? (
             <span className="inline-block h-7 w-14 animate-pulse rounded-md bg-gray-100" />

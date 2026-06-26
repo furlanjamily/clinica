@@ -159,10 +159,7 @@ export function MoneyFlowChart({
               }`}
               style={{ left: `${chart.highlightXPercent}%` }}
             >
-              <div
-                className="whitespace-nowrap rounded-2xl px-3 py-1.5 text-center shadow-sm sm:px-4 sm:py-2"
-                style={{ backgroundColor: financeColors.primaryDark }}
-              >
+              <div className="whitespace-nowrap rounded-2xl bg-finance-primary-dark px-3 py-1.5 text-center shadow-sm sm:px-4 sm:py-2">
                 <p className="text-[10px] text-white/80 sm:text-[11px]">{chart.highlightLabel}</p>
                 <p className="text-xs font-bold text-white sm:text-sm">
                   Rec. {formatBRL(chart.highlightIncome)}

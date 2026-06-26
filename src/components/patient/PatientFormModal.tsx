@@ -5,7 +5,7 @@ import { Controller, useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
 import { useCRUD } from "@/hooks/useCRUD"
 import type { Patient } from "@/types"
@@ -89,7 +89,7 @@ export function PatientFormModal({ patient, onClose, onSuccess }: Props) {
 
   return (
     <ModalOverlay>
-      <div className="max-h-[min(92vh,44rem)] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+      <ModalPanel size="lg">
         <ModalHeader
           title={isEditing ? "Editar paciente" : "Novo paciente"}
           onClose={onClose}
@@ -156,7 +156,7 @@ export function PatientFormModal({ patient, onClose, onSuccess }: Props) {
             </Button>
           </div>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

@@ -5,6 +5,7 @@ import { dashboardColors } from "./theme"
 import { Card } from "../ui/card"
 import { useDashboard } from "./DashboardDataProvider"
 import { ProjectProgressCardSkeleton } from "./ProjectProgressCardSkeleton"
+import { cn } from "@/lib/utils"
 
 const CX = 110
 const CY = 110
@@ -69,8 +70,8 @@ function LegendDot({ variant }: { variant: "completed" | "inProgress" | "pending
     )
   }
 
-  const color = variant === "completed" ? dashboardColors.primary : dashboardColors.primaryHover
-  return <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+  const color = variant === "completed" ? "bg-primary" : "bg-finance-primary-hover"
+  return <span className={cn("h-3 w-3 shrink-0 rounded-full", color)} />
 }
 
 export function ProjectProgressCard() {

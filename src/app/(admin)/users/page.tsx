@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
 import { UserRole, type UserRoleType } from "@/types/auth"
 import {
@@ -246,7 +246,7 @@ export default function UsersPage() {
 
       {showModal && (
         <ModalOverlay>
-          <div className="max-h-[min(92vh,36rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+          <ModalPanel>
             <ModalHeader
               title={editing ? "Editar usuário" : "Novo usuário"}
               onClose={() => { setShowModal(false); setEditing(null); reset() }}
@@ -289,7 +289,7 @@ export default function UsersPage() {
                 </Button>
               </div>
             </form>
-          </div>
+          </ModalPanel>
         </ModalOverlay>
       )}
     </div>

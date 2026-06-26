@@ -74,5 +74,9 @@
       radial-gradient(circle at 18% 88%, rgba(255, 255, 255, 0.72) 0%, rgba(239, 239, 236, 0.42) 34%, rgba(230, 230, 226, 0) 58%),
       linear-gradient(135deg, #f7f7f5 0%, #eeeeeb 46%, #f9f9f7 100%);
   }
+
+  .bg-finance-card-gradient {
+    background: linear-gradient(135deg, #5b21b6 0%, #8538f0 50%, #9747ff 100%);
+  }
 }
 

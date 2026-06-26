@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import type { Appointment } from "@/types/types"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
 import { PAYMENT_METHODS } from "@/lib/finance/categories"
@@ -89,8 +89,8 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   }
 
   return (
-    <ModalOverlay className="z-[60]">
-      <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+    <ModalOverlay>
+      <ModalPanel>
         <ModalHeader title="Confirmar pagamento" onClose={onClose} />
         <p className="mb-4 text-sm leading-relaxed text-gray-600">
           Registre a receita vinculada a este agendamento. O valor deve estar na faixa de ±15% da tabela da clínica
@@ -128,7 +128,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
             </Button>
           </div>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

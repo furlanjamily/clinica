@@ -8,7 +8,7 @@ import { useScheduleOptions } from "@/hooks/useScheduleOptions"
 import { useScheduleAvailability } from "@/hooks/useScheduleAvailability"
 import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { ScheduleFormFields } from "@/components/schedule/ScheduleFormFields"
 import { formatDateToInput, isDateDisabled, filterAvailableSlots } from "@/lib/schedule/form-utils"
 
@@ -151,7 +151,7 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
 
   return (
     <ModalOverlay>
-      <div className="max-h-[min(92vh,40rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+      <ModalPanel>
         <ModalHeader
           title={isReschedule ? "Reagendar" : "Novo Agendamento"}
           onClose={onClose}
@@ -178,7 +178,7 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
             {loading ? "Salvando..." : "Salvar"}
           </Button>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

@@ -1,20 +1,34 @@
 "use client"
 
 import { ReactNode, useMemo, useState } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
+import { PAGE_SIZE_OPTIONS, TablePagination, type TablePaginationProps } from "@/components/ui/table/TablePagination"
 
 /**
  * Card branco com scroll interno — mesmo padrão da tabela de atendimentos.
  * Use direto quando precisar de conteúdo customizado (ex.: skeleton).
  */
-export function TableCard({ className, children }: { className?: string; children: ReactNode }) {
+const tableScrollClass = cn(
+  "min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain",
+  "[-webkit-overflow-scrolling:touch] [scrollbar-width:thin]",
+  "pb-4 sm:pb-3"
+)
+
+export function TableCard({
+  className,
+  children,
+  footer,
+}: {
+  className?: string
+  children: ReactNode
+  footer?: ReactNode
+}) {
   return (
-    <Card className={cn("flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch] scroll-pb-4 pb-4 sm:pb-3">
-        {children}
-      </div>
+    <Card className={cn("flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden", className)}>
+      <div className={tableScrollClass}>{children}</div>
+      {footer}
     </Card>
   )
 }
@@ -42,8 +56,6 @@ export type DataTableHeader<T> =
 
 type SortState = { index: number; dir: "asc" | "desc" }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50]
-
 function headerLabel<T>(h: DataTableHeader<T>) {
   return typeof h === "string" ? h : h.label
 }
@@ -54,18 +66,6 @@ function compareValues(a: SortValue, b: SortValue) {
   if (b == null) return -1
   if (typeof a === "number" && typeof b === "number") return a - b
   return String(a).localeCompare(String(b), "pt-BR", { numeric: true, sensitivity: "base" })
-}
-
-function getPageItems(current: number, total: number): (number | "...")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const pages: (number | "...")[] = [1]
-  const start = Math.max(2, current - 1)
-  const end = Math.min(total - 1, current + 1)
-  if (start > 2) pages.push("...")
-  for (let p = start; p <= end; p++) pages.push(p)
-  if (end < total - 1) pages.push("...")
-  pages.push(total)
-  return pages
 }
 
 type DataTableProps<T> = {
@@ -86,6 +86,8 @@ type DataTableProps<T> = {
   className?: string
   /** Linhas do tbody (modo children) */
   children?: ReactNode
+  /** Paginação externa (modo children) */
+  pagination?: TablePaginationProps
 }
 
 export function DataTable<T>({
@@ -95,13 +97,14 @@ export function DataTable<T>({
   paginate = true,
   isEmpty,
   emptyMessage = "nenhum registro",
-  minWidthClassName = "min-w-[min(100%,36rem)] sm:min-w-[600px]",
+  minWidthClassName,
   className,
   children,
+  pagination,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0])
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0])
 
   const isDataMode = data !== undefined && renderRow !== undefined
 
@@ -123,7 +126,9 @@ export function DataTable<T>({
     : sorted
 
   const empty = isDataMode ? total === 0 : isEmpty
-  const showFooter = isDataMode && paginate && total > 0
+  const showFooter =
+    (isDataMode && paginate && total > 0) ||
+    (!isDataMode && !!pagination && pagination.total > 0)
 
   function toggleSort(index: number) {
     setPage(1)
@@ -135,9 +140,15 @@ export function DataTable<T>({
   }
 
   return (
-    <Card className={cn("flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden", className)}>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-        <table className={cn("w-full border-separate border-spacing-0", empty && "h-full", minWidthClassName)}>
+    <Card className={cn("flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden", className)}>
+      <div className={tableScrollClass}>
+        <table
+          className={cn(
+            "w-max min-w-full border-separate border-spacing-0",
+            empty && "h-full",
+            minWidthClassName
+          )}
+        >
           <thead>
             <tr>
               {headers.map((h, i) => {
@@ -147,7 +158,6 @@ export function DataTable<T>({
                 return (
                   <th
                     key={`${headerLabel(h)}-${i}`}
-                    style={{ width: `${100 / headers.length}%` }}
                     className={cn(
                       "sticky top-0 z-10 whitespace-nowrap border-b border-gray-200 bg-gray-50 px-3 py-2.5 text-[11px] font-medium text-gray-500 sm:px-4 sm:py-3 sm:text-xs",
                       align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
@@ -198,63 +208,19 @@ export function DataTable<T>({
       </div>
 
       {showFooter && (
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-3 py-2.5 sm:px-4">
-          <div className="flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
-            <span>Exibir</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-            >
-              {PAGE_SIZE_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <span>de {total} resultado{total === 1 ? "" : "s"}</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Página anterior"
-              disabled={safePage === 1}
-              onClick={() => setPage(safePage - 1)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronLeft size={14} />
-            </button>
-
-            {getPageItems(safePage, totalPages).map((p, i) =>
-              p === "..." ? (
-                <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">…</span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPage(p)}
-                  className={cn(
-                    "h-7 min-w-7 rounded-lg px-1.5 text-xs font-medium transition-colors",
-                    p === safePage
-                      ? "bg-[#9747FF] text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  )}
-                >
-                  {p}
-                </button>
-              )
-            )}
-
-            <button
-              type="button"
-              aria-label="Próxima página"
-              disabled={safePage === totalPages}
-              onClick={() => setPage(safePage + 1)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          page={pagination?.page ?? safePage}
+          pageSize={pagination?.pageSize ?? pageSize}
+          total={pagination?.total ?? total}
+          onPageChange={pagination?.onPageChange ?? setPage}
+          onPageSizeChange={
+            pagination?.onPageSizeChange ??
+            ((size) => {
+              setPageSize(size)
+              setPage(1)
+            })
+          }
+        />
       )}
     </Card>
   )

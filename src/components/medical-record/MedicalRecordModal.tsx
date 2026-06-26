@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { ModalHeader } from "@/components/ui/ModalHeader"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Textarea } from "@/components/ui/Input"
 import type { MedicalRecord } from "@/types"
 
@@ -74,7 +74,7 @@ export function MedicalRecordModal({
 
   return (
     <ModalOverlay>
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-lg sm:rounded-xl sm:p-6">
+      <ModalPanel size="lg">
 
         <ModalHeader
           title={data ? "Editar prontuário" : "Novo prontuário"}
@@ -112,7 +112,7 @@ export function MedicalRecordModal({
             </Button>
           </div>
         </form>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

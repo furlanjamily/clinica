@@ -15,6 +15,7 @@ import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
 import { Button } from "@/components/ui/button"
 import { TableCard, Td } from "@/components/ui/table/DataTable"
+import { TablePagination } from "@/components/ui/table/TablePagination"
 import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { AppointmentStatus, STATUS_LABEL, STATUS_STYLE } from "@/lib/schedule/status"
 
@@ -37,9 +38,16 @@ type TableProps = {
   rows: RowType[]
   appointments: Appointment[]
   setData: React.Dispatch<React.SetStateAction<Appointment[]>>
+  pagination?: {
+    page: number
+    pageSize: number
+    total: number
+    onPageChange: (page: number) => void
+    onPageSizeChange: (pageSize: number) => void
+  }
 }
 
-const COLUMN_COUNT = 5
+const COLUMN_COUNT = 6
 
 const columnHelper = createColumnHelper<RowType>()
 
@@ -133,7 +141,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActi
   )
 }
 
-export function Table({ rows, appointments, setData }: TableProps) {
+export function Table({ rows, appointments, setData, pagination }: TableProps) {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [paymentFor, setPaymentFor] = useState<Appointment | null>(null)
   const router = useRouter()
@@ -247,15 +255,28 @@ export function Table({ rows, appointments, setData }: TableProps) {
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
 
   return (
-    <TableCard>
-      <table className={`w-full min-w-[20rem] border-separate border-spacing-0 sm:min-w-0 ${table.getRowModel().rows.length === 0 ? "h-full" : ""}`}>
+    <TableCard
+      footer={
+        pagination ? (
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onPageChange={pagination.onPageChange}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
+        ) : undefined
+      }
+    >
+      <table
+        className={`w-max min-w-full border-separate border-spacing-0 ${table.getRowModel().rows.length === 0 ? "h-full" : ""}`}
+      >
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
               {hg.headers.map((header, i) => (
                 <th
                   key={header.id}
-                  style={{ width: `${100 / hg.headers.length}%` }}
                   className={`sticky top-0 z-10 whitespace-nowrap border-b border-gray-200 bg-gray-50 px-3 py-2.5 text-[11px] font-medium text-gray-500 sm:px-4 sm:py-3 sm:text-xs ${i === hg.headers.length - 1 ? "text-right" : "text-left"}`}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}

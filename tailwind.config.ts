@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { financeText } from "./src/components/finance/theme";
+import { financeColors, financeText } from "./src/components/finance/theme";
 
 export default {
     darkMode: ["class"],
@@ -7,6 +7,7 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
   	extend: {
@@ -15,6 +16,14 @@ export default {
   				heading: financeText.heading,
   				body: financeText.body,
   				muted: financeText.muted,
+  				primary: financeColors.primary,
+  				"primary-hover": financeColors.primaryHover,
+  				"primary-dark": financeColors.primaryDark,
+  				balance: financeColors.balance,
+  				"light-bg": financeColors.lightBg,
+  				"light-accent": financeColors.lightAccent,
+  				"secondary-bg": financeColors.secondaryBg,
+  				"saving-bg": financeColors.savingBg,
   			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
