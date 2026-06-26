@@ -13,23 +13,32 @@ import { HeaderWeatherWidget } from "@/components/ui/header-weather-widget";
 import { HeaderQuickActions } from "@/components/ui/header-quick-actions";
 import { cn } from "@/lib/utils";
 import { UserHeaderSkeleton } from "@/components/ui/UserHeaderSkeleton";
+import { NotificationPopover } from "@/components/notification/NotificationPopover";
 
 function UserAccountMenu({
   className,
   onOpenChange,
+  onNotificationOpenChange,
 }: {
   className?: string
   onOpenChange?: (open: boolean) => void
+  onNotificationOpenChange?: (open: boolean) => void
 }) {
   const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
   const displayEmail = session?.user?.email ?? "";
   const [open, setOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   function updateOpen(next: boolean) {
     setOpen(next)
     onOpenChange?.(next)
+  }
+
+  function updateNotificationsOpen(next: boolean) {
+    setNotificationsOpen(next)
+    onNotificationOpenChange?.(next)
   }
 
   useEffect(() => {
@@ -43,15 +52,25 @@ function UserAccountMenu({
   }, []);
 
   return (
-    <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-3", open && "z-[70]", className)}>
-      <button
-        type="button"
-        aria-label="Notificações"
-        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:h-10 sm:w-10"
-      >
-        <Bell size={18} className="sm:h-5 sm:w-5" />
-        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 sm:right-2 sm:top-2" />
-      </button>
+    <div className={cn("relative flex shrink-0 items-center gap-1.5 sm:gap-3", (open || notificationsOpen) && "z-[70]", className)}>
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Notificações"
+          aria-expanded={notificationsOpen}
+          aria-haspopup="dialog"
+          onClick={() => updateNotificationsOpen(!notificationsOpen)}
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:h-10 sm:w-10"
+        >
+          <Bell size={18} className="sm:h-5 sm:w-5" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 sm:right-2 sm:top-2" />
+        </button>
+
+        <NotificationPopover
+          open={notificationsOpen}
+          onClose={() => updateNotificationsOpen(false)}
+        />
+      </div>
 
       <div
         className="relative shrink-0 rounded-full border border-gray-200/90 bg-white px-1.5 py-1 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.04] hover:shadow-[0_6px_18px_rgba(151,71,255,0.14)] active:translate-y-0 sm:px-2 sm:py-1"
@@ -109,6 +128,7 @@ export function UserHeader() {
   const shell = useAdminShell()
   const { status } = useSession()
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   if (status === "loading") {
     return <UserHeaderSkeleton showMobileMenu={Boolean(shell)} />
@@ -119,7 +139,7 @@ export function UserHeader() {
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={cn("relative min-w-0 shrink-0", accountMenuOpen ? "z-[70]" : "z-50")}
+      className={cn("relative min-w-0 shrink-0", (accountMenuOpen || notificationsOpen) ? "z-[70]" : "z-50")}
     >
       <Card className="relative isolate min-w-0 overflow-visible rounded-[20px] border-0 bg-transparent p-3 sm:p-4 lg:p-5">
         <div className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6">
@@ -128,7 +148,7 @@ export function UserHeader() {
               <HeaderWeatherWidget />
             </div>
 
-            <UserAccountMenu className="lg:hidden" onOpenChange={setAccountMenuOpen} />
+            <UserAccountMenu className="lg:hidden" onOpenChange={setAccountMenuOpen} onNotificationOpenChange={setNotificationsOpen} />
           </div>
 
           <div className="relative z-0 flex min-w-0 justify-center lg:justify-self-center">
@@ -148,7 +168,7 @@ export function UserHeader() {
           </div>
 
           <div className="relative z-50 hidden min-w-0 shrink-0 items-center justify-end gap-3 lg:flex">
-            <UserAccountMenu onOpenChange={setAccountMenuOpen} />
+            <UserAccountMenu onOpenChange={setAccountMenuOpen} onNotificationOpenChange={setNotificationsOpen} />
           </div>
         </div>
       </Card>

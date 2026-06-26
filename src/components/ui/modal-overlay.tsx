@@ -81,8 +81,8 @@ function useLockBackgroundScroll() {
 
 function getCompactMaxHeight(tier: ViewportTier) {
   const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-  const inset = tier === "tablet" ? 32 : 0
-  return viewportHeight * 0.88 - inset
+  const paddingInset = tier === "tablet" ? 48 : 32
+  return viewportHeight * 0.92 - paddingInset
 }
 
 type ModalPanelProps = React.PropsWithChildren<{
@@ -157,18 +157,13 @@ export function ModalPanel({ children, className, size = "md" }: ModalPanelProps
     <div
       className={cn(
         "flex w-full min-h-0 flex-col overflow-hidden bg-white",
-        isPhoneExpanded && [
-          "h-dvh max-h-dvh rounded-none shadow-none",
-          "pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]",
-        ],
-        isTabletExpanded && "h-full max-h-full flex-1 rounded-xl shadow-lg",
-        isCompact &&
-          tier === "phone" &&
-          "max-h-[88dvh] rounded-t-2xl shadow-lg",
+        (isPhoneExpanded || (isCompact && tier === "phone")) &&
+          "max-h-[92dvh] w-full rounded-2xl shadow-lg",
+        isTabletExpanded && "max-h-[92dvh] w-full rounded-2xl shadow-lg",
         isCompact &&
           tier === "tablet" &&
-          cn("max-h-[88dvh] rounded-xl shadow-lg", modalPanelWidths[size]),
-        "lg:h-auto lg:rounded-xl lg:shadow-lg lg:pt-0 lg:pb-0",
+          cn("max-h-[92dvh] w-full rounded-2xl shadow-lg", modalPanelWidths[size]),
+        "lg:h-auto lg:rounded-xl lg:shadow-lg",
         modalPanelDesktopSizes[size],
         className
       )}
@@ -185,22 +180,13 @@ export function ModalPanel({ children, className, size = "md" }: ModalPanelProps
 
 export function ModalOverlay({ children, className }: ModalOverlayProps) {
   useLockBackgroundScroll()
-  const [layoutState, setLayoutState] = useState<ModalLayoutState>(defaultLayoutState)
 
-  const registerLayout = useCallback((state: ModalLayoutState) => {
-    setLayoutState((prev) =>
-      prev.expanded === state.expanded && prev.tier === state.tier ? prev : state
-    )
-  }, [])
+  const registerLayout = useCallback((_state: ModalLayoutState) => {}, [])
 
   const contextValue = useMemo(
     () => ({ registerLayout }),
     [registerLayout]
   )
-
-  const { expanded, tier } = layoutState
-  const isPhoneExpanded = expanded && tier === "phone"
-  const isTabletExpanded = expanded && tier === "tablet"
 
   if (typeof document === "undefined") return null
 
@@ -208,11 +194,7 @@ export function ModalOverlay({ children, className }: ModalOverlayProps) {
     <ModalLayoutContext.Provider value={contextValue}>
       <div
         className={cn(
-          "fixed inset-0 z-[100] flex justify-center overflow-hidden bg-black/40 backdrop-blur-sm",
-          isPhoneExpanded && "items-stretch p-0",
-          isTabletExpanded && "items-stretch p-3",
-          !expanded && "items-end p-0 lg:items-center lg:p-4",
-          tier === "tablet" && !expanded && "items-center p-3",
+          "fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm sm:p-6 lg:p-4",
           className
         )}
       >
