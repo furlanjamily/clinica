@@ -15,8 +15,17 @@ describe("realtime-config", () => {
     expect(isRealtimeEnabled()).toBe(false)
   })
 
-  it("habilita realtime quando NEXT_PUBLIC_REALTIME_ENABLED=true", () => {
+  it("habilita realtime em dev quando NEXT_PUBLIC_REALTIME_ENABLED=true", () => {
     vi.stubEnv("NEXT_PUBLIC_REALTIME_ENABLED", "true")
+    vi.stubEnv("NODE_ENV", "development")
+    expect(isRealtimeEnabled()).toBe(true)
+  })
+
+  it("exige NEXT_PUBLIC_SOCKET_URL em produção com flag true", () => {
+    vi.stubEnv("NEXT_PUBLIC_REALTIME_ENABLED", "true")
+    vi.stubEnv("NODE_ENV", "production")
+    expect(isRealtimeEnabled()).toBe(false)
+    vi.stubEnv("NEXT_PUBLIC_SOCKET_URL", "https://socket.example.com")
     expect(isRealtimeEnabled()).toBe(true)
   })
 

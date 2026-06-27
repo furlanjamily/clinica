@@ -19,10 +19,8 @@ function resolveMode(isMobile: boolean, containerWidth: number): ChatLayoutMode 
 }
 
 export function useChatLayoutMode(): UseChatLayoutModeResult {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === "undefined") return false
-    return window.matchMedia(MOBILE_CHAT_MQ).matches
-  })
+  // Valor estável no SSR e na hidratação; media query só após mount (evita React #418).
+  const [isMobile, setIsMobile] = useState(false)
   const [containerWidth, setContainerWidth] = useState(0)
   const elementRef = useRef<HTMLDivElement | null>(null)
   const observerRef = useRef<ResizeObserver | null>(null)
@@ -45,6 +43,7 @@ export function useChatLayoutMode(): UseChatLayoutModeResult {
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_CHAT_MQ)
     const sync = () => setIsMobile(mq.matches)
+    sync()
     mq.addEventListener("change", sync)
     return () => mq.removeEventListener("change", sync)
   }, [])
