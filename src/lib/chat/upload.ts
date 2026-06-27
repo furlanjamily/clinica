@@ -73,6 +73,14 @@ async function saveToVercelBlob(
   return buildUploadResult(file, blob.url, mimeType, type)
 }
 
+function shouldUseVercelBlob(): boolean {
+  return (
+    process.env.VERCEL === "1" ||
+    Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
+    Boolean(process.env.BLOB_STORE_ID)
+  )
+}
+
 export async function saveChatUpload(file: File): Promise<{
   fileName: string
   fileUrl: string
@@ -90,14 +98,18 @@ export async function saveChatUpload(file: File): Promise<{
   const safeName = buildSafeFileName(file.name)
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    return saveToVercelBlob(file, safeName, buffer, mimeType, type)
-  }
-
-  if (process.env.VERCEL) {
-    throw new ValidationError(
-      "Upload não configurado na Vercel. Crie um Blob Store no projeto (Storage → Blob)."
-    )
+  if (shouldUseVercelBlob()) {
+    try {
+      return await saveToVercelBlob(file, safeName, buffer, mimeType, type)
+    } catch (error) {
+      if (process.env.VERCEL === "1") {
+        const detail = error instanceof Error ? error.message : "erro desconhecido"
+        throw new ValidationError(
+          `Falha no upload para Vercel Blob: ${detail}. Verifique se o store está conectado ao projeto e redeploye.`
+        )
+      }
+      throw error
+    }
   }
 
   return saveToLocalDisk(file, safeName, buffer, mimeType, type)
