@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { put } from "@vercel/blob"
 import { ValidationError } from "@/lib/errors/custom-errors"
 import { ChatAttachmentType, type ChatAttachmentTypeValue } from "./types"
 
@@ -24,6 +25,54 @@ export function resolveAttachmentType(mimeType: string): ChatAttachmentTypeValue
   return MIME_MAP[mimeType] ?? ChatAttachmentType.Document
 }
 
+function buildSafeFileName(originalName: string): string {
+  const ext = path.extname(originalName) || ".bin"
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`
+}
+
+function buildUploadResult(
+  file: File,
+  fileUrl: string,
+  mimeType: string,
+  type: ChatAttachmentTypeValue
+) {
+  return {
+    fileName: file.name,
+    fileUrl,
+    mimeType,
+    sizeBytes: file.size,
+    type,
+    thumbnailUrl: type === ChatAttachmentType.Image ? fileUrl : null,
+  }
+}
+
+async function saveToLocalDisk(
+  file: File,
+  safeName: string,
+  buffer: Buffer,
+  mimeType: string,
+  type: ChatAttachmentTypeValue
+) {
+  await mkdir(UPLOAD_DIR, { recursive: true })
+  await writeFile(path.join(UPLOAD_DIR, safeName), buffer)
+  return buildUploadResult(file, `/uploads/chat/${safeName}`, mimeType, type)
+}
+
+async function saveToVercelBlob(
+  file: File,
+  safeName: string,
+  buffer: Buffer,
+  mimeType: string,
+  type: ChatAttachmentTypeValue
+) {
+  const blob = await put(`chat/${safeName}`, buffer, {
+    access: "public",
+    contentType: mimeType,
+    addRandomSuffix: false,
+  })
+  return buildUploadResult(file, blob.url, mimeType, type)
+}
+
 export async function saveChatUpload(file: File): Promise<{
   fileName: string
   fileUrl: string
@@ -38,24 +87,18 @@ export async function saveChatUpload(file: File): Promise<{
 
   const mimeType = file.type || "application/octet-stream"
   const type = resolveAttachmentType(mimeType)
-  const ext = path.extname(file.name) || ".bin"
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`
-
-  await mkdir(UPLOAD_DIR, { recursive: true })
-
+  const safeName = buildSafeFileName(file.name)
   const buffer = Buffer.from(await file.arrayBuffer())
-  const diskPath = path.join(UPLOAD_DIR, safeName)
-  await writeFile(diskPath, buffer)
 
-  const fileUrl = `/uploads/chat/${safeName}`
-  const thumbnailUrl = type === ChatAttachmentType.Image ? fileUrl : null
-
-  return {
-    fileName: file.name,
-    fileUrl,
-    mimeType,
-    sizeBytes: file.size,
-    type,
-    thumbnailUrl,
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return saveToVercelBlob(file, safeName, buffer, mimeType, type)
   }
+
+  if (process.env.VERCEL) {
+    throw new ValidationError(
+      "Upload não configurado na Vercel. Crie um Blob Store no projeto (Storage → Blob)."
+    )
+  }
+
+  return saveToLocalDisk(file, safeName, buffer, mimeType, type)
 }
