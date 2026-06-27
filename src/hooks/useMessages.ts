@@ -2,6 +2,10 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { fetchMessages } from "./chat-api"
+import {
+  isRealtimeEnabled,
+  REALTIME_POLL_INTERVAL_MS,
+} from "@/lib/chat/realtime-config"
 import type { ChatMessageDTO } from "@/lib/chat/types"
 
 export function messagesQueryKey(conversationId: number | null, search?: string) {
@@ -18,6 +22,7 @@ export function useMessages(conversationId: number | null, search?: string) {
       lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
     enabled: conversationId != null,
     staleTime: 10_000,
+    refetchInterval: isRealtimeEnabled() ? false : REALTIME_POLL_INTERVAL_MS,
   })
 }
 

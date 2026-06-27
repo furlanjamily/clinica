@@ -31,7 +31,10 @@ export function initializeSocketServer({ httpServer }: InitializeSocketOptions):
     {
       path: "/api/socketio",
       cors: {
-        origin: process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+        origin: [
+          process.env.NEXTAUTH_URL,
+          process.env.NEXT_PUBLIC_APP_URL,
+        ].filter(Boolean) as string[],
         credentials: true,
       },
       transports: ["websocket", "polling"],

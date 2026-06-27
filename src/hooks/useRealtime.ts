@@ -8,6 +8,10 @@ import { SOCKET_EVENTS } from "@/lib/chat/socket-events"
 import { messagesQueryKey } from "./useMessages"
 import { useChatCacheUpdater } from "./useChat"
 import { deliverMessageApi } from "./chat-api"
+import {
+  getSocketServerUrl,
+  isRealtimeEnabled,
+} from "@/lib/chat/realtime-config"
 import type { ChatMessageDTO, ConversationDTO } from "@/lib/chat/types"
 
 type TypingState = {
@@ -50,12 +54,13 @@ export function useRealtime(activeConversationId: number | null) {
   )
 
   useEffect(() => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || !isRealtimeEnabled()) return
 
-    const socket = io({
+    const socket = io(getSocketServerUrl(), {
       path: "/api/socketio",
       withCredentials: true,
       transports: ["websocket", "polling"],
+      reconnectionAttempts: 3,
     })
 
     socketRef.current = socket

@@ -2,6 +2,10 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { fetchConversations } from "./chat-api"
+import {
+  isRealtimeEnabled,
+  REALTIME_POLL_INTERVAL_MS,
+} from "@/lib/chat/realtime-config"
 import type { ConversationDTO } from "@/lib/chat/types"
 
 export const CHAT_CONVERSATIONS_KEY = ["chat", "conversations"] as const
@@ -15,6 +19,7 @@ export function useChat(search?: string, archived = false) {
     queryKey: conversationsQueryKey(search, archived),
     queryFn: () => fetchConversations(search, archived),
     staleTime: 15_000,
+    refetchInterval: isRealtimeEnabled() ? false : REALTIME_POLL_INTERVAL_MS,
   })
 }
 
