@@ -10,7 +10,7 @@ import {
   IconUsers,
   IconReportMedical,
 } from "@tabler/icons-react";
-import { CirclePlus, LayoutDashboard } from "lucide-react";
+import { CirclePlus, LayoutDashboard, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -41,6 +41,7 @@ function SideBarContent({ onCreate }: Props) {
 
   const links: LinkItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
+    { name: "Chat", href: "/chat", icon: <MessageCircle size={24} /> },
     ...(canViewSchedule ? [
       { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
       { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },

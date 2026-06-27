@@ -44,6 +44,8 @@ export const config = {
     "/users/:path*",
     "/finance",
     "/finance/:path*",
+    "/chat",
+    "/chat/:path*",
     "/settings/:path*",
   ],
 }

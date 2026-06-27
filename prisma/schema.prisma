@@ -422,9 +422,162 @@ model User {
   transactions    Transaction[]
   statusChanges   AppointmentStatusHistory[]
 
+  conversationParticipants ConversationParticipant[]
+  messagesSent             Message[]                   @relation("MessageSender")
+  messageReads             MessageRead[]
+  messageReactions         MessageReaction[]
+  typingStatuses           TypingStatus[]
+
   @@index([active])
   @@index([doctorId])
   @@map("users")
+}
+
+// ============================================================
+// CHAT — mensagens em tempo real
+// ============================================================
+
+enum ConversationType {
+  Direct
+  Group
+}
+
+enum ChatMessageStatus {
+  Sent
+  Delivered
+  Read
+}
+
+enum ChatAttachmentType {
+  Image
+  Video
+  Pdf
+  Document
+  Link
+}
+
+model Conversation {
+  id            Int              @id @default(autoincrement())
+  title         String?
+  type          ConversationType @default(Direct)
+  lastMessageAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+  typingStatus TypingStatus[]
+
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             Int       @id @default(autoincrement())
+  conversationId Int
+  userId         String
+  category       String?
+  isFavorite     Boolean   @default(false)
+  isMuted        Boolean   @default(false)
+  isArchived     Boolean   @default(false)
+  lastReadAt     DateTime?
+  unreadCount    Int       @default(0)
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, isArchived])
+  @@index([userId, category])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             Int               @id @default(autoincrement())
+  conversationId Int
+  senderId       String
+  content        String?
+  replyToId      Int?
+  isEdited       Boolean           @default(false)
+  isDeleted      Boolean           @default(false)
+  status         ChatMessageStatus @default(Sent)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]           @relation("MessageReplies")
+  reads        MessageRead[]
+  attachments  ChatAttachment[]
+  reactions    MessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, id])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model MessageRead {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  userId    String
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_reads")
+}
+
+model ChatAttachment {
+  id           Int                @id @default(autoincrement())
+  messageId    Int
+  fileName     String
+  fileUrl      String
+  mimeType     String?
+  sizeBytes    Int?
+  type         ChatAttachmentType
+  thumbnailUrl String?
+  createdAt    DateTime           @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([type])
+  @@map("chat_attachments")
+}
+
+model MessageReaction {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+model TypingStatus {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  userId         String
+  isTyping       Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@map("typing_statuses")
 }
 
 model Account {

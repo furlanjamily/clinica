@@ -562,6 +562,11 @@ async function main() {
     })
   }
 
+  console.log("Semeando conversas demo do chat (recepção ↔ médicos)...")
+  const { seedChatDemo } = await import("./chat-demo-seed")
+  const { threadCount } = await seedChatDemo(prisma)
+  console.log(`Chat: ${threadCount} conversas demo criadas.`)
+
   console.log("Garantindo no máximo um atendimento em andamento por médico...")
   const inProgressRows = await prisma.appointment.findMany({
     where: { status: AppointmentStatus.InProgress },
