@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@/generated/prisma/client'
 import logger from '@/lib/logging/logger'
 import {
   ValidationError,
@@ -36,6 +37,28 @@ export function handleApiError(error: unknown) {
 
   if (error instanceof ConflictError) {
     return NextResponse.json({ message: error.message }, { status: 409 })
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2003') {
+      return NextResponse.json(
+        { message: 'Usuário ou conversa inválida. Verifique se o banco foi migrado e o seed executado.' },
+        { status: 400 }
+      )
+    }
+    if (error.code === 'P2021') {
+      return NextResponse.json(
+        { message: 'Tabelas do chat não encontradas. Execute: npx prisma migrate deploy' },
+        { status: 503 }
+      )
+    }
+  }
+
+  if (error instanceof Error && error.message.includes('DATABASE_URL is not set')) {
+    return NextResponse.json(
+      { message: 'DATABASE_URL não configurada no servidor.' },
+      { status: 503 }
+    )
   }
 
   return NextResponse.json(

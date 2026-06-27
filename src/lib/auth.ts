@@ -50,6 +50,34 @@ function tryAuthorizePortfolioDemo(
   }
 }
 
+async function resolvePortfolioDemoUser(
+  demoEmail: string,
+  fallbackRole: UserRoleType | null
+) {
+  const dbUser = await db.user.findUnique({
+    where: { email: normalizeEmail(demoEmail) },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      active: true,
+      doctorId: true,
+    },
+  })
+
+  if (!dbUser?.active) return null
+
+  return {
+    id: dbUser.id,
+    name: dbUser.name ?? "Dr.Teste",
+    username: dbUser.name ?? "Dr.Teste",
+    email: dbUser.email,
+    role: (dbUser.role as UserRoleType | null) ?? fallbackRole,
+    doctorId: dbUser.doctorId,
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
@@ -69,7 +97,14 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null
 
         const demoUser = tryAuthorizePortfolioDemo(credentials.email, credentials.password)
-        if (demoUser) return demoUser
+        if (demoUser) {
+          const demo = resolvedDemoCredentials()
+          if (demo) {
+            const linked = await resolvePortfolioDemoUser(demo.email, demoUser.role)
+            if (linked) return linked
+          }
+          return demoUser
+        }
 
         const user = await db.user.findUnique({
           where: { email: credentials.email },

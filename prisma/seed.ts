@@ -396,7 +396,7 @@ async function main() {
   await prisma.medicalRecord.deleteMany()
   await prisma.appointment.deleteMany()
   await prisma.patient.deleteMany()
-  await prisma.user.updateMany({ where: { doctorId: { not: null } }, data: { doctorId: null } })
+  await prisma.user.updateMany({ data: { doctorId: null } })
   await prisma.doctor.deleteMany()
   await prisma.specialty.deleteMany()
   await prisma.procedure.deleteMany()
@@ -413,33 +413,40 @@ async function main() {
   const followUpFee = Number(config.followUpFee)
 
   console.log("Inserindo médicos (com especialidades normalizadas)...")
-  const doctors = await Promise.all(
-    DOCTOR_SEED.map((m, i) =>
-      prisma.doctor.create({
-        data: {
-          name: m.name,
-          crm: m.crm,
-          sex: m.sex,
-          shift: m.shift,
-          active: true,
-          phone: demoPhone(100 + i),
-          email: `medico.${i + 1}@clinicademo.local`,
-          city: "São Paulo",
-          state: "SP",
-          street: "Av. Paulista",
-          number: String(1000 + i * 11),
-          neighborhood: "Bela Vista",
-          zipCode: `01310${100 + i}`.slice(0, 9),
-          specialty: {
-            connectOrCreate: {
-              where: { name: m.specialty },
-              create: { name: m.specialty },
-            },
-          },
-        },
-      })
+  const doctors: Awaited<ReturnType<typeof prisma.doctor.create>>[] = []
+  for (let i = 0; i < DOCTOR_SEED.length; i++) {
+    const m = DOCTOR_SEED[i]
+    const email = `medico.${i + 1}@clinicademo.local`
+    const specialty = await prisma.specialty.upsert({
+      where: { name: m.specialty },
+      create: { name: m.specialty },
+      update: {},
+    })
+    const payload = {
+      name: m.name,
+      crm: m.crm,
+      sex: m.sex,
+      shift: m.shift,
+      active: true,
+      phone: demoPhone(100 + i),
+      email,
+      city: "São Paulo",
+      state: "SP",
+      street: "Av. Paulista",
+      number: String(1000 + i * 11),
+      neighborhood: "Bela Vista",
+      zipCode: `01310${100 + i}`.slice(0, 9),
+      specialtyId: specialty.id,
+    }
+    const existing = await prisma.doctor.findFirst({
+      where: { OR: [{ name: m.name }, { email }] },
+    })
+    doctors.push(
+      existing
+        ? await prisma.doctor.update({ where: { id: existing.id }, data: payload })
+        : await prisma.doctor.create({ data: payload })
     )
-  )
+  }
 
   console.log("Inserindo pacientes...")
   const patients = await Promise.all(
@@ -561,6 +568,28 @@ async function main() {
       },
     })
   }
+
+  console.log("Garantindo usuário demo do portfólio (demo@clinica.local)...")
+  const portfolioDemoEmail =
+    process.env.DEMO_LOGIN_EMAIL?.trim().toLowerCase() || "demo@clinica.local"
+  const portfolioDemoPassword =
+    process.env.DEMO_LOGIN_PASSWORD?.trim() || "demo123456"
+  await prisma.user.upsert({
+    where: { email: portfolioDemoEmail },
+    create: {
+      name: "Dr.Teste",
+      email: portfolioDemoEmail,
+      password: hashSync(portfolioDemoPassword, 10),
+      role: "SUPER_ADMIN",
+      active: true,
+    },
+    update: {
+      name: "Dr.Teste",
+      role: "SUPER_ADMIN",
+      active: true,
+      password: hashSync(portfolioDemoPassword, 10),
+    },
+  })
 
   console.log("Semeando conversas demo do chat (recepção ↔ médicos)...")
   const { seedChatDemo } = await import("./chat-demo-seed")

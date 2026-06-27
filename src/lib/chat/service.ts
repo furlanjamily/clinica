@@ -143,6 +143,12 @@ export async function createConversation(
   title?: string,
   type: "Direct" | "Group" = "Direct"
 ): Promise<ConversationDTO> {
+  if (userId === "portfolio-demo") {
+    throw new ForbiddenError(
+      "Modo demo sem usuário no banco. Execute o seed ou faça login com um usuário real."
+    )
+  }
+
   const uniqueIds = [...new Set([userId, ...participantIds])]
 
   if (type === "Direct" && uniqueIds.length === 2) {
