@@ -100,7 +100,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActi
             }
           }}
         >
-          {loading ? "Aguarde..." : blocked ? "Em atendimento" : "Atender"}
+          {loading ? "Aguarde..." : "Atender"}
         </Button>
       </div>
     )
@@ -109,7 +109,7 @@ function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActi
   if (original.status === AppointmentStatus.InProgress) {
     return (
       <div className="flex justify-end">
-        <Button variant="purple" className="text-xs sm:text-sm" disabled>Atender</Button>
+        <Button variant="purple" className="text-xs sm:text-sm" disabled>Em atendimento</Button>
       </div>
     )
   }

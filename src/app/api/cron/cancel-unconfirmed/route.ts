@@ -3,7 +3,7 @@ import { db } from "@/lib/db"
 import { handleApiError } from "@/lib/errors/error-handler"
 import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
 import { AppointmentStatus } from "@/lib/schedule/status"
-import { startOfNextLocalDay } from "@/lib/datetime/appointment-time"
+import { startOfLocalDay } from "@/lib/datetime/appointment-time"
 
 function isAuthorized(req: Request) {
   const secret = process.env.CRON_SECRET?.trim()
@@ -20,11 +20,20 @@ export async function GET(req: Request) {
 
     const today = getTodayYYYYMMDD()
 
+    const pendingStatuses = [
+      AppointmentStatus.Scheduled,
+      AppointmentStatus.AwaitingConfirmation,
+      AppointmentStatus.Confirmed,
+      AppointmentStatus.CheckIn,
+      AppointmentStatus.AwaitingPayment,
+      AppointmentStatus.Paid,
+    ] as const
+
     const result = await db.appointment.updateMany({
       where: {
-        // Inclui o dia de hoje: tudo agendado antes do início de amanhã.
-        scheduledStart: { lt: startOfNextLocalDay(today) },
-        status: { in: [AppointmentStatus.Scheduled, AppointmentStatus.AwaitingConfirmation] },
+        // Dias anteriores ao de hoje — após passar o dia da consulta sem conclusão.
+        scheduledStart: { lt: startOfLocalDay(today) },
+        status: { in: [...pendingStatuses] },
         deletedAt: null,
       },
       data: { status: AppointmentStatus.Cancelled },

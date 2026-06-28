@@ -21,5 +21,11 @@ app.prepare().then(() => {
 
   httpServer.listen(port, () => {
     logger.info(`ClinySOFT ready on http://${hostname}:${port}`)
+
+    if (dev) {
+      void import("./src/lib/notification/reminder-dev-scheduler").then(
+        ({ startDevReminderScheduler }) => startDevReminderScheduler()
+      )
+    }
   })
 })

@@ -86,13 +86,13 @@ async function notifySystemReminder(input: {
 
 async function processAppointmentReminders(userId?: string): Promise<number> {
   const now = new Date()
-  const { windowStart, windowEnd } = getReminderTriggerWindow(now)
+  const { windowEnd } = getReminderTriggerWindow(now)
   let created = 0
 
   const appointments = await db.appointment.findMany({
     where: {
       deletedAt: null,
-      scheduledStart: { gte: windowStart, lte: windowEnd },
+      scheduledStart: { gt: now, lte: windowEnd },
       status: { in: [...REMINDABLE_APPOINTMENT_STATUSES] },
       ...(userId
         ? {
@@ -142,14 +142,14 @@ async function processAppointmentReminders(userId?: string): Promise<number> {
 
 async function processTaskReminders(userId?: string): Promise<number> {
   const now = new Date()
-  const { windowStart, windowEnd } = getReminderTriggerWindow(now)
+  const { windowEnd } = getReminderTriggerWindow(now)
   let created = 0
 
   const tasks = await db.userTask.findMany({
     where: {
       deletedAt: null,
       status: { not: "completed" },
-      dueAt: { gte: windowStart, lte: windowEnd },
+      dueAt: { gt: now, lte: windowEnd },
       ...(userId ? { userId } : {}),
     },
     select: {

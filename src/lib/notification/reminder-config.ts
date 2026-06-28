@@ -14,13 +14,12 @@ export const REMINDER_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /**
  * Janela de dueAt para o tick atual do cron.
- * Ex.: lead 15 min + cron 5 min → dispara só quando faltam entre 10 e 15 min.
+ * Qualquer evento entre agora e REMINDER_LEAD_MINUTES à frente, ainda não lembrado
+ * (dedupe evita duplicatas se o cron rodar várias vezes nesse intervalo).
  */
 export function getReminderTriggerWindow(now: Date = new Date()) {
+  const windowStart = now
   const windowEnd = new Date(now.getTime() + REMINDER_LEAD_MS)
-  const windowStart = new Date(
-    now.getTime() + REMINDER_LEAD_MS - REMINDER_CRON_INTERVAL_MS
-  )
   return { windowStart, windowEnd }
 }
 

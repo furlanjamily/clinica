@@ -440,3 +440,7 @@
 {"level":"info","message":"ClinySOFT ready on http://localhost:3000","service":"clinica-app","timestamp":"2026-06-28T21:00:57.686Z"}
 {"level":"info","message":"Socket.IO server initialized","service":"clinica-app","timestamp":"2026-06-28T21:03:43.246Z"}
 {"level":"info","message":"ClinySOFT ready on http://localhost:3000","service":"clinica-app","timestamp":"2026-06-28T21:03:43.250Z"}
+{"level":"info","message":"Socket.IO server initialized","service":"clinica-app","timestamp":"2026-06-28T22:52:19.569Z"}
+{"level":"info","message":"ClinySOFT ready on http://localhost:3000","service":"clinica-app","timestamp":"2026-06-28T22:52:19.576Z"}
+{"level":"info","message":{"intervalMinutes":5},"service":"clinica-app","timestamp":"2026-06-28T22:52:20.232Z"}
+{"level":"info","message":{"appointments":0,"tasks":1},"service":"clinica-app","timestamp":"2026-06-28T22:52:51.842Z"}
