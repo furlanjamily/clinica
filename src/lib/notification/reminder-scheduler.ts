@@ -6,10 +6,11 @@ import {
   NOTIFICATION_TYPE,
 } from "./constants"
 import {
-  REMINDER_APPOINTMENT_ACTION,
+  formatAppointmentReminderAction,
+  formatTaskReminderAction,
+  getReminderTriggerWindow,
+  minutesUntil,
   REMINDER_DEDUPE_WINDOW_MS,
-  REMINDER_LEAD_MS,
-  REMINDER_TASK_ACTION,
 } from "./reminder-config"
 import { createNotification } from "./service"
 import { resolveUserIdsByDoctorId } from "./triggers"
@@ -85,13 +86,13 @@ async function notifySystemReminder(input: {
 
 async function processAppointmentReminders(userId?: string): Promise<number> {
   const now = new Date()
-  const windowEnd = new Date(now.getTime() + REMINDER_LEAD_MS)
+  const { windowStart, windowEnd } = getReminderTriggerWindow(now)
   let created = 0
 
   const appointments = await db.appointment.findMany({
     where: {
       deletedAt: null,
-      scheduledStart: { gte: now, lte: windowEnd },
+      scheduledStart: { gte: windowStart, lte: windowEnd },
       status: { in: [...REMINDABLE_APPOINTMENT_STATUSES] },
       ...(userId
         ? {
@@ -127,7 +128,9 @@ async function processAppointmentReminders(userId?: string): Promise<number> {
         entityType: NOTIFICATION_ENTITY_TYPE.APPOINTMENT,
         entityName: patientName,
         description,
-        action: REMINDER_APPOINTMENT_ACTION,
+        action: formatAppointmentReminderAction(
+          minutesUntil(now, appointment.scheduledStart)
+        ),
         reminderKind: "appointment",
       })
       if (sent) created += 1
@@ -139,14 +142,14 @@ async function processAppointmentReminders(userId?: string): Promise<number> {
 
 async function processTaskReminders(userId?: string): Promise<number> {
   const now = new Date()
-  const windowEnd = new Date(now.getTime() + REMINDER_LEAD_MS)
+  const { windowStart, windowEnd } = getReminderTriggerWindow(now)
   let created = 0
 
   const tasks = await db.userTask.findMany({
     where: {
       deletedAt: null,
       status: { not: "completed" },
-      dueAt: { gte: now, lte: windowEnd },
+      dueAt: { gte: windowStart, lte: windowEnd },
       ...(userId ? { userId } : {}),
     },
     select: {
@@ -165,7 +168,7 @@ async function processTaskReminders(userId?: string): Promise<number> {
       entityType: NOTIFICATION_ENTITY_TYPE.TASK,
       entityName: task.title,
       description: formatDueLabel(task.dueAt),
-      action: REMINDER_TASK_ACTION,
+      action: formatTaskReminderAction(minutesUntil(now, task.dueAt)),
       reminderKind: "task",
     })
     if (sent) created += 1

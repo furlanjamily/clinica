@@ -7,7 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { NOTIFICATION_TYPE } from "../src/lib/notification/constants"
-import { REMINDER_TASK_ACTION } from "../src/lib/notification/reminder-config"
+import { formatTaskReminderAction } from "../src/lib/notification/reminder-config"
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não definido.")
@@ -47,7 +47,7 @@ const SEED_ITEMS: SeedItem[] = [
     description: "27/06/2026 às 16:00",
     metadata: {
       entityName: "Revisar prontuários",
-      action: REMINDER_TASK_ACTION,
+      action: formatTaskReminderAction(15),
       isSystem: "true",
       reminderKind: "task",
     },
