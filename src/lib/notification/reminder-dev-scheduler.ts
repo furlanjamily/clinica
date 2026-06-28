@@ -14,10 +14,12 @@ export function startDevReminderScheduler() {
       const result = await processDueReminders()
       const total = result.appointments + result.tasks
       if (total > 0) {
-        logger.info({ ...result }, "Lembretes processados (dev scheduler)")
+        logger.info(
+          `Lembretes processados (dev scheduler): ${result.appointments} consultas, ${result.tasks} tarefas`
+        )
       }
     } catch (err) {
-      logger.error({ err }, "Falha ao processar lembretes (dev scheduler)")
+      logger.error("Falha ao processar lembretes (dev scheduler)", err)
     }
   }
 
@@ -25,7 +27,6 @@ export function startDevReminderScheduler() {
   setTimeout(tick, 30_000)
 
   logger.info(
-    { intervalMinutes: REMINDER_CRON_INTERVAL_MS / 60_000 },
-    "Scheduler de lembretes ativo (somente dev)"
+    `Scheduler de lembretes ativo (somente dev, a cada ${REMINDER_CRON_INTERVAL_MS / 60_000} min)`
   )
 }
