@@ -1,8 +1,9 @@
 import { hashSync } from "bcrypt"
 import { db } from "@/lib/db"
 import { ConflictError } from "@/lib/errors/custom-errors"
+import { DEFAULT_DOCTOR_USER_PASSWORD } from "@/lib/demo-credentials"
 
-export const DEFAULT_DOCTOR_USER_PASSWORD = "Medico123!"
+export { DEFAULT_DOCTOR_USER_PASSWORD }
 const PASSWORD_HASH_ROUNDS = 10
 
 export type DoctorUserLogin = {

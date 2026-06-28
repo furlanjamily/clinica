@@ -1,15 +1,20 @@
-import { NotificationBadge } from "./NotificationBadge";
 import { NotificationCard } from "./NotificationCard";
-import type { DayLabel, Notification } from "./types";
+import type { NotificationDayGroupDTO } from "@/lib/notification/dto";
 
 interface NotificationSectionProps {
-  dayLabel: DayLabel;
-  notifications: Notification[];
+  dayLabel: string;
+  notifications: NotificationDayGroupDTO["notifications"];
+  onNavigate?: () => void;
+  onMarkAsRead?: (notificationId: string) => void;
+  isMarkingRead?: boolean;
 }
 
 export function NotificationSection({
   dayLabel,
   notifications,
+  onNavigate,
+  onMarkAsRead,
+  isMarkingRead,
 }: NotificationSectionProps) {
   if (notifications.length === 0) return null;
 
@@ -23,7 +28,12 @@ export function NotificationSection({
           >
             {dayLabel}
           </h3>
-          <NotificationBadge count={notifications.length} />
+          <span
+            className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
+            aria-label={`${notifications.length} notificações`}
+          >
+            {notifications.length}
+          </span>
         </div>
 
         <button
@@ -37,7 +47,12 @@ export function NotificationSection({
       <div role="list">
         {notifications.map((notification) => (
           <div key={notification.id} role="listitem">
-            <NotificationCard notification={notification} />
+            <NotificationCard
+              notification={notification}
+              onNavigate={onNavigate}
+              onMarkAsRead={onMarkAsRead}
+              isMarkingRead={isMarkingRead}
+            />
           </div>
         ))}
       </div>

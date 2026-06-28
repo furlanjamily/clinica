@@ -104,6 +104,10 @@ export type ConversationSearchResult = {
   categories: string[]
 }
 
+export type ChatUnreadCountDTO = {
+  count: number
+}
+
 export type TypingUser = {
   userId: string
   name: string | null

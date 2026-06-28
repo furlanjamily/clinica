@@ -1,20 +1,22 @@
 import Image from "next/image";
+import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface NotificationAvatarProps {
-  src: string;
+  /** URL da foto do usuário; usa placeholder até o cadastro obrigatório de avatar. */
+  image: string | null;
   alt: string;
   className?: string;
 }
 
 export function NotificationAvatar({
-  src,
+  image,
   alt,
   className,
 }: NotificationAvatarProps) {
   return (
     <Image
-      src={src}
+      src={image ?? AVATAR_PLACEHOLDER_URL}
       alt={alt}
       width={40}
       height={40}

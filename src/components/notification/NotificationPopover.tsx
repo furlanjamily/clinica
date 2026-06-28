@@ -1,55 +1,64 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { cn } from "@/lib/utils";
-import { MOCK_NOTIFICATIONS } from "./mock";
+import {
+  NOTIFICATION_TAB,
+  type NotificationTab,
+} from "@/lib/notification/constants";
+import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationFooter } from "./NotificationFooter";
 import { NotificationHeader } from "./NotificationHeader";
 import { NotificationSection } from "./NotificationSection";
 import { NotificationTabs } from "./NotificationTabs";
-import {
-  NOTIFICATION_TAB,
-  filterNotificationsByTab,
-  groupNotificationsByDay,
-  markAllNotificationsAsRead,
-  type Notification,
-  type NotificationTab,
-} from "./types";
 
 interface NotificationPopoverProps {
   open: boolean;
   onClose: () => void;
+  unreadCount: number;
 }
 
-export function NotificationPopover({ open, onClose }: NotificationPopoverProps) {
+export function NotificationPopover({ open, onClose, unreadCount }: NotificationPopoverProps) {
   const [activeTab, setActiveTab] = useState<NotificationTab>(
     NOTIFICATION_TAB.UNREAD
   );
-  const [notifications, setNotifications] =
-    useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const filteredNotifications = useMemo(
-    () => filterNotificationsByTab(notifications, activeTab),
-    [notifications, activeTab]
-  );
+  const {
+    groupedNotifications,
+    markAsRead,
+    markAllAsRead,
+    isMarkingRead,
+    isMarkingAllRead,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useNotifications(activeTab, open);
 
-  const groupedNotifications = useMemo(
-    () => groupNotificationsByDay(filteredNotifications),
-    [filteredNotifications]
-  );
-
-  const hasUnreadNotifications = useMemo(
-    () =>
-      notifications.some(
-        (notification) => notification.unread && !notification.archived
-      ),
-    [notifications]
+  const handleMarkAsRead = useCallback(
+    (notificationId: string) => {
+      markAsRead([notificationId]);
+    },
+    [markAsRead]
   );
 
   const handleMarkAllAsRead = useCallback(() => {
-    setNotifications((current) => markAllNotificationsAsRead(current));
-  }, []);
+    markAllAsRead();
+  }, [markAllAsRead]);
+
+  const handleScroll = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element || !hasNextPage || isFetchingNextPage) return;
+
+    const distanceToBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+
+    if (distanceToBottom < 120) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEffect(() => {
     if (!open) return;
@@ -89,19 +98,35 @@ export function NotificationPopover({ open, onClose }: NotificationPopoverProps)
           <NotificationTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
           <div
+            ref={scrollRef}
+            onScroll={handleScroll}
             id={`notification-panel-${activeTab}`}
             role="tabpanel"
             aria-labelledby={`notification-tab-${activeTab}`}
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pb-6 [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {groupedNotifications.length > 0 ? (
-              groupedNotifications.map((group) => (
-                <NotificationSection
-                  key={group.dayLabel}
-                  dayLabel={group.dayLabel}
-                  notifications={group.notifications}
-                />
-              ))
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <p className="text-sm text-gray-500">Carregando notificações...</p>
+              </div>
+            ) : groupedNotifications.length > 0 ? (
+              <>
+                {groupedNotifications.map((group) => (
+                  <NotificationSection
+                    key={group.dayLabel}
+                    dayLabel={group.dayLabel}
+                    notifications={group.notifications}
+                    onNavigate={onClose}
+                    onMarkAsRead={handleMarkAsRead}
+                    isMarkingRead={isMarkingRead}
+                  />
+                ))}
+                {isFetchingNextPage ? (
+                  <p className="pb-4 text-center text-xs text-gray-400">
+                    Carregando mais...
+                  </p>
+                ) : null}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-sm text-gray-500">
@@ -113,7 +138,7 @@ export function NotificationPopover({ open, onClose }: NotificationPopoverProps)
 
           <NotificationFooter
             onMarkAllAsRead={handleMarkAllAsRead}
-            disabled={!hasUnreadNotifications}
+            disabled={unreadCount === 0 || isMarkingAllRead}
           />
         </div>
       </div>

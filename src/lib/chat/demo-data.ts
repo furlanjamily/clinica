@@ -1,6 +1,8 @@
 /**
  * Dados demo do chat — usados no seed e nos testes unitários.
  */
+import { DEMO_SUPER_ADMIN_EMAIL } from "@/lib/demo-credentials"
+
 export const CHAT_DEMO_CATEGORIES = ["Importante", "Trabalho", "Equipe"] as const
 
 export type ChatDemoCategory = (typeof CHAT_DEMO_CATEGORIES)[number]
@@ -38,7 +40,7 @@ export const RECEPTION_DEMO_USERS = [
 export const DEMO_CHAT_THREADS: DemoThread[] = [
   {
     userEmailA: "recepcao@clinicademo.local",
-    userEmailB: "medico.1@clinicademo.local",
+    userEmailB: DEMO_SUPER_ADMIN_EMAIL,
     categoryA: "Trabalho",
     categoryB: "Trabalho",
     unreadB: 2,
@@ -50,7 +52,7 @@ export const DEMO_CHAT_THREADS: DemoThread[] = [
         hoursAgo: 2,
       },
       {
-        fromEmail: "medico.1@clinicademo.local",
+        fromEmail: DEMO_SUPER_ADMIN_EMAIL,
         content: "Obrigado, Ana. Pode encaminhar para a sala 2 em 5 minutos.",
         daysAgo: 0,
         hoursAgo: 1,
@@ -84,13 +86,13 @@ export const DEMO_CHAT_THREADS: DemoThread[] = [
     ],
   },
   {
-    userEmailA: "medico.1@clinicademo.local",
+    userEmailA: DEMO_SUPER_ADMIN_EMAIL,
     userEmailB: "medico.3@clinicademo.local",
     categoryA: "Equipe",
     categoryB: "Equipe",
     messages: [
       {
-        fromEmail: "medico.1@clinicademo.local",
+        fromEmail: DEMO_SUPER_ADMIN_EMAIL,
         content: "Dr. Ricardo, consegue revisar o laudo do paciente em interconsulta?",
         daysAgo: 2,
       },
@@ -100,7 +102,7 @@ export const DEMO_CHAT_THREADS: DemoThread[] = [
         daysAgo: 2,
       },
       {
-        fromEmail: "medico.1@clinicademo.local",
+        fromEmail: DEMO_SUPER_ADMIN_EMAIL,
         content: "Perfeito. Obrigado pela agilidade.",
         daysAgo: 1,
       },
@@ -162,7 +164,7 @@ export const DEMO_GROUP_CHAT: DemoGroupChat = {
   participantEmails: [
     "recepcao@clinicademo.local",
     "atendimento@clinicademo.local",
-    "medico.1@clinicademo.local",
+    DEMO_SUPER_ADMIN_EMAIL,
     "medico.2@clinicademo.local",
   ],
   messages: [
@@ -172,7 +174,7 @@ export const DEMO_GROUP_CHAT: DemoGroupChat = {
       daysAgo: 1,
     },
     {
-      fromEmail: "medico.1@clinicademo.local",
+      fromEmail: DEMO_SUPER_ADMIN_EMAIL,
       content: "Confirmado. Vou preparar os casos da semana.",
       daysAgo: 1,
     },

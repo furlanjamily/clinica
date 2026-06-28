@@ -21,6 +21,10 @@ import type {
   TypingUser,
 } from "./types"
 import { ChatMessageStatus } from "./types"
+import {
+  buildMessagePreview,
+  notifyNewChatMessage,
+} from "@/lib/notification/triggers"
 
 const MESSAGE_INCLUDE = {
   sender: true,
@@ -122,6 +126,16 @@ export async function listConversations(
   ]
 
   return { conversations, categories }
+}
+
+export async function getTotalUnreadCount(
+  userId: string
+): Promise<{ count: number }> {
+  const result = await db.conversationParticipant.aggregate({
+    where: { userId, isArchived: false },
+    _sum: { unreadCount: true },
+  })
+  return { count: result._sum.unreadCount ?? 0 }
 }
 
 export async function getConversation(
@@ -308,6 +322,27 @@ export async function sendMessage(
   const dto = toMessageDTO(message, onlineSet())
   emitNewMessage(conversationId, dto)
   await refreshConversationForParticipants(conversationId)
+
+  const recipients = await db.conversationParticipant.findMany({
+    where: { conversationId, userId: { not: userId } },
+    select: { userId: true },
+  })
+
+  const conversation = await db.conversation.findUnique({
+    where: { id: conversationId },
+    select: { title: true },
+  })
+
+  await notifyNewChatMessage({
+    senderId: userId,
+    recipientIds: recipients.map((participant) => participant.userId),
+    conversationId,
+    conversationTitle: conversation?.title,
+    preview: buildMessagePreview(
+      message.content,
+      message.attachments.length
+    ),
+  })
 
   return dto
 }

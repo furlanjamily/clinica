@@ -13,6 +13,8 @@ import {
   isRealtimeEnabled,
 } from "@/lib/chat/realtime-config"
 import type { ChatMessageDTO, ConversationDTO } from "@/lib/chat/types"
+import { invalidateNotificationQueries } from "./invalidate-notifications"
+import { invalidateChatQueries } from "./invalidate-chat"
 
 type TypingState = {
   userId: string
@@ -73,6 +75,11 @@ export function useRealtime(activeConversationId: number | null) {
       const msg = payload.message
       upsertMessage(msg.conversationId, msg, "new")
 
+      if (msg.senderId !== session.user.id) {
+        invalidateNotificationQueries(queryClient)
+        invalidateChatQueries(queryClient)
+      }
+
       if (
         msg.conversationId === activeConversationId &&
         msg.senderId !== session.user.id
@@ -109,6 +116,7 @@ export function useRealtime(activeConversationId: number | null) {
       SOCKET_EVENTS.conversationUpdated,
       (payload: { conversation: ConversationDTO }) => {
         updateConversationInCache(payload.conversation)
+        invalidateChatQueries(queryClient)
       }
     )
 

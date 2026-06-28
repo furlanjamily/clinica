@@ -3,8 +3,11 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import { hashSync } from "bcrypt"
 import { PrismaClient } from "../src/generated/prisma/client"
-
-const DEFAULT_DOCTOR_PASSWORD = "Medico123!"
+import {
+  DEFAULT_DOCTOR_USER_PASSWORD,
+  resolvedDemoSuperAdminEmail,
+  resolvedDemoSuperAdminPassword,
+} from "../src/lib/demo-credentials"
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
@@ -21,14 +24,25 @@ async function main() {
     process.exit(1)
   }
 
-  const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_PASSWORD, 10)
+  const demoEmail = resolvedDemoSuperAdminEmail()
+  const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_USER_PASSWORD, 10)
+  const demoPasswordHash = hashSync(resolvedDemoSuperAdminPassword(), 10)
   let created = 0
   let updated = 0
 
   for (let i = 0; i < doctors.length; i++) {
     const doctor = doctors[i]
-    const email = doctor.email ?? `medico.${i + 1}@clinicademo.local`
-    const role = i === 0 ? "SUPER_ADMIN" : "MEDICO"
+    const isSuperAdmin = i === 0
+    const email = isSuperAdmin
+      ? demoEmail
+      : (doctor.email ?? `medico.${i + 1}@clinicademo.local`)
+
+    if (isSuperAdmin) {
+      await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: { email: demoEmail },
+      })
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } })
     await prisma.user.upsert({
@@ -36,33 +50,46 @@ async function main() {
       create: {
         name: doctor.name,
         email,
-        password: doctorPasswordHash,
-        role,
+        password: isSuperAdmin ? demoPasswordHash : doctorPasswordHash,
+        role: isSuperAdmin ? "SUPER_ADMIN" : "MEDICO",
         active: true,
         doctorId: doctor.id,
       },
       update: {
         name: doctor.name,
-        role,
+        role: isSuperAdmin ? "SUPER_ADMIN" : "MEDICO",
         active: true,
         doctorId: doctor.id,
-        password: doctorPasswordHash,
+        password: isSuperAdmin ? demoPasswordHash : doctorPasswordHash,
       },
     })
 
     if (existing) updated++
     else created++
-    console.log(`${existing ? "Atualizado" : "Criado"}: ${email} (${role}) → ${doctor.name}`)
+    console.log(`${existing ? "Atualizado" : "Criado"}: ${email} (${isSuperAdmin ? "SUPER_ADMIN" : "MEDICO"}) → ${doctor.name}`)
+  }
+
+  await prisma.user.updateMany({
+    where: { role: "SUPER_ADMIN", email: { not: demoEmail } },
+    data: { role: "MEDICO" },
+  })
+
+  const legacy = await prisma.user.findUnique({
+    where: { email: "medico.1@clinicademo.local" },
+  })
+  if (legacy) {
+    await prisma.user.delete({ where: { id: legacy.id } })
+    console.log("Removido legado: medico.1@clinicademo.local")
   }
 
   console.log(`\nConcluído: ${created} criado(s), ${updated} atualizado(s).`)
-  console.log(`Senha de todos: ${DEFAULT_DOCTOR_PASSWORD}`)
-  console.log(`Super Admin: medico.1@clinicademo.local (Dr.Teste)`)
+  console.log(`Super Admin: ${demoEmail} / ${resolvedDemoSuperAdminPassword()}`)
+  console.log(`Demais médicos: medico.N@clinicademo.local / ${DEFAULT_DOCTOR_USER_PASSWORD}`)
 }
 
 main()
-  .catch((e) => {
-    console.error(e)
+  .catch((error) => {
+    console.error(error)
     process.exit(1)
   })
   .finally(async () => {

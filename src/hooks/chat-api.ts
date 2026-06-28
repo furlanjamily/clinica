@@ -3,6 +3,7 @@
 import { absoluteUrl } from "@/lib/absolute-url"
 import type {
   ChatMessageDTO,
+  ChatUnreadCountDTO,
   ConversationDTO,
   ConversationSearchResult,
   MessagesPageDTO,
@@ -16,6 +17,12 @@ export async function readErrorMessage(res: Response, fallback: string): Promise
   } catch {
     return fallback
   }
+}
+
+export async function fetchChatUnreadCount(): Promise<ChatUnreadCountDTO> {
+  const res = await fetch(absoluteUrl("/api/chat/unread-count"))
+  if (!res.ok) throw new Error(await readErrorMessage(res, "Erro ao buscar contador"))
+  return res.json()
 }
 
 export async function fetchConversations(

@@ -14,15 +14,18 @@ import { HeaderQuickActions } from "@/components/ui/header-quick-actions";
 import { cn } from "@/lib/utils";
 import { UserHeaderSkeleton } from "@/components/ui/UserHeaderSkeleton";
 import { NotificationPopover } from "@/components/notification/NotificationPopover";
+import { useNotificationSync } from "@/hooks/useNotificationSync";
 
 function UserAccountMenu({
   className,
   onOpenChange,
   onNotificationOpenChange,
+  unreadCount,
 }: {
   className?: string
   onOpenChange?: (open: boolean) => void
   onNotificationOpenChange?: (open: boolean) => void
+  unreadCount: number
 }) {
   const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
@@ -63,12 +66,17 @@ function UserAccountMenu({
           className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:h-10 sm:w-10"
         >
           <Bell size={18} className="sm:h-5 sm:w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 sm:right-2 sm:top-2" />
+          {unreadCount > 0 ? (
+            <span className="absolute right-1 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white sm:right-1.5 sm:top-1">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : null}
         </button>
 
         <NotificationPopover
           open={notificationsOpen}
           onClose={() => updateNotificationsOpen(false)}
+          unreadCount={unreadCount}
         />
       </div>
 
@@ -127,6 +135,7 @@ function UserAccountMenu({
 export function UserHeader() {
   const shell = useAdminShell()
   const { status } = useSession()
+  const { unreadCount } = useNotificationSync()
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
@@ -148,7 +157,12 @@ export function UserHeader() {
               <HeaderWeatherWidget />
             </div>
 
-            <UserAccountMenu className="lg:hidden" onOpenChange={setAccountMenuOpen} onNotificationOpenChange={setNotificationsOpen} />
+            <UserAccountMenu
+              className="lg:hidden"
+              unreadCount={unreadCount}
+              onOpenChange={setAccountMenuOpen}
+              onNotificationOpenChange={setNotificationsOpen}
+            />
           </div>
 
           <div className="relative z-0 flex min-w-0 justify-center lg:justify-self-center">
@@ -168,7 +182,11 @@ export function UserHeader() {
           </div>
 
           <div className="relative z-50 hidden min-w-0 shrink-0 items-center justify-end gap-3 lg:flex">
-            <UserAccountMenu onOpenChange={setAccountMenuOpen} onNotificationOpenChange={setNotificationsOpen} />
+            <UserAccountMenu
+              unreadCount={unreadCount}
+              onOpenChange={setAccountMenuOpen}
+              onNotificationOpenChange={setNotificationsOpen}
+            />
           </div>
         </div>
       </Card>

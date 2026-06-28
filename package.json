@@ -11,7 +11,9 @@
     "test": "vitest",
     "db:seed": "prisma db seed",
     "db:seed-demo": "tsx prisma/seed-portfolio-demo.ts",
+    "db:consolidate-demo-admin": "tsx prisma/consolidate-demo-admin.ts",
     "db:seed-chat": "tsx prisma/chat-demo-seed.ts",
+    "db:seed-notifications": "tsx prisma/notification-demo-seed.ts",
     "db:seed-finance": "tsx prisma/finance-boost.ts",
     "db:seed-receita": "tsx prisma/receita-boost.ts"
   },

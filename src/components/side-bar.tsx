@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import { LinkSideBar } from "./link-side-bar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useChatSync } from "@/hooks/useChatSync";
 import { cn } from "@/lib/utils";
 import type { Appointment } from "@/types/types";
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal";
@@ -26,6 +27,7 @@ interface LinkItem {
   icon: React.ReactNode;
   name: string;
   href: string;
+  badge?: number;
 }
 
 type Props = {
@@ -38,10 +40,11 @@ function SideBarContent({ onCreate }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { canViewSchedule, canManageUsers } = useAuth()
+  const { unreadCount: chatUnreadCount } = useChatSync()
 
   const links: LinkItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
-    { name: "Chat", href: "/chat", icon: <MessageCircle size={24} /> },
+    { name: "Chat", href: "/chat", icon: <MessageCircle size={24} />, badge: chatUnreadCount },
     ...(canViewSchedule ? [
       { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
       { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },

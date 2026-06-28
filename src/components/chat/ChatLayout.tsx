@@ -1,17 +1,20 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatLayoutMode } from "@/hooks/useChatLayoutMode"
+import { useChatCacheUpdater } from "@/hooks/useChat"
 import { useConversationSearch } from "@/hooks/useConversationSearch"
 import { useConversation, useConversationAttachments } from "@/hooks/useConversation"
 import { useRealtime } from "@/hooks/useRealtime"
 import { useSendMessage, useMessageRead } from "@/hooks/useSendMessage"
 import { useTyping } from "@/hooks/useTyping"
 import { CHAT_LAYOUT, getSidebarWidth } from "@/lib/chat/layout"
+import { parseChatConversationId } from "@/lib/chat/navigation"
 import type { ChatMessageDTO } from "@/lib/chat/types"
 import { ChatCard } from "./ChatCard"
 import { ConversationSidebar } from "./ConversationSidebar"
@@ -42,9 +45,15 @@ const mobilePanelTransition = {
 
 export function ChatLayout({ className }: Props) {
   const { mode, containerRef } = useChatLayoutMode()
+  const searchParams = useSearchParams()
+  const urlConversationId = useMemo(
+    () => parseChatConversationId(searchParams.get("conversation")),
+    [searchParams]
+  )
   const { data: session, status: sessionStatus } = useSession()
+  const { clearConversationUnread } = useChatCacheUpdater()
   const userId = session?.user?.id ?? ""
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(urlConversationId)
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("list")
   const [filesOpen, setFilesOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -73,20 +82,29 @@ export function ChatLayout({ className }: Props) {
 
   const handleSelect = useCallback(
     (id: number) => {
+      clearConversationUnread(id)
       setSelectedId(id)
       setReplyTo(null)
       setEditing(null)
       if (mode === "mobile") setMobilePanel("chat")
     },
-    [mode]
+    [clearConversationUnread, mode]
   )
 
   useEffect(() => {
+    if (urlConversationId == null) return
+    clearConversationUnread(urlConversationId)
+    setSelectedId((prev) => (prev === urlConversationId ? prev : urlConversationId))
+    if (mode === "mobile") setMobilePanel("chat")
+  }, [urlConversationId, mode, clearConversationUnread])
+
+  useEffect(() => {
     if (mode === "mobile") return
+    if (urlConversationId != null) return
     if (!selectedId && conversations.length > 0) {
       setSelectedId(conversations[0].id)
     }
-  }, [conversations, selectedId, mode])
+  }, [conversations, selectedId, mode, urlConversationId])
 
   useEffect(() => {
     if (mode === "triple") setFilesOpen(false)

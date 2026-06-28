@@ -29,7 +29,11 @@ const TIME_SLOTS = [
 
 const PAYMENT_METHODS = ["Pix", "Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Convênio"]
 
-const DEFAULT_DOCTOR_PASSWORD = "Medico123!"
+import {
+  DEFAULT_DOCTOR_USER_PASSWORD,
+  resolvedDemoSuperAdminEmail,
+  resolvedDemoSuperAdminPassword,
+} from "../src/lib/demo-credentials"
 
 type SeedSex = "Masculino" | "Feminino" | "Outro"
 
@@ -416,7 +420,8 @@ async function main() {
   const doctors: Awaited<ReturnType<typeof prisma.doctor.create>>[] = []
   for (let i = 0; i < DOCTOR_SEED.length; i++) {
     const m = DOCTOR_SEED[i]
-    const email = `medico.${i + 1}@clinicademo.local`
+    const email =
+      i === 0 ? resolvedDemoSuperAdminEmail() : `medico.${i + 1}@clinicademo.local`
     const specialty = await prisma.specialty.upsert({
       where: { name: m.specialty },
       create: { name: m.specialty },
@@ -549,47 +554,48 @@ async function main() {
   await prisma.transaction.createMany({ data: standaloneTx })
 
   console.log("Criando usuários vinculados aos médicos...")
-  const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_PASSWORD, 10)
+  const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_USER_PASSWORD, 10)
+  const demoPasswordHash = hashSync(resolvedDemoSuperAdminPassword(), 10)
+  const demoEmail = resolvedDemoSuperAdminEmail()
+
   for (let i = 0; i < doctors.length; i++) {
     const doctor = doctors[i]
+    const isSuperAdmin = i === 0
+    const email = isSuperAdmin
+      ? demoEmail
+      : (doctor.email ?? `medico.${i + 1}@clinicademo.local`)
+
     await prisma.user.upsert({
-      where: { email: doctor.email ?? `medico.${doctor.id}@clinicademo.local` },
+      where: { email },
       create: {
         name: doctor.name,
-        email: doctor.email ?? `medico.${doctor.id}@clinicademo.local`,
-        password: doctorPasswordHash,
-        role: i === 0 ? "SUPER_ADMIN" : "MEDICO",
+        email,
+        password: isSuperAdmin ? demoPasswordHash : doctorPasswordHash,
+        role: isSuperAdmin ? "SUPER_ADMIN" : "MEDICO",
         doctorId: doctor.id,
+        active: true,
       },
       update: {
         name: doctor.name,
-        role: i === 0 ? "SUPER_ADMIN" : "MEDICO",
+        role: isSuperAdmin ? "SUPER_ADMIN" : "MEDICO",
         doctorId: doctor.id,
+        active: true,
+        password: isSuperAdmin ? demoPasswordHash : doctorPasswordHash,
       },
     })
   }
 
-  console.log("Garantindo usuário demo do portfólio (demo@clinica.local)...")
-  const portfolioDemoEmail =
-    process.env.DEMO_LOGIN_EMAIL?.trim().toLowerCase() || "demo@clinica.local"
-  const portfolioDemoPassword =
-    process.env.DEMO_LOGIN_PASSWORD?.trim() || "demo123456"
-  await prisma.user.upsert({
-    where: { email: portfolioDemoEmail },
-    create: {
-      name: "Dr.Teste",
-      email: portfolioDemoEmail,
-      password: hashSync(portfolioDemoPassword, 10),
-      role: "SUPER_ADMIN",
-      active: true,
-    },
-    update: {
-      name: "Dr.Teste",
-      role: "SUPER_ADMIN",
-      active: true,
-      password: hashSync(portfolioDemoPassword, 10),
-    },
+  await prisma.user.updateMany({
+    where: { role: "SUPER_ADMIN", email: { not: demoEmail } },
+    data: { role: "MEDICO" },
   })
+
+  const legacyMedico1 = await prisma.user.findUnique({
+    where: { email: "medico.1@clinicademo.local" },
+  })
+  if (legacyMedico1 && legacyMedico1.email !== demoEmail) {
+    await prisma.user.delete({ where: { id: legacyMedico1.id } })
+  }
 
   console.log("Semeando conversas demo do chat (recepção ↔ médicos)...")
   const { seedChatDemo } = await import("./chat-demo-seed")
@@ -620,7 +626,7 @@ async function main() {
   console.log(
     `Concluído: ${doctors.length} médicos, ${patients.length} pacientes, ~${apptCounter} agendamentos, ` +
       `${standaloneTx.length} transações avulsas + vínculos em consultas concluídas. ` +
-      `Usuários médicos: e-mail medico.N@clinicademo.local / senha ${DEFAULT_DOCTOR_PASSWORD}`
+      `Super Admin: ${demoEmail} (Dr.Teste) / senha demo · demais médicos: medico.N@clinicademo.local / ${DEFAULT_DOCTOR_USER_PASSWORD}`
   )
 }
 

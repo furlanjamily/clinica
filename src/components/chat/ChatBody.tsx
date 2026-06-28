@@ -40,23 +40,39 @@ export function ChatBody({
   const initialScrollDone = useRef(false)
 
   const messages = flattenMessages(data?.pages)
+  const lastMessageId = messages[messages.length - 1]?.id ?? null
+  const onMarkReadRef = useRef(onMarkRead)
+  const markedRef = useRef<{ conversationId: number | null; lastMessageId: number | null }>({
+    conversationId: null,
+    lastMessageId: null,
+  })
+
+  useEffect(() => {
+    onMarkReadRef.current = onMarkRead
+  }, [onMarkRead])
 
   useEffect(() => {
     initialScrollDone.current = false
+    markedRef.current = { conversationId: null, lastMessageId: null }
   }, [conversationId])
 
   useEffect(() => {
-    if (!messages.length || initialScrollDone.current) return
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-    initialScrollDone.current = true
-    onMarkRead?.()
-  }, [messages.length, conversationId, onMarkRead])
+    if (!conversationId || !messages.length || search) return
 
-  useEffect(() => {
-    if (messages.length && !search) {
-      onMarkRead?.()
+    const alreadyMarked =
+      markedRef.current.conversationId === conversationId &&
+      markedRef.current.lastMessageId === lastMessageId
+    if (alreadyMarked) return
+
+    markedRef.current = { conversationId, lastMessageId }
+
+    if (!initialScrollDone.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+      initialScrollDone.current = true
     }
-  }, [messages, search, onMarkRead])
+
+    onMarkReadRef.current?.()
+  }, [conversationId, lastMessageId, messages.length, search])
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current

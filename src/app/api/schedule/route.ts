@@ -13,6 +13,7 @@ import { ValidationError, ConflictError, NotFoundError, ForbiddenError } from "@
 import { createApiGuard } from "@/lib/api/rate-limit"
 import { AppointmentStatus } from "@/lib/schedule/status"
 import { combineLocalDateTime, toLocalDate, toLocalSlotTime } from "@/lib/datetime/appointment-time"
+import { notifyAppointmentAssigned, resolveUserIdsByDoctorId } from "@/lib/notification/triggers"
 
 export type { Appointment } from "@/lib/schedule/types"
 
@@ -183,6 +184,31 @@ export async function POST(req: Request) {
         doctor: true,
       },
     })
+
+    const session = await getServerSession(authOptions)
+    const actorId = session?.user?.id
+
+    if (actorId) {
+      await notifyAppointmentAssigned({
+        createdById: actorId,
+        doctorId: doctor.id,
+        appointmentId: appointment.id,
+        patientName: patient.name,
+        scheduledStart: appointment.scheduledStart,
+      })
+    } else {
+      const doctorUserIds = await resolveUserIdsByDoctorId(doctor.id)
+      const fallbackActor = doctorUserIds[0]
+      if (fallbackActor) {
+        await notifyAppointmentAssigned({
+          createdById: fallbackActor,
+          doctorId: doctor.id,
+          appointmentId: appointment.id,
+          patientName: patient.name,
+          scheduledStart: appointment.scheduledStart,
+        })
+      }
+    }
 
     return NextResponse.json(toAppointment(appointment))
   } catch (err) {

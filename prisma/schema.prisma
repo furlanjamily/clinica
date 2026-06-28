@@ -427,6 +427,9 @@ model User {
   messageReads             MessageRead[]
   messageReactions         MessageReaction[]
   typingStatuses           TypingStatus[]
+  notificationsCreated     Notification[]            @relation("NotificationCreator")
+  notificationRecipients   NotificationRecipient[]
+  userTasks                UserTask[]
 
   @@index([active])
   @@index([doctorId])
@@ -616,4 +619,102 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+enum NotificationType {
+  REMINDER
+  STATUS_CHANGED
+  APPOINTMENT
+  FINANCE
+  PATIENT
+  SYSTEM
+  MESSAGE
+}
+
+enum NotificationEntityType {
+  Appointment
+  Patient
+  Transaction
+  Task
+  System
+}
+
+model Notification {
+  id          String                  @id @default(cuid())
+  type        NotificationType
+  title       String?
+  description String?
+  entityId    String?
+  entityType  NotificationEntityType?
+  metadata    Json?
+  createdAt   DateTime                @default(now())
+  archivedAt  DateTime?
+  deletedAt   DateTime?
+
+  createdById String
+  createdBy   User @relation("NotificationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  recipients NotificationRecipient[]
+
+  @@index([createdAt])
+  @@index([type])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id             String    @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+  @@index([userId, archivedAt])
+  @@index([userId, createdAt])
+  @@map("notification_recipients")
+}
+
+// ============================================================
+// TASKS — tarefas manuais do dashboard (lembretes)
+// ============================================================
+
+enum UserTaskStatus {
+  pending
+  in_progress
+  completed
+}
+
+enum UserTaskPriority {
+  low
+  medium
+  high
+}
+
+model UserTask {
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String?
+  dueAt       DateTime         @db.Timestamptz(6)
+  status      UserTaskStatus   @default(pending)
+  priority    UserTaskPriority @default(medium)
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  @@index([userId, dueAt])
+  @@index([status, dueAt])
+  @@map("user_tasks")
 }

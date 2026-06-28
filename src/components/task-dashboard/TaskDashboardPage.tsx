@@ -5,6 +5,8 @@ import { motion } from "framer-motion"
 import { useDashboard, type DashboardAgendaItem } from "@/components/dashboard/DashboardDataProvider"
 import { DASHBOARD_PANEL_SHELL } from "@/components/dashboard/dashboard-panel-layout"
 import { cn } from "@/lib/utils"
+import { toClinicTaskFromUserTask } from "@/lib/user-task/mapper"
+import { useUserTasks } from "@/hooks/useUserTasks"
 import { DashboardHeader } from "./DashboardHeader"
 import { computeProgress } from "./progress"
 import { TaskCard } from "./TaskCard"
@@ -13,8 +15,6 @@ import { EditTaskModal } from "./EditTaskModal"
 import { TaskDashboardPanelSkeleton } from "./TaskDashboardPanelSkeleton"
 import { AppointmentStatus } from "@/lib/schedule/status"
 import type { ClinicTask, TaskFilter, TaskFormData, TaskIcon, TaskStatus } from "./types"
-
-let nextId = 100000
 
 function statusToTask(status: string): TaskStatus {
   if (status === AppointmentStatus.Completed || status === AppointmentStatus.Paid) return "completed"
@@ -60,80 +60,75 @@ function filterTasks(tasks: ClinicTask[], filter: TaskFilter): ClinicTask[] {
 
 function useTaskDashboardState() {
   const { data } = useDashboard()
-  const [tasks, setTasks] = useState<ClinicTask[]>([])
+  const { tasks: manualTasks, createTask, updateTask, deleteTask } = useUserTasks()
   const [filter, setFilter] = useState<TaskFilter>("all")
   const [createOpen, setCreateOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<ClinicTask | null>(null)
 
-  useEffect(() => {
-    if (!data) return
-    const fromAgenda = agendaToTasks(data.periodAgenda)
-    setTasks((prev) => {
-      const manual = prev.filter((t) => t.source === "manual")
-      const merged = [...fromAgenda, ...manual]
-      nextId = Math.max(100000, ...merged.map((t) => t.id), 0) + 1
-      return merged
-    })
-  }, [data?.period, data?.periodAgenda])
+  const tasks = useMemo(() => {
+    const fromAgenda = data ? agendaToTasks(data.periodAgenda) : []
+    const manual = manualTasks.map(toClinicTaskFromUserTask)
+    return [...fromAgenda, ...manual]
+  }, [data?.periodAgenda, manualTasks])
 
   const filteredTasks = useMemo(() => filterTasks(tasks, filter), [tasks, filter])
   const progress = useMemo(() => computeProgress(tasks), [tasks])
 
-  function handleCreate(data: TaskFormData) {
-    const newTask: ClinicTask = {
-      id: ++nextId,
-      title: data.title,
-      description: data.description,
-      date: data.date,
-      time: data.time,
-      priority: data.priority,
-      status: data.status,
-      source: data.source,
-      completed: data.status === "completed",
-      automatic: data.source === "TimelineAgenda",
-      icon: "monitor" as TaskIcon,
-    }
-    setTasks((prev) => [newTask, ...prev])
+  async function handleCreate(form: TaskFormData) {
+    await createTask({
+      title: form.title,
+      description: form.description,
+      date: form.date,
+      time: form.time,
+      priority: form.priority,
+      status: form.status,
+    })
   }
 
-  function handleEdit(id: number, data: TaskFormData) {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, ...data, completed: data.status === "completed" }
-          : task
-      )
-    )
+  async function handleEdit(id: number, form: TaskFormData) {
+    const task = tasks.find((item) => item.id === id)
+    if (!task || task.source !== "manual") return
+
+    await updateTask({
+      id,
+      data: {
+        title: form.title,
+        description: form.description,
+        date: form.date,
+        time: form.time,
+        priority: form.priority,
+        status: form.status,
+      },
+    })
   }
 
-  function handleDelete(id: number) {
-    setTasks((prev) => prev.filter((task) => task.id !== id))
+  async function handleDelete(id: number) {
+    const task = tasks.find((item) => item.id === id)
+    if (!task || task.source !== "manual") return
+    await deleteTask(id)
   }
 
-  function handleDuplicate(task: ClinicTask) {
-    const copy: ClinicTask = {
-      ...task,
-      id: ++nextId,
+  async function handleDuplicate(task: ClinicTask) {
+    if (task.source !== "manual") return
+    await createTask({
       title: `${task.title} (cópia)`,
-      automatic: false,
-      source: "manual",
-      timelineEventId: undefined,
-    }
-    setTasks((prev) => [copy, ...prev])
+      description: task.description ?? "",
+      date: task.date,
+      time: task.time,
+      priority: task.priority,
+      status: task.status,
+    })
   }
 
-  function handleToggleComplete(id: number) {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== id) return task
-        const completed = task.status !== "completed"
-        return {
-          ...task,
-          completed,
-          status: completed ? "completed" : "pending",
-        }
-      })
-    )
+  async function handleToggleComplete(id: number) {
+    const task = tasks.find((item) => item.id === id)
+    if (!task || task.source !== "manual") return
+
+    const completed = task.status !== "completed"
+    await updateTask({
+      id,
+      data: { status: completed ? "completed" : "pending" },
+    })
   }
 
   return {

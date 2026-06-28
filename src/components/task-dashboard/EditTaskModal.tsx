@@ -11,7 +11,7 @@ import type { ClinicTask, TaskFormData } from "./types"
 type EditTaskModalProps = {
   task: ClinicTask | null
   onClose: () => void
-  onSave: (id: number, data: TaskFormData) => void
+  onSave: (id: number, data: TaskFormData) => void | Promise<void>
 }
 
 export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
@@ -38,8 +38,9 @@ export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
       <ModalPanel>
         <ModalHeader title="Editar tarefa" onClose={onClose} />
         <form
-          onSubmit={handleSubmit((data) => {
-            onSave(task.id, data)
+          onSubmit={handleSubmit(async (data) => {
+            if (task.automatic) return
+            await onSave(task.id, data)
             onClose()
           })}
           className="flex flex-col gap-4"

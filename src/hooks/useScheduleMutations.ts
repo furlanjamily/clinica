@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import type { Appointment } from "@/types/types"
 import { absoluteUrl } from "@/lib/absolute-url"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { invalidateNotificationQueries } from "@/hooks/invalidate-notifications"
 import type { CreateAppointmentInput } from "@/lib/validations/schedule"
 
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
@@ -70,6 +71,7 @@ export function useScheduleMutations() {
       queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
         [...(prev ?? []), created]
       )
+      invalidateNotificationQueries(queryClient)
       toast.success("Agendamento salvo!")
       return created
     },

@@ -1,6 +1,9 @@
 import { useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { NOTIFICATION_TAB, type NotificationTab } from "./types";
+import {
+  NOTIFICATION_TAB,
+  type NotificationTab,
+} from "@/lib/notification/constants";
 
 interface NotificationTabsProps {
   activeTab: NotificationTab;

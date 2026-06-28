@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
@@ -11,6 +11,8 @@ import {
   readErrorMessage,
   uploadChatFile,
 } from "./chat-api"
+import { useChatCacheUpdater } from "./useChat"
+import { CHAT_UNREAD_COUNT_KEY } from "@/lib/chat/cache-keys"
 import { messagesQueryKey } from "./useMessages"
 import { attachmentsQueryKey } from "./useConversation"
 import type { ChatMessageDTO, UploadResultDTO } from "@/lib/chat/types"
@@ -134,14 +136,46 @@ export function useSendMessage(conversationId: number | null) {
 }
 
 export function useMessageRead(conversationId: number | null) {
+  const queryClient = useQueryClient()
+  const { clearConversationUnread, invalidateConversations } = useChatCacheUpdater()
+  const pendingRef = useRef<Promise<void> | null>(null)
+  const markedRef = useRef<{ conversationId: number | null; messageKey: string | null }>({
+    conversationId: null,
+    messageKey: null,
+  })
+
+  useEffect(() => {
+    markedRef.current = { conversationId: null, messageKey: null }
+  }, [conversationId])
+
   const markAsRead = useCallback(async (messageIds?: number[]) => {
     if (!conversationId) return
-    try {
-      await markReadApi(conversationId, messageIds)
-    } catch {
-      // silencioso — leitura é best-effort
+
+    const messageKey = messageIds?.length ? messageIds.join(",") : "all"
+    if (
+      markedRef.current.conversationId === conversationId &&
+      markedRef.current.messageKey === messageKey
+    ) {
+      return
     }
-  }, [conversationId])
+    markedRef.current = { conversationId, messageKey }
+
+    clearConversationUnread(conversationId)
+
+    if (pendingRef.current) {
+      await pendingRef.current.catch(() => {})
+    }
+
+    const request = markReadApi(conversationId, messageIds).catch(() => {
+      markedRef.current = { conversationId: null, messageKey: null }
+      invalidateConversations()
+      void queryClient.invalidateQueries({ queryKey: CHAT_UNREAD_COUNT_KEY })
+    })
+
+    pendingRef.current = request.then(() => {})
+    await pendingRef.current
+    pendingRef.current = null
+  }, [clearConversationUnread, conversationId, invalidateConversations, queryClient])
 
   return { markAsRead }
 }

@@ -21,7 +21,7 @@ const defaultValues: TaskFormData = {
 type CreateTaskModalProps = {
   open: boolean
   onClose: () => void
-  onSave: (data: TaskFormData) => void
+  onSave: (data: TaskFormData) => void | Promise<void>
 }
 
 export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps) {
@@ -38,8 +38,8 @@ export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps)
       <ModalPanel>
         <ModalHeader title="Nova tarefa" onClose={onClose} />
         <form
-          onSubmit={handleSubmit((data) => {
-            onSave(data)
+          onSubmit={handleSubmit(async (data) => {
+            await onSave({ ...data, source: "manual" })
             onClose()
           })}
           className="flex flex-col gap-4"
@@ -47,7 +47,7 @@ export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps)
           <Input label="Título" {...register("title", { required: true })} placeholder="Nome da tarefa" />
           <Input label="Descrição" {...register("description")} placeholder="Descrição opcional" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="Data" {...register("date", { required: true })} placeholder="Sep 13" />
+            <Input label="Data" {...register("date", { required: true })} placeholder="2026-06-27" />
             <Input label="Hora" {...register("time", { required: true })} placeholder="08:30" />
           </div>
           <FormSelect label="Prioridade" {...register("priority")}>
@@ -59,10 +59,6 @@ export function CreateTaskModal({ open, onClose, onSave }: CreateTaskModalProps)
             <option value="pending">Pendente</option>
             <option value="in_progress">Em andamento</option>
             <option value="completed">Concluída</option>
-          </FormSelect>
-          <FormSelect label="Origem" {...register("source")}>
-            <option value="manual">Manual</option>
-            <option value="TimelineAgenda">TimelineAgenda</option>
           </FormSelect>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>

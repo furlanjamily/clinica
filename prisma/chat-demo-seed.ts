@@ -170,6 +170,7 @@ async function main() {
     `Chat demo: ${threadCount} conversas criadas.\n` +
       `Recepção: recepcao@clinicademo.local / ${receptionPassword}\n` +
       `          atendimento@clinicademo.local / ${receptionPassword}\n` +
+      `Super Admin: demo@clinica.local / demo123456\n` +
       `Médicos: medico.N@clinicademo.local / Medico123!`
   )
 }

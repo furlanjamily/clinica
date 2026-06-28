@@ -70,11 +70,11 @@ npm run db:seed             # dados fictícios para desenvolvimento
 
 Após o seed, use as credenciais de demo:
 
-- **E-mail:** `medico.1@clinicademo.local`
-- **Senha:** `Medico123!`
-- **Papel:** `SUPER_ADMIN` (Dr.Teste)
+- **E-mail:** `demo@clinica.local`
+- **Senha:** `demo123456` (ou `DEMO_LOGIN_PASSWORD` no `.env`)
+- **Papel:** `SUPER_ADMIN` vinculado ao **Dr.Teste** (`doctorId`)
 
-Demais médicos: `medico.N@clinicademo.local` com a mesma senha e papel `MEDICO`.
+Demais médicos: `medico.2@clinicademo.local` em diante, senha `Medico123!`, papel `MEDICO`.
 
 ### 4. Desenvolvimento
 
@@ -96,6 +96,8 @@ Acesse [http://localhost:3000](http://localhost:3000).
 | `npx vitest run` | Testes uma vez (CI) |
 | `npx tsc --noEmit` | Checagem de tipos |
 | `npm run db:seed` | Seed completo (pacientes, agenda, finanças) |
+| `npm run db:consolidate-demo-admin` | Unifica SUPER_ADMIN em demo@clinica.local (banco existente) |
+| `npm run db:seed-demo` | Apenas usuário demo@clinica.local + vínculo Dr.Teste |
 | `npm run db:seed-finance` | Dados financeiros adicionais |
 | `npm run db:seed-receita` | Receitas adicionais |
 
