@@ -1,32 +1,33 @@
-# Lembretes de consultas e tarefas — a cada 5 min (plano Hobby da Vercel: máx. 1 cron/dia).
-# Configure em Settings → Secrets and variables → Actions:
-#   CRON_SECRET (Secret) — mesmo valor da env CRON_SECRET na Vercel
-#   NEXT_PUBLIC_APP_URL (Variable ou Secret) — ex.: https://seu-app.vercel.app (sem barra final)
-name: Process reminders
-
-on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
-
-jobs:
-  process-reminders:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Disparar processamento de lembretes
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || secrets.NEXT_PUBLIC_APP_URL }}
-        run: |
-          if [ -z "$CRON_SECRET" ]; then
-            echo "Falta secrets.CRON_SECRET (Settings → Secrets and variables → Actions → Secrets)."
-            exit 1
-          fi
-          if [ -z "$APP_URL" ]; then
-            echo "Falta NEXT_PUBLIC_APP_URL (Settings → Secrets and variables → Actions → Variables ou Secrets)."
-            exit 1
-          fi
-          curl -fsS \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${APP_URL%/}/api/notification/process-reminders"
-
+# Lembretes de consultas e tarefas — a cada 5 min (plano Hobby da Vercel: máx. 1 cron/dia).
+# Configure em Settings → Secrets and variables → Actions:
+#   CRON_SECRET (Secret) — mesmo valor da env CRON_SECRET na Vercel
+#   NEXT_PUBLIC_APP_URL (Variable ou Secret) — ex.: https://seu-app.vercel.app (sem barra final)
+name: Process reminders
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  process-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar processamento de lembretes
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || secrets.NEXT_PUBLIC_APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Falta secrets.CRON_SECRET (Settings → Secrets and variables → Actions → Secrets)."
+            exit 1
+          fi
+          if [ -z "$APP_URL" ]; then
+            echo "Falta NEXT_PUBLIC_APP_URL (Settings → Secrets and variables → Actions → Variables ou Secrets)."
+            exit 1
+          fi
+          APP_URL="${APP_URL//$'\r'/}"
+          APP_URL="${APP_URL%/}"
+          ENDPOINT="${APP_URL}/api/notification/process-reminders"
+          echo "Disparando lembretes em ${ENDPOINT}"
+          curl -fsS -H "Authorization: Bearer ${CRON_SECRET}" "${ENDPOINT}"
