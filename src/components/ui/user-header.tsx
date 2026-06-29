@@ -119,7 +119,7 @@ function UserAccountMenu({
             </div>
             <Button
               variant="ghost-danger"
-              onClick={() => signOut({ callbackUrl: "/portfolio-auto" })}
+              onClick={() => signOut({ callbackUrl: "/sign-in" })}
               className="w-full justify-start px-3 py-2"
             >
               <LogOut size={13} />

@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "./db";
 import type { UserRoleType } from "@/types/auth";
 import { USER_ROLES } from "@/types/auth";
-import { isDemoAuthEnabled, resolvedDemoCredentials } from "@/lib/demo-env";
+import { resolvedDemoCredentials } from "@/lib/demo-env";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
@@ -26,8 +26,6 @@ function tryAuthorizePortfolioDemo(
   email: string,
   password: string
 ): { id: string; name: string; username: string; email: string; role: UserRoleType | null; doctorId: number | null } | null {
-  if (!isDemoAuthEnabled()) return null
-
   const demo = resolvedDemoCredentials()
   if (!demo) return null
 

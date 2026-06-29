@@ -44,7 +44,6 @@ function SideBarContent({ onCreate }: Props) {
 
   const links: LinkItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
-    { name: "Chat", href: "/chat", icon: <MessageCircle size={24} />, badge: chatUnreadCount },
     ...(canViewSchedule ? [
       { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
       { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },
@@ -58,6 +57,7 @@ function SideBarContent({ onCreate }: Props) {
     ...(canManageUsers ? [
       { name: "Usuários", href: "/users", icon: <IconUsers size={24} /> },
     ] : []),
+    { name: "Chat", href: "/chat", icon: <MessageCircle size={24} />, badge: chatUnreadCount },
   ];
 
   return (

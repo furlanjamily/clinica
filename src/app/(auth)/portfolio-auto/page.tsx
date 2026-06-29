@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 import { fetchPortfolioCredentials } from "@/hooks/usePortfolioDemo"
+import { PortfolioVisitorLoading } from "@/components/auth/portfolio-auto/PortfolioVisitorLoading"
 
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard"
@@ -23,11 +24,7 @@ function PortfolioAutoInner() {
     void (async () => {
       const result = await fetchPortfolioCredentials()
       if (!result.ok) {
-        toast.error(
-          result.status === 404
-            ? "Modo visitante desligado no servidor."
-            : "Não foi possível carregar credenciais de demonstração."
-        )
+        toast.error("Não foi possível carregar credenciais de demonstração.")
         router.replace("/sign-in")
         return
       }
@@ -53,23 +50,12 @@ function PortfolioAutoInner() {
     })()
   }, [router, searchParams])
 
-  return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 bg-gray-100 px-4 text-center text-sm text-gray-600">
-      <p className="font-medium text-gray-800">Entrando como visitante…</p>
-      <p className="max-w-sm text-xs text-gray-500">Modo demonstração do portfólio</p>
-    </div>
-  )
+  return <PortfolioVisitorLoading />
 }
 
 export default function PortfolioAutoPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[50vh] items-center justify-center bg-gray-100 text-sm text-gray-600">
-          Carregando…
-        </div>
-      }
-    >
+    <Suspense fallback={<PortfolioVisitorLoading />}>
       <PortfolioAutoInner />
     </Suspense>
   )
