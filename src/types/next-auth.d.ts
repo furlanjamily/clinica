@@ -8,6 +8,7 @@ declare module "next-auth" {
     username?: string | null
     role?: UserRoleType | null
     doctorId?: number | null
+    image?: string | null
   }
 
   interface Session {
@@ -16,6 +17,7 @@ declare module "next-auth" {
       username?: string | null
       role?: UserRoleType | null
       doctorId?: number | null
+      image?: string | null
     } & DefaultSession["user"]
   }
 }
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     username?: string | null
     role?: string | null
     doctorId?: number | null
+    image?: string | null
   }
 }

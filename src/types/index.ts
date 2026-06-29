@@ -73,4 +73,5 @@ export type Doctor = {
   notes?: string | null
 
   active: boolean
+  linkedUser?: { id: string; image: string | null } | null
 } & StreetAddress

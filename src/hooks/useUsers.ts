@@ -14,6 +14,7 @@ export type UserRow = {
   role: UserRoleType
   active: boolean
   doctorName?: string | null
+  image?: string | null
 }
 
 type ApiUser = {
@@ -24,6 +25,7 @@ type ApiUser = {
   role: UserRoleType
   active?: boolean
   doctorName?: string | null
+  image?: string | null
 }
 
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
@@ -43,6 +45,7 @@ function mapUserFromApi(row: ApiUser): UserRow {
     role: row.role,
     active: row.active ?? true,
     doctorName: row.doctorName ?? null,
+    image: row.image ?? null,
   }
 }
 
@@ -96,6 +99,7 @@ export function useUsersMutations() {
     role?: UserRoleType
     password?: string
     active?: boolean
+    image?: string | null
   }): Promise<UserRow | null> {
     const res = await fetch(absoluteUrl("/api/user"), {
       method: "PATCH",

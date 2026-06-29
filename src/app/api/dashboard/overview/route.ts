@@ -533,35 +533,50 @@ export async function GET(request: NextRequest) {
       qualification: string | null
       shift: string | null
       completedCount: number
+      image: string | null
     } | null = null
+
+    function buildFeaturedDoctor(
+      doc: {
+        name: string
+        crm: string | null
+        shift: string | null
+        specialty: { name: string } | null
+        users: { image: string | null }[]
+      },
+      completedCount: number
+    ) {
+      return {
+        name: doc.name,
+        specialty: doc.specialty?.name ?? "Clínica",
+        qualification: doc.crm ? `CRM ${doc.crm}` : doc.specialty?.name ?? null,
+        shift: doc.shift,
+        completedCount,
+        image: doc.users[0]?.image ?? null,
+      }
+    }
 
     if (doctorFilter !== undefined && doctorFilter > 0) {
       const doc = await db.doctor.findUnique({
         where: { id: doctorFilter },
-        include: { specialty: true },
+        include: {
+          specialty: true,
+          users: { select: { image: true }, take: 1 },
+        },
       })
       if (doc) {
-        featuredDoctor = {
-          name: doc.name,
-          specialty: doc.specialty?.name ?? "Clínica",
-          qualification: doc.crm ? `CRM ${doc.crm}` : doc.specialty?.name ?? null,
-          shift: doc.shift,
-          completedCount: completedRange,
-        }
+        featuredDoctor = buildFeaturedDoctor(doc, completedRange)
       }
     } else if (topDoctor.length > 0) {
       const doc = await db.doctor.findUnique({
         where: { id: topDoctor[0].doctorId },
-        include: { specialty: true },
+        include: {
+          specialty: true,
+          users: { select: { image: true }, take: 1 },
+        },
       })
       if (doc) {
-        featuredDoctor = {
-          name: doc.name,
-          specialty: doc.specialty?.name ?? "Clínica",
-          qualification: doc.crm ? `CRM ${doc.crm}` : doc.specialty?.name ?? null,
-          shift: doc.shift,
-          completedCount: topDoctor[0]._count,
-        }
+        featuredDoctor = buildFeaturedDoctor(doc, topDoctor[0]._count)
       }
     }
 

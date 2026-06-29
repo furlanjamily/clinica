@@ -5,9 +5,8 @@ import { Bell, ChevronDown, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Card } from "@/components/ui/card";
-import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
+import { Avatar } from "@/components/common/Avatar";
 import { useAdminShell } from "@/hooks/useAdminShell";
 import { HeaderWeatherWidget } from "@/components/ui/header-weather-widget";
 import { HeaderQuickActions } from "@/components/ui/header-quick-actions";
@@ -30,6 +29,7 @@ function UserAccountMenu({
   const { data: session } = useSession()
   const displayName = session?.user?.username ?? session?.user?.name ?? "";
   const displayEmail = session?.user?.email ?? "";
+  const displayImage = session?.user?.image ?? null;
   const [open, setOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -91,12 +91,12 @@ function UserAccountMenu({
           onClick={() => updateOpen(!open)}
           className="flex max-w-[9.5rem] items-center gap-1.5 rounded-full min-[400px]:max-w-[11rem] min-[480px]:max-w-[13rem] sm:max-w-none sm:gap-2 lg:gap-3"
         >
-          <Image
-            src={AVATAR_PLACEHOLDER_URL}
-            alt={displayName}
-            width={40}
-            height={40}
-            className="h-9 w-9 shrink-0 rounded-full object-cover sm:h-10 sm:w-10"
+          <Avatar
+            key={displayImage ?? "no-image"}
+            name={displayName}
+            image={displayImage}
+            size={40}
+            className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
           />
           <div className="hidden min-w-0 text-left min-[400px]:block">
             <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>

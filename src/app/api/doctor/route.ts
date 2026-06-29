@@ -22,7 +22,10 @@ export async function GET() {
     const doctors = await db.doctor.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
-      include: { specialty: true },
+      include: {
+        specialty: true,
+        users: { select: { id: true, image: true }, take: 1 },
+      },
     })
     return NextResponse.json(doctors.map(toDoctorDTO))
   } catch (error) {
@@ -36,7 +39,10 @@ export async function POST(req: Request) {
     const data = parseWith(CreateDoctorSchema, await req.json())
     const doctor = await db.doctor.create({
       data: doctorInputToDb(data) as unknown as Prisma.DoctorCreateInput,
-      include: { specialty: true },
+      include: {
+        specialty: true,
+        users: { select: { id: true, image: true }, take: 1 },
+      },
     })
     const loginAccount = await createUserForDoctor(doctor)
     return NextResponse.json(
@@ -55,7 +61,10 @@ export async function PATCH(req: Request) {
     const doctor = await db.doctor.update({
       where: { id },
       data: doctorInputToDb(data),
-      include: { specialty: true },
+      include: {
+        specialty: true,
+        users: { select: { id: true, image: true }, take: 1 },
+      },
     })
     await syncUserForDoctor(doctor)
     return NextResponse.json(toDoctorDTO(doctor))

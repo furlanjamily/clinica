@@ -9,6 +9,7 @@ const PASSWORD_HASH_ROUNDS = 10
 export type DoctorUserLogin = {
   email: string
   temporaryPassword: string
+  userId: string
 }
 
 export function resolveDoctorUserEmail(doctor: {
@@ -37,10 +38,10 @@ export async function createUserForDoctor(doctor: {
       where: { id: existing.id },
       data: { name: doctor.name, doctorId: doctor.id, role: "MEDICO" },
     })
-    return { email, temporaryPassword: DEFAULT_DOCTOR_USER_PASSWORD }
+    return { email, temporaryPassword: DEFAULT_DOCTOR_USER_PASSWORD, userId: existing.id }
   }
 
-  await db.user.create({
+  const created = await db.user.create({
     data: {
       name: doctor.name,
       email,
@@ -50,7 +51,7 @@ export async function createUserForDoctor(doctor: {
     },
   })
 
-  return { email, temporaryPassword: DEFAULT_DOCTOR_USER_PASSWORD }
+  return { email, temporaryPassword: DEFAULT_DOCTOR_USER_PASSWORD, userId: created.id }
 }
 
 export async function syncUserForDoctor(doctor: {

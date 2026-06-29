@@ -11,6 +11,7 @@ import { Header } from "@/components/ui/PageHeader"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
+import { ProfileImageUpload } from "@/components/common/ProfileImageUpload"
 import { UserRole, type UserRoleType } from "@/types/auth"
 import {
   useUsers,
@@ -20,6 +21,7 @@ import {
   USER_ROLE_COLORS,
   type UserRow,
 } from "@/hooks/useUsers"
+import { useUserImageMutation } from "@/hooks/useUserImageMutation"
 import { TableSuspense } from "@/components/ui/TableSuspense"
 import { DataTable, Td } from "@/components/ui/table/DataTable"
 import { FilterField, GlobalFilters } from "@/components/ui/table/GlobalFilters"
@@ -153,6 +155,7 @@ export default function UsersPage() {
   const { session, canManageUsers, isSuperAdmin } = useAuth()
   const router = useRouter()
   const { createUser, updateUser, removeUser, toggleActive } = useUsersMutations()
+  const { uploadImage, removeImage, isUploading, isRemoving } = useUserImageMutation()
   const { filters, handleFilterChange } = useTableFilters<UserFilters>({
     username: "",
     email: "",
@@ -160,6 +163,8 @@ export default function UsersPage() {
   })
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<UserRow | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
   const { register, handleSubmit, reset, setValue } = useForm<UserFormValues>()
 
   useEffect(() => {
@@ -179,6 +184,12 @@ export default function UsersPage() {
       const updated = await updateUser(payload)
       if (!updated) return
 
+      if (removePhoto && editing.image) {
+        await removeImage(editing.id)
+      } else if (pendingFile) {
+        await uploadImage({ file: pendingFile, userId: editing.id })
+      }
+
       toast.success(
         data.newPassword.trim() ? "Usuário e senha atualizados." : "Usuário atualizado."
       )
@@ -190,9 +201,15 @@ export default function UsersPage() {
         role: data.role,
       })
       if (!created) return
+
+      if (pendingFile) {
+        await uploadImage({ file: pendingFile, userId: created.id })
+      }
     }
     setShowModal(false)
     setEditing(null)
+    setPendingFile(null)
+    setRemovePhoto(false)
     reset()
   }
 
@@ -206,15 +223,28 @@ export default function UsersPage() {
 
   function openEdit(user: UserRow) {
     setEditing(user)
+    setPendingFile(null)
+    setRemovePhoto(false)
     setValue("role", user.role)
     setValue("newPassword", "")
     setShowModal(true)
   }
 
+  function closeModal() {
+    setShowModal(false)
+    setEditing(null)
+    setPendingFile(null)
+    setRemovePhoto(false)
+    reset()
+  }
+
+  const modalImage = editing && !removePhoto ? (editing.image ?? null) : null
+  const saving = isUploading || isRemoving
+
   return (
     <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
       <Header title="Usuários">
-        <Button size="md" onClick={() => { setEditing(null); reset(); setShowModal(true) }}>
+        <Button size="md" onClick={() => { setEditing(null); setPendingFile(null); setRemovePhoto(false); reset(); setShowModal(true) }}>
           <Plus size={16} /> Novo usuário
         </Button>
       </Header>
@@ -249,9 +279,23 @@ export default function UsersPage() {
           <ModalPanel>
             <ModalHeader
               title={editing ? "Editar usuário" : "Novo usuário"}
-              onClose={() => { setShowModal(false); setEditing(null); reset() }}
+              onClose={closeModal}
             />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
+              <ProfileImageUpload
+                name={editing?.username}
+                imageUrl={modalImage}
+                onFileSelected={(file) => {
+                  setPendingFile(file)
+                  setRemovePhoto(false)
+                }}
+                onRemove={() => {
+                  setPendingFile(null)
+                  setRemovePhoto(true)
+                }}
+                isUploading={saving}
+                disabled={saving}
+              />
               {!editing && (
                 <>
                   <Input label="Nome" {...register("username", { required: true })} placeholder="Nome completo" />
@@ -281,11 +325,11 @@ export default function UsersPage() {
                 <option value={UserRole.Medico}>Médico</option>
               </FormSelect>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                <Button type="button" variant="ghost" onClick={() => { setShowModal(false); setEditing(null); reset() }}>
+                <Button type="button" variant="ghost" onClick={closeModal}>
                   Cancelar
                 </Button>
-                <Button type="submit" size="md">
-                  {editing ? "Salvar" : "Criar usuário"}
+                <Button type="submit" size="md" disabled={saving}>
+                  {saving ? "Salvando..." : editing ? "Salvar" : "Criar usuário"}
                 </Button>
               </div>
             </form>

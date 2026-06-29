@@ -2,10 +2,6 @@ import type { Doctor as PrismaDoctor, Prisma } from "@/generated/prisma/client"
 import { dateOnlyToString, localDateOnly } from "@/lib/datetime/appointment-time"
 import { parseSex } from "@/lib/domain/patient-dto"
 
-export type DoctorWithSpecialty = PrismaDoctor & {
-  specialty?: { name: string } | null
-}
-
 export type DoctorDTO = {
   id: number
   name: string
@@ -26,10 +22,17 @@ export type DoctorDTO = {
   state: string | null
   notes: string | null
   active: boolean
+  linkedUser?: { id: string; image: string | null } | null
+}
+
+export type DoctorWithSpecialty = PrismaDoctor & {
+  specialty?: { name: string } | null
+  users?: { id: string; image: string | null }[]
 }
 
 /** Banco -> contrato da UI (specialty relation -> string, sex -> gender). */
 export function toDoctorDTO(d: DoctorWithSpecialty): DoctorDTO {
+  const linked = d.users?.[0] ?? null
   return {
     id: d.id,
     name: d.name,
@@ -50,6 +53,7 @@ export function toDoctorDTO(d: DoctorWithSpecialty): DoctorDTO {
     state: d.state,
     notes: d.notes,
     active: d.active,
+    linkedUser: linked ? { id: linked.id, image: linked.image ?? null } : null,
   }
 }
 

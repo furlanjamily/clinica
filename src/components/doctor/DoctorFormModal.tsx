@@ -1,14 +1,17 @@
 "use client"
 
-import { type ChangeEvent, useEffect } from "react"
+import { type ChangeEvent, useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input, Textarea, FormSelect } from "@/components/ui/Input"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { CepEnderecoBlock } from "@/components/forms/CepEnderecoBlock"
+import { ProfileImageUpload } from "@/components/common/ProfileImageUpload"
 import { useCRUD } from "@/hooks/useCRUD"
+import { useUserImageMutation } from "@/hooks/useUserImageMutation"
 import type { Doctor } from "@/types"
 
 const DOCTOR_NAME_PREFIX = "Dr(a). "
@@ -22,7 +25,7 @@ function normalizeDoctorNameOnCreateInput(value: string): string {
   return DOCTOR_NAME_PREFIX + rest
 }
 
-type DoctorForm = Omit<Doctor, "id" | "active">
+type DoctorForm = Omit<Doctor, "id" | "active" | "linkedUser">
 
 function doctorFormEmpty(): DoctorForm {
   return {
@@ -54,7 +57,11 @@ type Props = {
 
 export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
   const isEditing = !!doctor
+  const queryClient = useQueryClient()
   const { create, update } = useCRUD<Doctor>("/api/doctor")
+  const { uploadImage, removeImage, isUploading, isRemoving } = useUserImageMutation()
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
   const {
     register,
     handleSubmit,
@@ -62,30 +69,56 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
     setValue,
     control,
     getValues,
+    watch,
     formState: { isSubmitting },
   } = useForm<DoctorForm>({ defaultValues: doctorFormEmpty() })
 
+  const doctorName = watch("name")
+
   useEffect(() => {
     reset(isEditing ? doctorFormEmpty() : { ...doctorFormEmpty(), name: DOCTOR_NAME_PREFIX })
+    setPendingFile(null)
+    setRemovePhoto(false)
     if (!doctor) return
 
     Object.entries(doctor)
-      .filter(([k]) => k !== "id" && k !== "active")
+      .filter(([k]) => k !== "id" && k !== "active" && k !== "linkedUser")
       .forEach(([k, v]) => setValue(k as keyof DoctorForm, (v ?? "") as never))
   }, [doctor, isEditing, reset, setValue])
+
+  async function syncProfileImage(userId: string | undefined) {
+    if (!userId) return
+
+    if (removePhoto && (doctor?.linkedUser?.image || pendingFile)) {
+      await removeImage(userId)
+    } else if (pendingFile) {
+      await uploadImage({ file: pendingFile, userId })
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ["crud", "/api/doctor"] })
+  }
 
   async function handleSave(data: DoctorForm) {
     if (isEditing) {
       const updated = await update(doctor!.id, data, "Médico atualizado.")
       if (!updated) return
+      await syncProfileImage(updated.linkedUser?.id ?? doctor?.linkedUser?.id)
     } else {
       const name = normalizeDoctorNameOnCreateInput(data.name)
       const created = (await create(
         { ...data, name, active: true },
         "Médico cadastrado com sucesso!"
-      )) as (Doctor & { loginAccount?: { email: string; temporaryPassword: string } }) | null
+      )) as
+        | (Doctor & { loginAccount?: { email: string; temporaryPassword: string; userId: string } })
+        | null
 
       if (!created) return
+
+      const userId = created.loginAccount?.userId ?? created.linkedUser?.id
+      if (pendingFile && userId) {
+        await uploadImage({ file: pendingFile, userId })
+        await queryClient.invalidateQueries({ queryKey: ["crud", "/api/doctor"] })
+      }
 
       if (created.loginAccount) {
         toast.info(
@@ -99,6 +132,10 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
     onClose()
   }
 
+  const currentImage =
+    removePhoto ? null : (doctor?.linkedUser?.image ?? null)
+  const saving = isSubmitting || isUploading || isRemoving
+
   return (
     <ModalOverlay>
       <ModalPanel size="lg">
@@ -107,6 +144,21 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
           onClose={onClose}
         />
         <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
+          <ProfileImageUpload
+            name={doctorName || doctor?.name}
+            imageUrl={currentImage}
+            onFileSelected={(file) => {
+              setPendingFile(file)
+              setRemovePhoto(false)
+            }}
+            onRemove={() => {
+              setPendingFile(null)
+              setRemovePhoto(true)
+            }}
+            isUploading={isUploading || isRemoving}
+            disabled={saving}
+          />
+
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Dados profissionais</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="col-span-2">
@@ -188,8 +240,8 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" size="md" disabled={isSubmitting}>
-              {isSubmitting
+            <Button type="submit" size="md" disabled={saving}>
+              {saving
                 ? "Salvando..."
                 : isEditing
                   ? "Salvar alterações"

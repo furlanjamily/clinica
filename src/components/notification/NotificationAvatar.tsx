@@ -1,9 +1,7 @@
-import Image from "next/image";
-import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants";
+import { Avatar } from "@/components/common/Avatar";
 import { cn } from "@/lib/utils";
 
 interface NotificationAvatarProps {
-  /** URL da foto do usuário; usa placeholder até o cadastro obrigatório de avatar. */
   image: string | null;
   alt: string;
   className?: string;
@@ -15,15 +13,12 @@ export function NotificationAvatar({
   className,
 }: NotificationAvatarProps) {
   return (
-    <Image
-      src={image ?? AVATAR_PLACEHOLDER_URL}
+    <Avatar
+      name={alt}
+      image={image}
+      size={40}
       alt={alt}
-      width={40}
-      height={40}
-      className={cn(
-        "h-10 w-10 shrink-0 rounded-full object-cover",
-        className
-      )}
+      className={cn("h-10 w-10 shrink-0", className)}
     />
   );
 }

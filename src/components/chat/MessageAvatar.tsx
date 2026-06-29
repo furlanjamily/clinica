@@ -1,6 +1,4 @@
-import { cn } from "@/lib/utils"
-import { getInitials } from "@/lib/chat/format"
-import Image from "next/image"
+import { Avatar, type AvatarSize } from "@/components/common/Avatar"
 
 type Props = {
   name?: string | null
@@ -11,29 +9,25 @@ type Props = {
   className?: string
 }
 
-const sizeMap = {
-  sm: "h-8 w-8 text-xs",
-  md: "h-10 w-10 text-sm",
-  lg: "h-14 w-14 text-base",
+const sizeMap: Record<"sm" | "md" | "lg", AvatarSize> = {
+  sm: "sm",
+  md: "md",
+  lg: "lg",
 }
 
 export function MessageAvatar({ name, image, size = "md", selected, className }: Props) {
-  const cls = cn(
-    "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold",
-    sizeMap[size],
+  const fallbackClass =
     selected
       ? "bg-white text-primary shadow-sm ring-2 ring-white/80"
-      : "bg-gradient-to-br from-primary/15 to-primary/30 text-primary",
-    className
+      : "bg-gradient-to-br from-primary/15 to-primary/30 text-primary"
+
+  return (
+    <Avatar
+      name={name}
+      image={image}
+      size={sizeMap[size]}
+      className={className}
+      initialsClassName={image ? undefined : fallbackClass}
+    />
   )
-
-  if (image) {
-    return (
-      <div className={cls}>
-        <Image src={image} alt={name ?? "Avatar"} fill className="object-cover" unoptimized />
-      </div>
-    )
-  }
-
-  return <div className={cls}>{getInitials(name)}</div>
 }

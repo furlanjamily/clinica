@@ -6,6 +6,7 @@ import { db } from "./db";
 import type { UserRoleType } from "@/types/auth";
 import { USER_ROLES } from "@/types/auth";
 import { resolvedDemoCredentials } from "@/lib/demo-env";
+import { applyTokenUserSnapshot, loadTokenUserSnapshot } from "@/lib/auth/refresh-token-user";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
@@ -25,7 +26,7 @@ function timingSafeStringEqual(a: string, b: string): boolean {
 function tryAuthorizePortfolioDemo(
   email: string,
   password: string
-): { id: string; name: string; username: string; email: string; role: UserRoleType | null; doctorId: number | null } | null {
+): { id: string; name: string; username: string; email: string; role: UserRoleType | null; doctorId: number | null; image: string | null } | null {
   const demo = resolvedDemoCredentials()
   if (!demo) return null
 
@@ -45,6 +46,7 @@ function tryAuthorizePortfolioDemo(
     email: normalizeEmail(demo.email),
     role,
     doctorId: null,
+    image: null,
   }
 }
 
@@ -61,6 +63,7 @@ async function resolvePortfolioDemoUser(
       role: true,
       active: true,
       doctorId: true,
+      image: true,
     },
   })
 
@@ -73,6 +76,7 @@ async function resolvePortfolioDemoUser(
     email: dbUser.email,
     role: (dbUser.role as UserRoleType | null) ?? fallbackRole,
     doctorId: dbUser.doctorId,
+    image: dbUser.image ?? null,
   }
 }
 
@@ -114,6 +118,7 @@ export const authOptions: NextAuthOptions = {
             password: true,
             active: true,
             doctorId: true,
+            image: true,
           },
         })
 
@@ -130,17 +135,30 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role as UserRoleType | null,
           doctorId: user.doctorId,
+          image: user.image ?? null,
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.username = user.username ?? user.name ?? null
         token.role = user.role ?? null
         token.doctorId = user.doctorId ?? null
+        token.image = user.image ?? null
+      }
+      if (trigger === "update") {
+        const userId = typeof token.id === "string" ? token.id : undefined
+        if (userId) {
+          const snapshot = await loadTokenUserSnapshot(userId)
+          if (snapshot) {
+            applyTokenUserSnapshot(token as Record<string, unknown>, snapshot)
+          }
+        } else if (session && "image" in session) {
+          token.image = (session as { image?: string | null }).image ?? null
+        }
       }
       return token
     },
@@ -151,6 +169,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as UserRoleType | null ?? null
         session.user.name = token.username ?? session.user.name ?? null
         session.user.doctorId = token.doctorId ?? null
+        session.user.image = token.image ?? null
       }
       return session
     },

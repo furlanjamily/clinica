@@ -15,6 +15,7 @@ import * as medicalRecordRoute from "@/app/api/medical-record/route"
 import * as financeConfigRoute from "@/app/api/finance/config/route"
 import * as financeTransactionsRoute from "@/app/api/finance/transactions/route"
 import * as userRoute from "@/app/api/user/route"
+import * as userAvatarRoute from "@/app/api/user/avatar/route"
 
 const mockedGetServerSession = vi.mocked(getServerSession)
 
@@ -49,6 +50,7 @@ describe("sem sessão → 401", () => {
     ["GET /api/finance/transactions", () => financeTransactionsRoute.GET(new Request("http://localhost/api/finance/transactions"))],
     ["POST /api/finance/transactions", () => financeTransactionsRoute.POST(jsonRequest("POST", {}))],
     ["GET /api/user", () => userRoute.GET()],
+    ["POST /api/user/avatar", () => userAvatarRoute.POST(new Request("http://localhost/api/user/avatar", { method: "POST" }))],
   ]
 
   it.each(cases)("%s responde 401 com { message }", async (_label, handler) => {

@@ -52,6 +52,7 @@ export type DashboardFeaturedDoctor = {
   qualification: string | null
   shift: string | null
   completedCount: number
+  image: string | null
 }
 
 export type DashboardFocusPatient = {

@@ -33,13 +33,7 @@ export function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function getInitials(name: string | null | undefined): string {
-  if (!name) return "?"
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-}
+export { getInitials } from "@/lib/avatar/initials"
 
 export function resolveJobTitle(role: string | null | undefined): string | null {
   if (!role) return null
