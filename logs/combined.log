@@ -535,3 +535,6 @@
 {"level":"info","message":"ClinySOFT ready on http://localhost:3000","service":"clinica-app","timestamp":"2026-06-30T01:12:27.824Z"}
 {"level":"info","message":"Scheduler de lembretes ativo (somente dev, a cada 5 min)","service":"clinica-app","timestamp":"2026-06-30T01:12:28.344Z"}
 {"level":"info","message":"Lembretes processados (dev scheduler): 0 consultas, 1 tarefas","service":"clinica-app","timestamp":"2026-06-30T01:57:32.820Z"}
+{"level":"info","message":"Socket.IO server initialized","service":"clinica-app","timestamp":"2026-06-30T02:08:22.050Z"}
+{"level":"info","message":"ClinySOFT ready on http://localhost:3000","service":"clinica-app","timestamp":"2026-06-30T02:08:22.055Z"}
+{"level":"info","message":"Scheduler de lembretes ativo (somente dev, a cada 5 min)","service":"clinica-app","timestamp":"2026-06-30T02:08:22.335Z"}
