@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
-import { Settings } from "lucide-react"
+import { FileText, Loader2, Settings } from "lucide-react"
 import { FinanceTransactionsTable } from "@/components/finance/FinanceTransactionsTable"
 import { TableSkeleton } from "@/components/ui/TableSkeleton"
 import { TableCard } from "@/components/ui/table/DataTable"
@@ -50,6 +50,8 @@ import { UserHeader } from "@/components/ui/user-header"
 import { FinancialRecord } from "./FinancialRecord"
 import { MoneyFlow } from "./MoneyFlow"
 import { MyCard } from "./MyCard"
+import { FinanceReportCapture } from "./report/FinanceReportCapture"
+import { useFinanceReportGenerator } from "@/hooks/useFinanceReportGenerator"
 
 type TransactionForm = Omit<FinanceTransaction, "id">
 
@@ -140,6 +142,13 @@ export function FinanceDashboard() {
   const overviewLoading =
     loadingYearTransactions || loadingPreviousYearTransactions || !mounted
 
+  const { generateReport, isGenerating } = useFinanceReportGenerator({
+    transactions: yearTransactions,
+    period: recordPeriod,
+    commissionRate: config.doctorCommissionRate,
+    isDataReady: !overviewLoading,
+  })
+
   async function handleSave(data: TransactionForm) {
     const created = await createTransaction(data)
     if (!created) return
@@ -165,9 +174,24 @@ export function FinanceDashboard() {
 
       <div className="shrink-0">
         <Header title="Financeiro">
-          <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
-            <Settings size={15} /> Configurações
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void generateReport()}
+              disabled={isGenerating || overviewLoading}
+            >
+              {isGenerating ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <FileText size={15} />
+              )}
+              Gerar Relatório
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowConfig(true)}>
+              <Settings size={15} /> Configurações
+            </Button>
+          </div>
         </Header>
       </div>
 
@@ -303,6 +327,14 @@ export function FinanceDashboard() {
             </form>
           </ModalPanel>
         </ModalOverlay>
+      )}
+
+      {!overviewLoading && (
+        <FinanceReportCapture
+          transactions={yearTransactions}
+          period={recordPeriod}
+          commissionRate={config.doctorCommissionRate}
+        />
       )}
 
       {showConfig && (
