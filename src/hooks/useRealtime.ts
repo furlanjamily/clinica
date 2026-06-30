@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react"
 import { useQueryClient } from "@tanstack/react-query"
 import { io, type Socket } from "socket.io-client"
 import { SOCKET_EVENTS } from "@/lib/chat/socket-events"
-import { messagesQueryKey } from "./useMessages"
 import { useChatCacheUpdater } from "./useChat"
 import { deliverMessageApi } from "./chat-api"
 import {
@@ -26,15 +25,24 @@ export function useRealtime(activeConversationId: number | null) {
   const queryClient = useQueryClient()
   const { updateConversationInCache } = useChatCacheUpdater()
   const socketRef = useRef<Socket | null>(null)
+  const activeConversationIdRef = useRef(activeConversationId)
+  const joinedConversationIdRef = useRef<number | null>(null)
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([])
   const [typingUsers, setTypingUsers] = useState<TypingState[]>([])
 
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId
+  }, [activeConversationId])
+
   const upsertMessage = useCallback(
     (conversationId: number, message: ChatMessageDTO, mode: "new" | "edit") => {
-      queryClient.setQueryData(
-        messagesQueryKey(conversationId),
+      let updated = false
+
+      queryClient.setQueriesData(
+        { queryKey: ["chat", "messages", conversationId] },
         (prev: { pages: Array<{ messages: ChatMessageDTO[] }>; pageParams: unknown[] } | undefined) => {
           if (!prev?.pages?.length) return prev
+          updated = true
           const pages = prev.pages.map((page, idx) => {
             if (idx !== prev.pages.length - 1) return page
             if (mode === "edit") {
@@ -51,12 +59,40 @@ export function useRealtime(activeConversationId: number | null) {
           return { ...prev, pages }
         }
       )
+
+      if (!updated) {
+        void queryClient.invalidateQueries({
+          queryKey: ["chat", "messages", conversationId],
+        })
+      }
     },
     [queryClient]
   )
 
+  const joinConversationRoom = useCallback((socket: Socket, conversationId: number) => {
+    if (joinedConversationIdRef.current === conversationId) return
+
+    if (joinedConversationIdRef.current != null) {
+      socket.emit(SOCKET_EVENTS.leaveConversation, {
+        conversationId: joinedConversationIdRef.current,
+      })
+    }
+
+    socket.emit(SOCKET_EVENTS.joinConversation, { conversationId })
+    joinedConversationIdRef.current = conversationId
+  }, [])
+
+  const leaveConversationRoom = useCallback((socket: Socket) => {
+    if (joinedConversationIdRef.current == null) return
+    socket.emit(SOCKET_EVENTS.leaveConversation, {
+      conversationId: joinedConversationIdRef.current,
+    })
+    joinedConversationIdRef.current = null
+  }, [])
+
   useEffect(() => {
-    if (!session?.user?.id || !isRealtimeEnabled()) return
+    const userId = session?.user?.id
+    if (!userId || !isRealtimeEnabled()) return
 
     const socket = io(getSocketServerUrl(), {
       path: "/api/socketio",
@@ -67,6 +103,13 @@ export function useRealtime(activeConversationId: number | null) {
 
     socketRef.current = socket
 
+    const joinActiveConversation = () => {
+      const id = activeConversationIdRef.current
+      if (id != null) joinConversationRoom(socket, id)
+    }
+
+    socket.on("connect", joinActiveConversation)
+
     socket.on(SOCKET_EVENTS.onlineUsers, (payload: { userIds: string[] }) => {
       setOnlineUserIds(payload.userIds ?? [])
     })
@@ -75,14 +118,14 @@ export function useRealtime(activeConversationId: number | null) {
       const msg = payload.message
       upsertMessage(msg.conversationId, msg, "new")
 
-      if (msg.senderId !== session.user.id) {
+      if (msg.senderId !== userId) {
         invalidateNotificationQueries(queryClient)
         invalidateChatQueries(queryClient)
       }
 
       if (
-        msg.conversationId === activeConversationId &&
-        msg.senderId !== session.user.id
+        msg.conversationId === activeConversationIdRef.current &&
+        msg.senderId !== userId
       ) {
         void deliverMessageApi(msg.id)
       }
@@ -93,8 +136,8 @@ export function useRealtime(activeConversationId: number | null) {
     })
 
     socket.on(SOCKET_EVENTS.messageDeleted, (payload: { messageId: number; conversationId: number }) => {
-      queryClient.setQueryData(
-        messagesQueryKey(payload.conversationId),
+      queryClient.setQueriesData(
+        { queryKey: ["chat", "messages", payload.conversationId] },
         (prev: { pages: Array<{ messages: ChatMessageDTO[] }> } | undefined) => {
           if (!prev) return prev
           return {
@@ -123,8 +166,8 @@ export function useRealtime(activeConversationId: number | null) {
     socket.on(
       SOCKET_EVENTS.typingStart,
       (payload: { conversationId: number; user: TypingState }) => {
-        if (payload.conversationId !== activeConversationId) return
-        if (payload.user.userId === session.user.id) return
+        if (payload.conversationId !== activeConversationIdRef.current) return
+        if (payload.user.userId === userId) return
         setTypingUsers((prev) => {
           if (prev.some((u) => u.userId === payload.user.userId)) return prev
           return [...prev, payload.user]
@@ -135,7 +178,7 @@ export function useRealtime(activeConversationId: number | null) {
     socket.on(
       SOCKET_EVENTS.typingStop,
       (payload: { conversationId: number; userId: string }) => {
-        if (payload.conversationId !== activeConversationId) return
+        if (payload.conversationId !== activeConversationIdRef.current) return
         setTypingUsers((prev) => prev.filter((u) => u.userId !== payload.userId))
       }
     )
@@ -143,8 +186,8 @@ export function useRealtime(activeConversationId: number | null) {
     socket.on(
       SOCKET_EVENTS.messageRead,
       (payload: { conversationId: number; messageIds: number[]; userId: string }) => {
-        queryClient.setQueryData(
-          messagesQueryKey(payload.conversationId),
+        queryClient.setQueriesData(
+          { queryKey: ["chat", "messages", payload.conversationId] },
           (prev: { pages: Array<{ messages: ChatMessageDTO[] }> } | undefined) => {
             if (!prev) return prev
             return {
@@ -168,28 +211,43 @@ export function useRealtime(activeConversationId: number | null) {
     )
 
     return () => {
+      socket.off("connect", joinActiveConversation)
+      leaveConversationRoom(socket)
       socket.disconnect()
       socketRef.current = null
     }
   }, [
     session?.user?.id,
-    activeConversationId,
     upsertMessage,
     queryClient,
     updateConversationInCache,
+    joinConversationRoom,
+    leaveConversationRoom,
   ])
 
   useEffect(() => {
     const socket = socketRef.current
-    if (!socket || !activeConversationId) return
+    if (!socket) return
 
-    socket.emit(SOCKET_EVENTS.joinConversation, { conversationId: activeConversationId })
+    if (activeConversationId == null) {
+      leaveConversationRoom(socket)
+      setTypingUsers([])
+      return
+    }
+
+    const join = () => joinConversationRoom(socket, activeConversationId)
+
+    if (socket.connected) {
+      join()
+    } else {
+      socket.once("connect", join)
+    }
 
     return () => {
-      socket.emit(SOCKET_EVENTS.leaveConversation, { conversationId: activeConversationId })
+      socket.off("connect", join)
       setTypingUsers([])
     }
-  }, [activeConversationId])
+  }, [activeConversationId, joinConversationRoom, leaveConversationRoom])
 
   return { onlineUserIds, typingUsers }
 }
