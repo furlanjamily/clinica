@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import {
+  getDefaultRouteForRole,
+  isRouteForbiddenForRole,
+} from "@/lib/auth/permissions"
+import type { UserRoleType } from "@/types/auth"
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({
@@ -13,6 +18,17 @@ export async function middleware(req: NextRequest) {
     const signInUrl = new URL("/sign-in", req.url)
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname)
     return NextResponse.redirect(signInUrl)
+  }
+
+  const role = token.role as UserRoleType | null | undefined
+  const pathname = req.nextUrl.pathname
+
+  if (isRouteForbiddenForRole(pathname, role)) {
+    return NextResponse.redirect(new URL(getDefaultRouteForRole(role), req.url))
+  }
+
+  if (pathname === "/" && role) {
+    return NextResponse.redirect(new URL(getDefaultRouteForRole(role), req.url))
   }
 
   return NextResponse.next()

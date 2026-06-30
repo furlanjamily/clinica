@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm } from "react-hook-form";
@@ -10,6 +10,8 @@ import { z } from "zod";
 import { toast } from "sonner"
 import { Input } from "@/components/ui/Input"
 import { SignInLayout } from "@/components/auth/sign-in/SignInLayout"
+import { getDefaultRouteForRole } from "@/lib/auth/permissions";
+import type { UserRoleType } from "@/types/auth";
 import { SIGN_IN_INPUT_CLASS, SIGN_IN_SUBMIT_CLASS } from "@/components/auth/sign-in/sign-in-styles"
 
 const signInSchema = z.object({
@@ -49,7 +51,9 @@ export default function SignIn() {
         toast.error("Email ou senha incorretos.")
       } else {
         toast.success("Login realizado com sucesso!")
-        router.push("/dashboard");
+        const session = await getSession()
+        const role = (session?.user as { role?: UserRoleType } | undefined)?.role
+        router.push(getDefaultRouteForRole(role))
         router.refresh();
       }
     } catch (error) {}

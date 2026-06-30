@@ -16,6 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LinkSideBar } from "./link-side-bar";
+import { SideBarSkeleton } from "./SideBarSkeleton";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useChatSync } from "@/hooks/useChatSync";
@@ -39,24 +40,50 @@ type Props = {
 function SideBarContent({ onCreate }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { canViewSchedule, canManageUsers } = useAuth()
+  const {
+    status,
+    isAdmin,
+    canViewDashboard,
+    canViewAgenda,
+    canViewAttendance,
+    canManageClinic,
+    canManageUsers,
+    canCreateAppointment,
+  } = useAuth()
   const { unreadCount: chatUnreadCount } = useChatSync()
 
+  if (status === "loading") {
+    return <SideBarSkeleton />
+  }
+
+  const clinicLinks: LinkItem[] = canManageClinic
+    ? isAdmin
+      ? [
+          { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
+          { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
+          { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
+        ]
+      : [
+          { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
+          { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
+          { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
+        ]
+    : []
+
   const links: LinkItem[] = [
-    { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> },
-    ...(canViewSchedule ? [
-      { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
-      { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },
-      { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
-      { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
-      { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
-    ] : [
-      { name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> },
-      { name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> },
-    ]),
-    ...(canManageUsers ? [
-      { name: "Usuários", href: "/users", icon: <IconUsers size={24} /> },
-    ] : []),
+    ...(canViewDashboard
+      ? [{ name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={24} /> }]
+      : []),
+    ...(canViewAgenda
+      ? [{ name: "Agenda", href: "/schedule", icon: <IconCalendarWeek size={24} /> }]
+      : []),
+    ...(canViewAttendance
+      ? [{ name: "Atendimentos", href: "/attendance", icon: <IconStethoscope size={24} /> }]
+      : []),
+    ...clinicLinks,
+    ...(canManageUsers
+      ? [{ name: "Usuários", href: "/users", icon: <IconUsers size={24} /> }]
+      : []),
     { name: "Chat", href: "/chat", icon: <MessageCircle size={24} />, badge: chatUnreadCount },
   ];
 
@@ -78,10 +105,12 @@ function SideBarContent({ onCreate }: Props) {
             priority
             unoptimized
           />
-          <Button onClick={() => setOpen(true)}>
-            <CirclePlus size={16} />
-            <span className="hidden md:inline">Novo Agendamento</span>
-          </Button>
+          {canCreateAppointment ? (
+            <Button onClick={() => setOpen(true)}>
+              <CirclePlus size={16} />
+              <span className="hidden md:inline">Novo Agendamento</span>
+            </Button>
+          ) : null}
         </div>
 
         <div className="w-full space-y-4">

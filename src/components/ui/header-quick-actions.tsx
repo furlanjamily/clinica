@@ -50,11 +50,16 @@ function QuickActionButton({
 }
 
 export function HeaderQuickActions({ className }: { className?: string }) {
-  const { canViewSchedule } = useAuth()
+  const { canViewAgenda, canManageClinic } = useAuth()
   const router = useRouter()
   const [active, setActive] = useState<QuickAction | null>(null)
 
-  if (!canViewSchedule) return null
+  const visibleActions = ACTIONS.filter(({ id }) => {
+    if (id === "schedule") return canViewAgenda
+    return canManageClinic
+  })
+
+  if (visibleActions.length === 0) return null
 
   function handleSuccess() {
     router.refresh()
@@ -68,7 +73,7 @@ export function HeaderQuickActions({ className }: { className?: string }) {
           className
         )}
       >
-        {ACTIONS.map(({ id, label, icon }) => (
+        {visibleActions.map(({ id, label, icon }) => (
           <QuickActionButton
             key={id}
             label={label}

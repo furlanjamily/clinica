@@ -136,11 +136,6 @@ function TaskRow({
           </p>
           <p className="mt-0.5 text-xs text-white/40 sm:text-sm">
             {formatTaskDateLine(task, grouped)}
-            {task.automatic && (
-              <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                Agenda
-              </span>
-            )}
           </p>
         </div>
       </div>
@@ -173,16 +168,14 @@ function TaskRow({
           >
             <Copy size={15} />
           </button>
-          {!task.automatic && (
-            <button
-              type="button"
-              onClick={() => onDelete(task.id)}
-              aria-label="Excluir"
-              className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-red-400"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onDelete(task.id)}
+            aria-label="Excluir"
+            className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-red-400"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       </div>
     </motion.div>

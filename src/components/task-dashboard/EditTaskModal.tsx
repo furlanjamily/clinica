@@ -39,7 +39,6 @@ export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
         <ModalHeader title="Editar tarefa" onClose={onClose} />
         <form
           onSubmit={handleSubmit(async (data) => {
-            if (task.automatic) return
             await onSave(task.id, data)
             onClose()
           })}
@@ -61,19 +60,6 @@ export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
             <option value="in_progress">Em andamento</option>
             <option value="completed">Concluída</option>
           </FormSelect>
-          <FormSelect
-            label="Origem"
-            {...register("source")}
-            disabled={task.automatic}
-          >
-            <option value="manual">Manual</option>
-            <option value="TimelineAgenda">TimelineAgenda</option>
-          </FormSelect>
-          {task.automatic && (
-            <p className="text-xs text-gray-500">
-              Tarefas da TimelineAgenda são sincronizadas automaticamente.
-            </p>
-          )}
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar

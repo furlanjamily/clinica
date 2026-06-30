@@ -1,4 +1,4 @@
-export type TaskSource = "manual" | "TimelineAgenda"
+export type TaskSource = "manual"
 export type TaskStatus = "pending" | "in_progress" | "completed"
 export type TaskPriority = "low" | "medium" | "high"
 export type TaskIcon = "monitor" | "zap" | "message" | "ruler" | "link" | "calendar" | "stethoscope"
@@ -28,4 +28,4 @@ export type TaskFormData = {
   source: TaskSource
 }
 
-export type TaskFilter = "all" | "manual" | "TimelineAgenda" | "completed" | "pending" | "in_progress"
+export type TaskFilter = "all" | "completed" | "pending" | "in_progress"

@@ -19,7 +19,7 @@ export type DashboardKpis = {
   completedGrowthPct: number | null
   scheduledInRange: number
   cancelledRange: number
-  recordsRange: number
+  recordsTotal: number
   revenueRange: number
   revenueGrowthPct: number | null
   attendanceRate: number

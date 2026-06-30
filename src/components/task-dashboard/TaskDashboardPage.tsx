@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { useDashboard, type DashboardAgendaItem } from "@/components/dashboard/DashboardDataProvider"
+import { useDashboard } from "@/components/dashboard/DashboardDataProvider"
 import { DASHBOARD_PANEL_SHELL } from "@/components/dashboard/dashboard-panel-layout"
 import { cn } from "@/lib/utils"
 import { toClinicTaskFromUserTask } from "@/lib/user-task/mapper"
@@ -13,40 +13,10 @@ import { TaskCard } from "./TaskCard"
 import { CreateTaskModal } from "./CreateTaskModal"
 import { EditTaskModal } from "./EditTaskModal"
 import { TaskDashboardPanelSkeleton } from "./TaskDashboardPanelSkeleton"
-import { AppointmentStatus } from "@/lib/schedule/status"
-import type { ClinicTask, TaskFilter, TaskFormData, TaskIcon, TaskStatus } from "./types"
-
-function statusToTask(status: string): TaskStatus {
-  if (status === AppointmentStatus.Completed || status === AppointmentStatus.Paid) return "completed"
-  if (status === AppointmentStatus.InProgress || status === AppointmentStatus.CheckIn) return "in_progress"
-  return "pending"
-}
-
-function agendaToTasks(agenda: DashboardAgendaItem[]): ClinicTask[] {
-  return agenda.map((a) => {
-    const status = statusToTask(a.status)
-    return {
-      id: a.id,
-      title: a.patientName,
-      description: a.professionalName ? `Atendimento com ${a.professionalName}` : "Atendimento",
-      date: a.date,
-      time: a.time,
-      completed: status === "completed",
-      status,
-      priority: "medium",
-      source: "TimelineAgenda",
-      automatic: true,
-      icon: "monitor" as TaskIcon,
-    }
-  })
-}
+import type { ClinicTask, TaskFilter, TaskFormData } from "./types"
 
 function filterTasks(tasks: ClinicTask[], filter: TaskFilter): ClinicTask[] {
   switch (filter) {
-    case "manual":
-      return tasks.filter((t) => t.source === "manual")
-    case "TimelineAgenda":
-      return tasks.filter((t) => t.source === "TimelineAgenda")
     case "completed":
       return tasks.filter((t) => t.status === "completed")
     case "in_progress":
@@ -59,17 +29,15 @@ function filterTasks(tasks: ClinicTask[], filter: TaskFilter): ClinicTask[] {
 }
 
 function useTaskDashboardState() {
-  const { data } = useDashboard()
   const { tasks: manualTasks, createTask, updateTask, deleteTask } = useUserTasks()
   const [filter, setFilter] = useState<TaskFilter>("all")
   const [createOpen, setCreateOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<ClinicTask | null>(null)
 
-  const tasks = useMemo(() => {
-    const fromAgenda = data ? agendaToTasks(data.periodAgenda) : []
-    const manual = manualTasks.map(toClinicTaskFromUserTask)
-    return [...fromAgenda, ...manual]
-  }, [data?.periodAgenda, manualTasks])
+  const tasks = useMemo(
+    () => manualTasks.map(toClinicTaskFromUserTask),
+    [manualTasks]
+  )
 
   const filteredTasks = useMemo(() => filterTasks(tasks, filter), [tasks, filter])
   const progress = useMemo(() => computeProgress(tasks), [tasks])
@@ -87,7 +55,7 @@ function useTaskDashboardState() {
 
   async function handleEdit(id: number, form: TaskFormData) {
     const task = tasks.find((item) => item.id === id)
-    if (!task || task.source !== "manual") return
+    if (!task) return
 
     await updateTask({
       id,
@@ -104,12 +72,11 @@ function useTaskDashboardState() {
 
   async function handleDelete(id: number) {
     const task = tasks.find((item) => item.id === id)
-    if (!task || task.source !== "manual") return
+    if (!task) return
     await deleteTask(id)
   }
 
   async function handleDuplicate(task: ClinicTask) {
-    if (task.source !== "manual") return
     await createTask({
       title: `${task.title} (cópia)`,
       description: task.description ?? "",
@@ -122,7 +89,7 @@ function useTaskDashboardState() {
 
   async function handleToggleComplete(id: number) {
     const task = tasks.find((item) => item.id === id)
-    if (!task || task.source !== "manual") return
+    if (!task) return
 
     const completed = task.status !== "completed"
     await updateTask({

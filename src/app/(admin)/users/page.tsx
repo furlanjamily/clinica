@@ -12,6 +12,7 @@ import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Input, FormSelect } from "@/components/ui/Input"
 import { ProfileImageUpload } from "@/components/common/ProfileImageUpload"
+import { getDefaultRouteForRole } from "@/lib/auth/permissions"
 import { UserRole, type UserRoleType } from "@/types/auth"
 import {
   useUsers,
@@ -168,7 +169,9 @@ export default function UsersPage() {
   const { register, handleSubmit, reset, setValue } = useForm<UserFormValues>()
 
   useEffect(() => {
-    if (session && !canManageUsers) router.push("/dashboard")
+    if (session && !canManageUsers) {
+      router.push(getDefaultRouteForRole(session.user.role))
+    }
   }, [session, canManageUsers, router])
 
   async function handleSave(data: UserFormValues) {

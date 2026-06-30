@@ -46,8 +46,8 @@ function buildCards(kpis: DashboardKpis, periodLabel: string): ProjectOverviewCa
     {
       id: 4,
       title: "Prontuários",
-      value: kpis.recordsRange,
-      description: `${kpis.scheduledInRange} agendadas ${periodLabel}`,
+      value: kpis.recordsTotal,
+      description: "Total acumulado na carreira",
     },
   ]
 }

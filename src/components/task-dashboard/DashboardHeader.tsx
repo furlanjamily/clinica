@@ -7,8 +7,6 @@ import type { TaskFilter } from "./types"
 
 const filters: { value: TaskFilter; label: string }[] = [
   { value: "all", label: "Todas" },
-  { value: "manual", label: "Manuais" },
-  { value: "TimelineAgenda", label: "Agenda" },
   { value: "completed", label: "Concluídas" },
   { value: "in_progress", label: "Em andamento" },
   { value: "pending", label: "Pendentes" },

@@ -330,7 +330,7 @@ export async function GET(request: NextRequest) {
       completedPrev,
       scheduledInRange,
       cancelledRange,
-      recordsRange,
+      recordsTotal,
       revenueAgg,
       revenuePrevAgg,
       statusGroups,
@@ -381,7 +381,6 @@ export async function GET(request: NextRequest) {
       db.medicalRecord.count({
         where: {
           deletedAt: null,
-          createdAt: { gte: rangeStart, lt: rangeEnd },
           ...recordScope,
         },
       }),
@@ -650,7 +649,7 @@ export async function GET(request: NextRequest) {
         completedGrowthPct: pct(completedRange, completedPrev),
         scheduledInRange,
         cancelledRange,
-        recordsRange,
+        recordsTotal,
         revenueRange,
         revenueGrowthPct: pct(revenueRange, revenuePrev),
         attendanceRate,
