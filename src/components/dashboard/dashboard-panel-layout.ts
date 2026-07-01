@@ -20,7 +20,7 @@ export const DASHBOARD_PANEL_HEADER =
   "mb-5 flex min-h-[3.25rem] shrink-0 items-start justify-between gap-2"
 
 export const DASHBOARD_LAST_VISIT_SHELL =
-  "flex h-[600px] min-h-[600px] max-h-[600px] shrink-0 flex-col overflow-hidden"
+  "flex h-[610px] min-h-[610px] max-h-[610px] shrink-0 flex-col overflow-hidden"
 
 export const DASHBOARD_LAST_VISIT_BODY =
   "relative min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"

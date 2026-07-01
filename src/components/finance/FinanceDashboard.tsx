@@ -256,7 +256,7 @@ export function FinanceDashboard() {
       </div>
 
       {showModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={closeTransactionModal}>
           <ModalPanel>
             <ModalHeader title="Nova transação" onClose={closeTransactionModal} />
             <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
@@ -338,7 +338,7 @@ export function FinanceDashboard() {
       )}
 
       {showConfig && (
-        <ModalOverlay>
+        <ModalOverlay onClose={() => setShowConfig(false)}>
           <ModalPanel size="sm">
             <ModalHeader title="Configurações financeiras" onClose={() => setShowConfig(false)} />
             <form onSubmit={submitConfig(handleSaveConfig)} className="flex flex-col gap-4">

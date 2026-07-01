@@ -137,7 +137,7 @@ export function DoctorFormModal({ doctor, onClose, onSuccess }: Props) {
   const saving = isSubmitting || isUploading || isRemoving
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel size="lg">
         <ModalHeader
           title={isEditing ? "Editar médico" : "Novo médico"}

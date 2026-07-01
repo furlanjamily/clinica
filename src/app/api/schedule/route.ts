@@ -240,12 +240,14 @@ export async function PATCH(req: Request) {
     const reschedules = Boolean(body.date || body.slotTime || body.data || body.horario)
     const nextDate = body.date ?? body.data ?? currentDate
     const nextSlot = body.slotTime ?? body.horario ?? currentSlot
-    const actuallyRescheduled =
-      reschedules && (nextDate !== currentDate || nextSlot !== currentSlot)
+    const nextDoctor = body.professional ? await resolveDoctor(body.professional) : current.doctor
+    const doctorChanged = nextDoctor.id !== current.doctorId
+    const scheduleChanged = nextDate !== currentDate || nextSlot !== currentSlot
+    const actuallyRescheduled = scheduleChanged || doctorChanged
 
-    if (reschedules) {
+    if (reschedules || doctorChanged) {
       const conflict = await findAppointmentConflict(
-        current.doctorId,
+        nextDoctor.id,
         nextDate,
         nextSlot,
         body.id
@@ -287,6 +289,12 @@ export async function PATCH(req: Request) {
       where: { id: body.id },
       data: {
         ...(reschedules ? { scheduledStart: combineLocalDateTime(nextDate, nextSlot) } : {}),
+        ...(doctorChanged
+          ? {
+              doctor: { connect: { id: nextDoctor.id } },
+              professionalNameSnapshot: nextDoctor.name,
+            }
+          : {}),
         ...(body.status
           ? { status: body.status }
           : actuallyRescheduled

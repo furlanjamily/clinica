@@ -18,7 +18,7 @@ describe("dados demo do chat", () => {
   })
 
   it("cria threads entre recepção e médicos", () => {
-    const receptionEmails = RECEPTION_DEMO_USERS.map((u) => u.email)
+    const receptionEmails: string[] = RECEPTION_DEMO_USERS.map((u) => u.email)
     const crossTeam = DEMO_CHAT_THREADS.filter(
       (t) =>
         receptionEmails.includes(t.userEmailA) ||

@@ -18,6 +18,11 @@ import {
   toLocalSlotTime,
 } from "@/lib/datetime/appointment-time"
 import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
+import {
+  getClinicNowTimeHHmm,
+  shouldIncludeDashboardAgendaAppointment,
+} from "@/lib/dashboard/agenda-entries"
+import { buildDashboardStatusBreakdown } from "@/lib/dashboard/agenda-status"
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 const MONTHS = [
@@ -472,21 +477,7 @@ export async function GET(request: NextRequest) {
     const pct = (curr: number, prev: number) =>
       prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null
 
-    const countOf = (list: string[]) =>
-      statusGroups
-        .filter((g) => (list as string[]).includes(g.status))
-        .reduce((acc, g) => acc + g._count, 0)
-    const done = countOf(DONE)
-    const inProgress = countOf(IN_PROGRESS)
-    const pending = countOf(PENDING)
-    const sum = done + inProgress + pending || 1
-    const statusBreakdown = {
-      completed: Math.round((done / sum) * 100),
-      inProgress: Math.round((inProgress / sum) * 100),
-      pending: Math.round((pending / sum) * 100),
-      totalProgress: Math.round((done / sum) * 100),
-      counts: { completed: done, inProgress, pending },
-    }
+    const statusBreakdown = buildDashboardStatusBreakdown(statusGroups)
 
     const countMap = new Map<string, number>()
     for (const r of calendarRows) {
@@ -515,16 +506,26 @@ export async function GET(request: NextRequest) {
         ? buildMonthCalendar(refY, refM, today, countMap)
         : buildWeekCalendar(weekDates, today, referenceDate, countMap, inPeriod)
 
-    const periodAgenda = agendaRows.map((r) => ({
-      id: r.id,
-      date: toLocalDate(r.scheduledStart),
-      time: toLocalSlotTime(r.scheduledStart),
-      endTime: r.scheduledEnd ? toLocalSlotTime(r.scheduledEnd) : null,
-      patientName: r.patient?.name ?? r.patientNameSnapshot ?? "Paciente",
-      professionalName: r.doctor?.name ?? r.professionalNameSnapshot ?? "",
-      status: r.status,
-      statusLabel: STATUS_LABEL[r.status] ?? r.status,
-    }))
+    const periodAgenda = agendaRows
+      .map((r) => ({
+        id: r.id,
+        date: toLocalDate(r.scheduledStart),
+        time: toLocalSlotTime(r.scheduledStart),
+        endTime: r.scheduledEnd ? toLocalSlotTime(r.scheduledEnd) : null,
+        patientName: r.patient?.name ?? r.patientNameSnapshot ?? "Paciente",
+        professionalName: r.doctor?.name ?? r.professionalNameSnapshot ?? "",
+        status: r.status,
+        statusLabel: STATUS_LABEL[r.status] ?? r.status,
+      }))
+      .filter((item) =>
+        shouldIncludeDashboardAgendaAppointment(
+          item,
+          period,
+          referenceDate,
+          today,
+          getClinicNowTimeHHmm()
+        )
+      )
 
     let featuredDoctor: {
       name: string

@@ -39,6 +39,13 @@ export const UpdateAppointmentSchema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   horario: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   status: z.enum(appointmentStatusValues).optional(),
+  professional: z.union([
+    z.string().transform(sanitizeName),
+    z.object({
+      id: z.number().optional(),
+      name: z.string().transform(sanitizeName),
+    }),
+  ]).optional(),
   startTime: z.string().nullable().optional(),
   endTime: z.string().nullable().optional(),
   accumulatedTime: z.number().int().nonnegative().optional(),

@@ -24,7 +24,7 @@ export function LastVisitDetails() {
       whileHover={{ y: -2 }}
       className={DASHBOARD_LAST_VISIT_SHELL}
     >
-      <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border-0 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.05)]">
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border-0 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.05)]">
         <h3 className="mb-5 shrink-0 text-base font-semibold text-gray-600">Último atendimento</h3>
 
         <div

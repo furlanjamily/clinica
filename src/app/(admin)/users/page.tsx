@@ -278,7 +278,7 @@ export default function UsersPage() {
       </div>
 
       {showModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={closeModal}>
           <ModalPanel>
             <ModalHeader
               title={editing ? "Editar usuário" : "Novo usuário"}

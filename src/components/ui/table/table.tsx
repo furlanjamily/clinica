@@ -10,6 +10,7 @@ import { Calendar } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Appointment } from "@/types/types"
+import type { UpdateAppointmentInput } from "@/lib/validations/schedule"
 import { RowType } from "@/types/rowType"
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PaymentConfirmModal } from "@/components/schedule/PaymentConfirmModal"
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button"
 import { TableCard, Td } from "@/components/ui/table/DataTable"
 import { TablePagination } from "@/components/ui/table/TablePagination"
 import { useScheduleMutations } from "@/hooks/useScheduleMutations"
+import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
+import { useQueryClient } from "@tanstack/react-query"
 import { AppointmentStatus, STATUS_LABEL, STATUS_STYLE } from "@/lib/schedule/status"
 
 function isDataRow(row: RowType): row is { type: "data" } & Appointment {
@@ -53,7 +56,7 @@ const columnHelper = createColumnHelper<RowType>()
 
 function ActionCell({ original, updateItem, onReschedule, onOpenPayment, hasActiveAttendanceForDoctor, onStartAttendance }: {
   original: Appointment
-  updateItem: (id: number, changes: Partial<Appointment>) => Promise<void>
+  updateItem: (id: number, changes: Omit<UpdateAppointmentInput, "id">) => Promise<void>
   onReschedule: (item: Appointment) => void
   onOpenPayment: (item: Appointment) => void
   hasActiveAttendanceForDoctor: boolean
@@ -145,6 +148,7 @@ export function Table({ rows, appointments, setData, pagination }: TableProps) {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [paymentFor, setPaymentFor] = useState<Appointment | null>(null)
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { patchAppointment, syncCache } = useScheduleMutations()
 
   function doctorHasActiveAttendance(item: Appointment): boolean {
@@ -158,11 +162,15 @@ export function Table({ rows, appointments, setData, pagination }: TableProps) {
     )
   }
 
-  const updateItem = async (id: number, changes: Partial<Appointment>) => {
+  const updateItem = async (id: number, changes: Omit<UpdateAppointmentInput, "id">) => {
     const updated = await patchAppointment(id, changes)
     if (!updated) return
 
-    setData((prev) => prev.map((item) => item.id === id ? { ...item, ...updated } : item))
+    setData((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item))
+      queryClient.setQueryData(SCHEDULE_QUERY_KEY, next)
+      return next
+    })
   }
 
   const startAttendance = async (item: Appointment) => {
@@ -176,7 +184,11 @@ export function Table({ rows, appointments, setData, pagination }: TableProps) {
     )
     if (!updated) return
 
-    setData((prev) => prev.map((appt) => (appt.id === item.id ? { ...item, ...updated } : appt)))
+    setData((prev) => {
+      const next = prev.map((appt) => (appt.id === item.id ? { ...appt, ...updated } : appt))
+      queryClient.setQueryData(SCHEDULE_QUERY_KEY, next)
+      return next
+    })
     router.push("/attendance")
   }
 

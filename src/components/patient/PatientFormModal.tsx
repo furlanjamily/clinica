@@ -88,7 +88,7 @@ export function PatientFormModal({ patient, onClose, onSuccess }: Props) {
   }
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel size="lg">
         <ModalHeader
           title={isEditing ? "Editar paciente" : "Novo paciente"}

@@ -4,6 +4,7 @@ import { useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { Appointment } from "@/types/types"
+import type { UpdateAppointmentInput } from "@/lib/validations/schedule"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { calcElapsedMs } from "@/lib/schedule/appointment-utils"
@@ -28,8 +29,8 @@ export function useAttendanceActions() {
   )
 
   const updateItem = useCallback(
-    async (id: number, changes: Partial<Appointment>, errorMsg = "Erro ao atualizar atendimento. Tente novamente.") => {
-      setAppointment(id, changes)
+    async (id: number, changes: Omit<UpdateAppointmentInput, "id">, errorMsg = "Erro ao atualizar atendimento. Tente novamente.") => {
+      setAppointment(id, changes as Partial<Appointment>)
 
       const updated = await patchAppointment(id, changes, errorMsg)
       if (!updated) {

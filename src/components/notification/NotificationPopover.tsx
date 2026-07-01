@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { cn } from "@/lib/utils";
 import {
@@ -60,40 +60,21 @@ export function NotificationPopover({ open, onClose, unreadCount }: Notification
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [onClose, open]);
-
   if (!open) return null;
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <div
-        className="flex h-full w-full items-center justify-center"
-        onClick={onClose}
-        role="presentation"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Painel de notificações"
+        className={cn(
+          "mx-auto flex w-full max-w-[560px] flex-col overflow-hidden bg-white",
+          "max-h-[min(760px,92dvh)] sm:max-h-[min(760px,90dvh)]",
+          "rounded-[28px] border border-primary/10 shadow-[0_24px_80px_rgba(151,71,255,0.12)]",
+          "max-sm:max-h-[92dvh] max-sm:rounded-2xl"
+        )}
       >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Painel de notificações"
-          onClick={(event) => event.stopPropagation()}
-          className={cn(
-            "flex w-full max-w-[560px] flex-col overflow-hidden bg-white",
-            "max-h-[min(760px,92dvh)] sm:max-h-[min(760px,90dvh)]",
-            "rounded-[28px] border border-primary/10 shadow-[0_24px_80px_rgba(151,71,255,0.12)]",
-            "max-sm:max-h-[92dvh] max-sm:rounded-2xl"
-          )}
-        >
           <NotificationHeader onClose={onClose} />
           <NotificationTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -140,7 +121,6 @@ export function NotificationPopover({ open, onClose, unreadCount }: Notification
             onMarkAllAsRead={handleMarkAllAsRead}
             disabled={unreadCount === 0 || isMarkingAllRead}
           />
-        </div>
       </div>
     </ModalOverlay>
   );

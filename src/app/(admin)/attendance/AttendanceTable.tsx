@@ -309,21 +309,21 @@ export function AttendanceTableComponent({
         <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
 
         <div className={attendanceHistoryPanelClass}>
-        {loadingHistory ? (
-          <TableCard className="max-md:h-full md:h-full md:min-h-0">
-            <div className="p-2 sm:p-3">
-              <TableSkeleton cols={historyColCount} rows={4} />
-            </div>
-          </TableCard>
-        ) : (
-          <DataTable
-            className="max-md:h-full md:h-full md:min-h-0"
-            headers={["ID Agendamento", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", { label: "Prontuário", align: "right" }]}
-            isEmpty={filteredHistory.length === 0}
-            emptyMessage="Nenhum atendimento encontrado neste período..."
-            pagination={
-              historyTotal > 0
-                ? {
+          {loadingHistory ? (
+            <TableCard className="max-md:h-full md:h-full md:min-h-0">
+              <div className="p-2 sm:p-3">
+                <TableSkeleton cols={historyColCount} rows={4} />
+              </div>
+            </TableCard>
+          ) : (
+            <DataTable
+              className="max-md:h-full md:h-full md:min-h-0"
+              headers={["ID Agendamento", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", { label: "Prontuário", align: "right" }]}
+              isEmpty={filteredHistory.length === 0}
+              emptyMessage="Nenhum atendimento encontrado neste período..."
+              pagination={
+                historyTotal > 0
+                  ? {
                     page: historySafePage,
                     pageSize,
                     total: historyTotal,
@@ -333,77 +333,64 @@ export function AttendanceTableComponent({
                       setPage(1)
                     },
                   }
-                : undefined
-            }
-          >
-            {historyRows.map((row, rowIndex) => {
-              if (row.type === "day") {
+                  : undefined
+              }
+            >
+              {historyRows.map((row, rowIndex) => {
+                if (row.type === "day") {
+                  return (
+                    <tr key={`day-${rowIndex}-${row.label}`}>
+                      <td
+                        colSpan={historyColCount}
+                        className="px-3 pt-4 pb-1 text-sm capitalize leading-snug text-gray-500 sm:px-4"
+                      >
+                        {row.label}
+                      </td>
+                    </tr>
+                  )
+                }
+                if (row.type !== "data") return null
+                const item = row
+                const patientName = getPatientName(item)
                 return (
-                  <tr key={`day-${rowIndex}-${row.label}`}>
-                    <td
-                      colSpan={historyColCount}
-                      className="px-3 pt-4 pb-1 text-sm capitalize leading-snug text-gray-500 sm:px-4"
-                    >
-                      {row.label}
-                    </td>
+                  <tr key={item.id} className="transition-colors hover:bg-gray-50/80">
+                    <Td className="whitespace-nowrap">{item.id}</Td>
+                    <Td className="whitespace-nowrap">{item.slotTime}h</Td>
+                    <Td className="line-clamp-2 break-words sm:line-clamp-none">{patientName}</Td>
+
+                    {isSuperAdmin && (
+                      <Td className="max-w-[8rem] text-gray-600 sm:max-w-[12rem]">
+                        <span className="line-clamp-2 break-words">
+                          {item.professionalName}
+                        </span>
+                      </Td>
+                    )}
+                    <Td className="whitespace-nowrap font-mono text-gray-600">
+                      {item.accumulatedTime ? formatDuration(item.accumulatedTime) : "—"}
+                    </Td>
+                    <Td>
+                      {item.clinicalChart ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                          <Button variant="ghost-blue" size="icon" className="text-xs sm:text-sm" onClick={() => downloadPDF(item.clinicalChart!, item)}>
+                            <Download size={13} /> PDF
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-xs sm:text-sm" onClick={() => openRecordModal(item)}>
+                            <Pencil size={13} /> Editar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end">
+                          <Button className="text-xs sm:text-sm" onClick={() => { setEditingRecord(undefined); setModalItem(item) }}>
+                            <FileText size={12} /> Criar
+                          </Button>
+                        </div>
+                      )}
+                    </Td>
                   </tr>
                 )
-              }
-              if (row.type !== "data") return null
-              const item = row
-              const patientName = getPatientName(item)
-              return (
-                <tr key={item.id} className="transition-colors hover:bg-gray-50/80">
-                  <Td className="whitespace-nowrap">{item.id}</Td>
-                  <Td className="whitespace-nowrap">{item.slotTime}h</Td>
-                  <Td className="max-w-[10rem] font-medium sm:max-w-[14rem]">
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src={AVATAR_PLACEHOLDER_URL}
-                        alt="Avatar"
-                        width={24}
-                        height={24}
-                        className="w-8 h-8 rounded-[7px] object-cover"
-                      />
-                      <span className="line-clamp-2 break-words sm:line-clamp-none" title={patientName}>
-                        {patientName}
-                      </span>
-                    </div>
-
-                  </Td>
-                  {isSuperAdmin && (
-                    <Td className="max-w-[8rem] text-gray-600 sm:max-w-[12rem]">
-                      <span className="line-clamp-2 break-words">
-                        {item.professionalName}
-                      </span>
-                    </Td>
-                  )}
-                  <Td className="whitespace-nowrap font-mono text-gray-600">
-                    {item.accumulatedTime ? formatDuration(item.accumulatedTime) : "—"}
-                  </Td>
-                  <Td>
-                    {item.clinicalChart ? (
-                      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-                        <Button variant="ghost-blue" size="icon" className="text-xs sm:text-sm" onClick={() => downloadPDF(item.clinicalChart!, item)}>
-                          <Download size={13} /> PDF
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-xs sm:text-sm" onClick={() => openRecordModal(item)}>
-                          <Pencil size={13} /> Editar
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end">
-                        <Button className="text-xs sm:text-sm" onClick={() => { setEditingRecord(undefined); setModalItem(item) }}>
-                          <FileText size={12} /> Criar
-                        </Button>
-                      </div>
-                    )}
-                  </Td>
-                </tr>
-              )
-            })}
-          </DataTable>
-        )}
+              })}
+            </DataTable>
+          )}
         </div>
       </section>
 

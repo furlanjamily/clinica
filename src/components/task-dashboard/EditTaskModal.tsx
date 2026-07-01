@@ -2,10 +2,12 @@
 
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { Button } from "@/components/ui/button"
 import { Input, FormSelect } from "@/components/ui/Input"
+import { TaskFormDateTime } from "./TaskFormDateTime"
 import type { ClinicTask, TaskFormData } from "./types"
 
 type EditTaskModalProps = {
@@ -15,7 +17,10 @@ type EditTaskModalProps = {
 }
 
 export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
-  const { register, handleSubmit, reset } = useForm<TaskFormData>()
+  const { register, handleSubmit, reset, setValue, watch } = useForm<TaskFormData>()
+
+  const date = watch("date")
+  const time = watch("time")
 
   useEffect(() => {
     if (task) {
@@ -34,11 +39,15 @@ export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
   if (!task) return null
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel>
         <ModalHeader title="Editar tarefa" onClose={onClose} />
         <form
           onSubmit={handleSubmit(async (data) => {
+            if (!data.date || !data.time) {
+              toast.error("Selecione data e horário")
+              return
+            }
             await onSave(task.id, data)
             onClose()
           })}
@@ -46,10 +55,14 @@ export function EditTaskModal({ task, onClose, onSave }: EditTaskModalProps) {
         >
           <Input label="Título" {...register("title", { required: true })} />
           <Input label="Descrição" {...register("description")} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="Data" {...register("date", { required: true })} />
-            <Input label="Hora" {...register("time", { required: true })} />
-          </div>
+
+          <TaskFormDateTime
+            date={date ?? task.date}
+            time={time ?? task.time}
+            onDateChange={(value) => setValue("date", value, { shouldValidate: true })}
+            onTimeChange={(value) => setValue("time", value, { shouldValidate: true })}
+          />
+
           <FormSelect label="Prioridade" {...register("priority")}>
             <option value="low">Baixa</option>
             <option value="medium">Média</option>

@@ -89,7 +89,7 @@ export function PaymentConfirmModal({ item, onClose, onSuccess }: Props) {
   }
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel>
         <ModalHeader title="Confirmar pagamento" onClose={onClose} />
         <p className="mb-4 text-sm leading-relaxed text-gray-600">

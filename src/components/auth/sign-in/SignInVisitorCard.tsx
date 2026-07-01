@@ -13,7 +13,7 @@ export function SignInVisitorCard({ onVisitorSignIn }: SignInVisitorCardProps) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: 0.25 }}
-      className="rounded-2xl border border-primary/10 bg-[#fafafa] p-5"
+      className="rounded-2xl border border-primary/10 bg-[#fafafa] p-3"
     >
       <p className="text-sm font-semibold text-secondary">
         <span aria-hidden="true">👋 </span>

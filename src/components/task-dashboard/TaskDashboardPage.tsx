@@ -17,12 +17,12 @@ import type { ClinicTask, TaskFilter, TaskFormData } from "./types"
 
 function filterTasks(tasks: ClinicTask[], filter: TaskFilter): ClinicTask[] {
   switch (filter) {
-    case "completed":
-      return tasks.filter((t) => t.status === "completed")
-    case "in_progress":
-      return tasks.filter((t) => t.status === "in_progress")
     case "pending":
       return tasks.filter((t) => t.status === "pending")
+    case "in_progress":
+      return tasks.filter((t) => t.status === "in_progress")
+    case "completed":
+      return tasks.filter((t) => t.status === "completed")
     default:
       return tasks
   }
@@ -30,7 +30,7 @@ function filterTasks(tasks: ClinicTask[], filter: TaskFilter): ClinicTask[] {
 
 function useTaskDashboardState() {
   const { tasks: manualTasks, createTask, updateTask, deleteTask } = useUserTasks()
-  const [filter, setFilter] = useState<TaskFilter>("all")
+  const [filter, setFilter] = useState<TaskFilter>("pending")
   const [createOpen, setCreateOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<ClinicTask | null>(null)
 
@@ -91,10 +91,10 @@ function useTaskDashboardState() {
     const task = tasks.find((item) => item.id === id)
     if (!task) return
 
-    const completed = task.status !== "completed"
+    const nextStatus = task.status === "completed" ? "pending" : "completed"
     await updateTask({
       id,
-      data: { status: completed ? "completed" : "pending" },
+      data: { status: nextStatus },
     })
   }
 

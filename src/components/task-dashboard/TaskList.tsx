@@ -57,25 +57,44 @@ function formatTaskDateLine(task: ClinicTask, grouped: boolean): string {
   return `${task.date}, ${task.time}`
 }
 
-function StatusIndicator({ status }: { status: TaskStatus }) {
-  if (status === "completed") {
-    return (
-      <div
-        className="flex h-7 w-7 items-center justify-center rounded-full"
-        style={{
-          background: "linear-gradient(135deg, #5B21B6 0%, #8538F0 50%, #9747FF 100%)",
-        }}
-      >
-        <Check size={14} className="text-white" strokeWidth={3} />
-      </div>
-    )
-  }
+function StatusIndicator({
+  status,
+  onToggle,
+}: {
+  status: TaskStatus
+  onToggle: () => void
+}) {
+  const isCompleted = status === "completed"
+  const label = isCompleted ? "Marcar como pendente" : "Marcar como concluída"
 
-  if (status === "in_progress") {
-    return <div className="h-7 w-7 rounded-full border-[3px] border-primary bg-primary/20" />
-  }
-
-  return <div className="h-7 w-7 rounded-full border-[3px] border-[#8538F0]" />
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      title={label}
+      className="shrink-0 rounded-full transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+    >
+      {isCompleted ? (
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-full"
+          style={{
+            background: "linear-gradient(135deg, #5B21B6 0%, #8538F0 50%, #9747FF 100%)",
+          }}
+        >
+          <Check size={14} className="text-white" strokeWidth={3} />
+        </div>
+      ) : status === "in_progress" ? (
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border-[3px] border-primary bg-primary/20">
+          <Check size={12} className="text-white/70" strokeWidth={2.5} />
+        </div>
+      ) : (
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border-[3px] border-[#8538F0] hover:bg-white/10">
+          <Check size={12} className="text-white/40" strokeWidth={2.5} />
+        </div>
+      )}
+    </button>
+  )
 }
 
 function TaskIconCircle({ icon, completed }: { icon?: TaskIcon; completed: boolean }) {
@@ -141,17 +160,12 @@ function TaskRow({
       </div>
 
       <div className="flex items-center justify-between gap-2 pl-14 sm:justify-end sm:pl-0">
-        <StatusIndicator status={task.status} />
+        <StatusIndicator
+          status={task.status}
+          onToggle={() => onToggleComplete(task.id)}
+        />
 
         <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={() => onToggleComplete(task.id)}
-            aria-label="Marcar concluída"
-            className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <Check size={15} />
-          </button>
           <button
             type="button"
             onClick={() => onEdit(task)}

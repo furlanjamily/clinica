@@ -9,6 +9,12 @@ import { cn } from "@/lib/utils"
 import { STATUS_STYLE } from "@/lib/schedule/status"
 import { isDateInDashboardPeriod } from "@/lib/dashboard/period-range"
 import {
+  filterDashboardAgendaAppointments,
+  filterDashboardAgendaTasks,
+  isDashboardAgendaDataFresh,
+} from "@/lib/dashboard/agenda-entries"
+import { getTodayYYYYMMDD } from "@/lib/time/tz-date"
+import {
   AGENDA_STATUS_FILTERS,
   matchesAgendaStatusFilter,
   type AgendaStatusFilter,
@@ -60,14 +66,20 @@ function buildTimelineEntries(
   appointments: DashboardAgendaItem[],
   tasks: UserTaskDTO[],
   period: DashboardPeriod,
-  referenceDate: string
+  referenceDate: string,
+  today: string
 ): TimelineEntry[] {
-  const periodTasks = tasks.filter((task) =>
-    isDateInDashboardPeriod(task.date, period, referenceDate)
+  const periodAppointments = filterDashboardAgendaAppointments(
+    appointments,
+    period,
+    referenceDate,
+    today
   )
 
+  const periodTasks = filterDashboardAgendaTasks(tasks, period, referenceDate)
+
   const entries: TimelineEntry[] = [
-    ...appointments.map((item) => ({
+    ...periodAppointments.map((item) => ({
       kind: "appointment" as const,
       date: item.date,
       time: item.time,
@@ -92,12 +104,15 @@ function formatEntryCount(count: number, total?: number): string {
 }
 
 export function TimelineAgenda() {
-  const { data, loading, period } = useDashboard()
+  const { data, loading, period, referenceDate } = useDashboard()
   const { tasks: manualTasks, isLoading: tasksLoading } = useUserTasks()
-  const [statusFilter, setStatusFilter] = useState<AgendaStatusFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<AgendaStatusFilter>("pending")
+  const today = getTodayYYYYMMDD()
 
-  const appointments = data?.periodAgenda ?? []
-  const referenceDate = data?.referenceDate ?? ""
+  const appointments =
+    isDashboardAgendaDataFresh(data, period, referenceDate) && data
+      ? data.periodAgenda
+      : []
   const groupByDayEnabled = period === "week" || period === "month"
   const title = data?.calendarLabel
     ? `${AGENDA_TITLE[period]} · ${data.calendarLabel}`
@@ -106,14 +121,9 @@ export function TimelineAgenda() {
   const allEntries = useMemo(
     () =>
       referenceDate
-        ? buildTimelineEntries(appointments, manualTasks, period, referenceDate)
-        : appointments.map((item) => ({
-            kind: "appointment" as const,
-            date: item.date,
-            time: item.time,
-            item,
-          })),
-    [appointments, manualTasks, period, referenceDate]
+        ? buildTimelineEntries(appointments, manualTasks, period, referenceDate, today)
+        : [],
+    [appointments, manualTasks, period, referenceDate, today]
   )
 
   const entries = useMemo(

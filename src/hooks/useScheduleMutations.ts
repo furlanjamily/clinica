@@ -7,7 +7,7 @@ import type { Appointment } from "@/types/types"
 import { absoluteUrl } from "@/lib/absolute-url"
 import { SCHEDULE_QUERY_KEY } from "@/hooks/useScheduleQuery"
 import { invalidateNotificationQueries } from "@/hooks/invalidate-notifications"
-import type { CreateAppointmentInput } from "@/lib/validations/schedule"
+import type { CreateAppointmentInput, UpdateAppointmentInput } from "@/lib/validations/schedule"
 
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -21,11 +21,21 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 export function useScheduleMutations() {
   const queryClient = useQueryClient()
 
+  const invalidateScheduleQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY })
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "overview"] })
+  }, [queryClient])
+
   const syncCache = useCallback(
     (id: number, updated: Appointment) => {
-      queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
-        prev?.map((item) => (item.id === id ? { ...item, ...updated } : item)) ?? []
-      )
+      queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) => {
+        if (!prev?.length) return [updated]
+
+        const exists = prev.some((item) => item.id === id)
+        if (!exists) return [...prev, updated]
+
+        return prev.map((item) => (item.id === id ? { ...item, ...updated } : item))
+      })
     },
     [queryClient]
   )
@@ -33,7 +43,7 @@ export function useScheduleMutations() {
   const patchAppointment = useCallback(
     async (
       id: number,
-      changes: Partial<Appointment>,
+      changes: Omit<UpdateAppointmentInput, "id">,
       errorMsg = "Erro ao atualizar agendamento."
     ): Promise<Appointment | null> => {
       const res = await fetch(absoluteUrl("/api/schedule"), {
@@ -49,9 +59,10 @@ export function useScheduleMutations() {
 
       const updated: Appointment = await res.json()
       syncCache(id, updated)
+      invalidateScheduleQueries()
       return updated
     },
-    [syncCache]
+    [syncCache, invalidateScheduleQueries]
   )
 
   const createAppointment = useCallback(
@@ -71,11 +82,12 @@ export function useScheduleMutations() {
       queryClient.setQueryData<Appointment[]>(SCHEDULE_QUERY_KEY, (prev) =>
         [...(prev ?? []), created]
       )
+      invalidateScheduleQueries()
       invalidateNotificationQueries(queryClient)
       toast.success("Agendamento salvo!")
       return created
     },
-    [queryClient]
+    [queryClient, invalidateScheduleQueries]
   )
 
   return { patchAppointment, createAppointment, syncCache }

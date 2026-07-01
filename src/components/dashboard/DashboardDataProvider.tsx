@@ -103,6 +103,7 @@ type DashboardContextValue = {
   data: DashboardOverview | null
   loading: boolean
   period: DashboardPeriod
+  referenceDate: string
   setPeriod: (period: DashboardPeriod) => void
   navigatePrevious: () => void
   navigateNext: () => void
@@ -134,6 +135,7 @@ const DashboardContext = createContext<DashboardContextValue>({
   data: null,
   loading: true,
   period: "day",
+  referenceDate: "",
   setPeriod: () => {},
   navigatePrevious: () => {},
   navigateNext: () => {},
@@ -169,6 +171,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
         data,
         loading: isPending,
         period,
+        referenceDate,
         setPeriod,
         navigatePrevious,
         navigateNext,

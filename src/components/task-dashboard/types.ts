@@ -28,4 +28,4 @@ export type TaskFormData = {
   source: TaskSource
 }
 
-export type TaskFilter = "all" | "completed" | "pending" | "in_progress"
+export type TaskFilter = "in_progress" |"all" | "completed" | "pending" 

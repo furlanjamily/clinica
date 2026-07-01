@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, MessageSquarePlus, Search } from "lucide-react"
 import { resolveJobTitle } from "@/lib/chat/format"
 import { useChatUsers } from "@/hooks/useChatUsers"
@@ -30,6 +30,16 @@ export function NewChatModal({ open, onClose, onCreated }: Props) {
         u.role?.toLowerCase().includes(q)
     )
   }, [users, search])
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [onClose, open])
 
   if (!open) return null
 

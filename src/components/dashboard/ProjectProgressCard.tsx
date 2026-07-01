@@ -70,7 +70,8 @@ function LegendDot({ variant }: { variant: "completed" | "inProgress" | "pending
     )
   }
 
-  const color = variant === "completed" ? "bg-primary" : "bg-finance-primary-hover"
+  const color =
+    variant === "completed" ? "bg-[#8538F0]" : "bg-[#0EA5E9]"
   return <span className={cn("h-3 w-3 shrink-0 rounded-full", color)} />
 }
 
@@ -81,19 +82,16 @@ export function ProjectProgressCard() {
   if (loading) {
     return <ProjectProgressCardSkeleton />
   }
-  const completed = breakdown?.completed ?? 0
-  const inProgress = breakdown?.inProgress ?? 0
-  const pending = breakdown?.pending ?? 0
   const totalProgress = breakdown?.totalProgress ?? 0
-  const totalRange = breakdown
-    ? breakdown.counts.completed + breakdown.counts.inProgress + breakdown.counts.pending
-    : 0
+  const counts = breakdown?.counts ?? { completed: 0, inProgress: 0, pending: 0 }
+  const totalRange = counts.completed + counts.inProgress + counts.pending
   const subtitle = `${totalRange} consultas ${data?.periodLabel ?? ""}`.trim()
 
   const totalArc = 180
   const startAngle = 180
-  const completedEnd = startAngle + (completed / 100) * totalArc
-  const inProgressEnd = completedEnd + (inProgress / 100) * totalArc
+  const chartTotal = totalRange || 1
+  const completedEnd = startAngle + (counts.completed / chartTotal) * totalArc
+  const inProgressEnd = completedEnd + (counts.inProgress / chartTotal) * totalArc
   const pendingEnd = 360
 
   return (
@@ -128,12 +126,12 @@ export function ProjectProgressCard() {
 
               <AnimatedArc
                 d={arcPath(startAngle, completedEnd)}
-                stroke={dashboardColors.primary}
+                stroke={dashboardColors.completed}
                 delay={0.1}
               />
               <AnimatedArc
                 d={arcPath(completedEnd, inProgressEnd)}
-                stroke={dashboardColors.primaryHover}
+                stroke={dashboardColors.inProgress}
                 delay={0.25}
               />
               <AnimatedArc
@@ -159,15 +157,21 @@ export function ProjectProgressCard() {
           <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 sm:gap-x-8">
             <li className="flex items-center gap-2">
               <LegendDot variant="completed" />
-              <span className="text-sm text-[#6B7280]">Concluídas</span>
+              <span className="text-sm text-[#6B7280]">
+                Concluídas ({counts.completed})
+              </span>
             </li>
             <li className="flex items-center gap-2">
               <LegendDot variant="inProgress" />
-              <span className="text-sm text-[#6B7280]">Em andamento</span>
+              <span className="text-sm text-[#6B7280]">
+                Em andamento ({counts.inProgress})
+              </span>
             </li>
             <li className="flex items-center gap-2">
               <LegendDot variant="pending" />
-              <span className="text-sm text-[#6B7280]">Agendadas</span>
+              <span className="text-sm text-[#6B7280]">
+                Pendentes ({counts.pending})
+              </span>
             </li>
           </ul>
         </div>

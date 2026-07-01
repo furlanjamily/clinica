@@ -1,13 +1,12 @@
 "use client"
 
-import type { ChangeEvent } from "react"
 import Select from "@/components/ui/Select"
-import { Input } from "@/components/ui/Input"
+import {
+  ScheduleDateTimeFields,
+  type ScheduleOptionItem,
+} from "@/components/schedule/ScheduleDateTimeFields"
 
-export type OptionItem = {
-  value: string
-  label: string
-}
+export type OptionItem = ScheduleOptionItem
 
 export type ScheduleFormState = {
   patientId: string
@@ -22,6 +21,8 @@ type ScheduleFormFieldsProps = {
   doctorOptions: OptionItem[]
   slotOptions: OptionItem[]
   minDate?: string
+  disablePatient?: boolean
+  disableDoctor?: boolean
   onFieldChange: (name: keyof ScheduleFormState, value: string) => void
   onDateChange: (value: string) => void
 }
@@ -32,6 +33,8 @@ export function ScheduleFormFields({
   doctorOptions,
   slotOptions,
   minDate,
+  disablePatient = false,
+  disableDoctor = false,
   onFieldChange,
   onDateChange,
 }: ScheduleFormFieldsProps) {
@@ -41,25 +44,23 @@ export function ScheduleFormFields({
         options={patientOptions}
         value={form.patientId}
         onChange={(value) => onFieldChange("patientId", value)}
+        disabled={disablePatient}
       />
 
       <Select
         options={doctorOptions}
         value={form.doctorId}
         onChange={(value) => onFieldChange("doctorId", value)}
+        disabled={disableDoctor}
       />
 
-      <Input
-        type="date"
-        value={form.date}
-        min={minDate}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onDateChange(e.target.value)}
-      />
-
-      <Select
-        options={slotOptions}
-        value={form.slotTime}
-        onChange={(value) => onFieldChange("slotTime", value)}
+      <ScheduleDateTimeFields
+        date={form.date}
+        time={form.slotTime}
+        slotOptions={slotOptions}
+        minDate={minDate}
+        onDateChange={onDateChange}
+        onTimeChange={(value) => onFieldChange("slotTime", value)}
       />
     </>
   )

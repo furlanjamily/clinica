@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { Appointment } from "@/types/types"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -10,7 +10,8 @@ import { useScheduleMutations } from "@/hooks/useScheduleMutations"
 import { ModalHeader } from "@/components/ui/ModalHeader"
 import { ModalOverlay, ModalPanel } from "@/components/ui/modal-overlay"
 import { ScheduleFormFields } from "@/components/schedule/ScheduleFormFields"
-import { formatDateToInput, isDateDisabled, filterAvailableSlots } from "@/lib/schedule/form-utils"
+import { getInitialScheduleForm, isDateDisabled, filterAvailableSlots, ensureOption, resolveScheduleSelection } from "@/lib/schedule/form-utils"
+import { AppointmentStatus } from "@/lib/schedule/status"
 
 type Props = {
   item?: Appointment
@@ -26,20 +27,56 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
 
   const isReschedule = mode === "reschedule" && !!item
 
-  const [form, setForm] = useState({
-    patientId: item?.patient?.id ? String(item.patient.id) : "",
-    doctorId: "",
-    date: formatDateToInput(item?.date),
-    slotTime: item?.slotTime ?? "",
-  })
+  const [form, setForm] = useState(() => getInitialScheduleForm(item))
+
+  useEffect(() => {
+    if (item) setForm(getInitialScheduleForm(item))
+  }, [item])
 
   const todayIso = new Date().toISOString().split("T")[0]
   const nowTime = new Date().toTimeString().slice(0, 5)
 
-  const selectedDoctor = useMemo(
-    () => doctors.find((d) => String(d.id) === form.doctorId),
-    [doctors, form.doctorId]
-  )
+  const patientOptions = useMemo(() => {
+    const base = [
+      { value: "", label: "Selecione um paciente" },
+      ...patients.map((p) => ({
+        value: String(p.id),
+        label: p.name,
+      })),
+    ]
+
+    if (!isReschedule || !item) return base
+
+    const patientId = String(item.patient?.id ?? item.patientId ?? "")
+    const patientName = item.patient?.name ?? item.patientName ?? "Paciente"
+    return ensureOption(base, patientId, patientName)
+  }, [patients, isReschedule, item])
+
+  const doctorOptions = useMemo(() => {
+    const base = [
+      { value: "", label: "Selecione um médico" },
+      ...doctors.map((d) => ({
+        value: String(d.id),
+        label: d.name,
+      })),
+    ]
+
+    if (!isReschedule || !item?.doctorId) return base
+
+    return ensureOption(base, String(item.doctorId), item.professionalName || "Médico")
+  }, [doctors, isReschedule, item])
+
+  const selectedDoctor = useMemo(() => {
+    const fromList = doctors.find((d) => String(d.id) === form.doctorId)
+    if (fromList) return fromList
+
+    const option = doctorOptions.find((entry) => entry.value === form.doctorId)
+    if (option && form.doctorId) {
+      return { id: Number(form.doctorId), name: option.label }
+    }
+
+    return undefined
+  }, [doctors, form.doctorId, doctorOptions])
 
   const { data: rawSlots = [], isPending: loadingSlots } = useScheduleAvailability(
     selectedDoctor?.name,
@@ -49,28 +86,6 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
   const availableSlots = useMemo(
     () => filterAvailableSlots(rawSlots, form.date, todayIso, nowTime),
     [rawSlots, form.date, todayIso, nowTime]
-  )
-
-  const patientOptions = useMemo(
-    () => [
-      { value: "", label: "Selecione um paciente" },
-      ...patients.map((p) => ({
-        value: String(p.id),
-        label: p.name,
-      })),
-    ],
-    [patients]
-  )
-
-  const doctorOptions = useMemo(
-    () => [
-      { value: "", label: "Selecione um médico" },
-      ...doctors.map((d) => ({
-        value: String(d.id),
-        label: d.name,
-      })),
-    ],
-    [doctors]
   )
 
   const slotOptions = useMemo(
@@ -107,15 +122,17 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
       return
     }
 
-    const selectedPatient = patients.find(
-      (p) => String(p.id) === form.patientId
-    )
+    const selectedPatient = resolveScheduleSelection(form.patientId, patients, {
+      id: item?.patient?.id ?? item?.patientId,
+      name: item?.patient?.name ?? item?.patientName,
+    })
 
-    const doctorForSubmit = doctors.find(
-      (d) => String(d.id) === form.doctorId
-    )
+    const selectedDoctorForSubmit = resolveScheduleSelection(form.doctorId, doctors, {
+      id: item?.doctorId,
+      name: item?.professionalName,
+    })
 
-    if (!selectedPatient || !doctorForSubmit) {
+    if (!selectedPatient || !selectedDoctorForSubmit) {
       toast.error("Paciente ou médico inválido")
       return
     }
@@ -131,13 +148,26 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
           name: selectedPatient.name,
         },
         professional: {
-          id: doctorForSubmit.id,
-          name: doctorForSubmit.name,
+          id: selectedDoctorForSubmit.id,
+          name: selectedDoctorForSubmit.name,
         },
       }
 
+      const hasScheduleChanges =
+        form.date !== item?.date ||
+        form.slotTime !== item?.slotTime ||
+        form.doctorId !== String(item.doctorId ?? "")
+
       const saved = isReschedule && item
-        ? await patchAppointment(item.id, payload)
+        ? await patchAppointment(item.id, {
+            date: form.date,
+            slotTime: form.slotTime,
+            professional: {
+              id: selectedDoctorForSubmit.id,
+              name: selectedDoctorForSubmit.name,
+            },
+            ...(hasScheduleChanges ? { status: AppointmentStatus.Rescheduled } : {}),
+          })
         : await createAppointment(payload)
 
       if (!saved) return
@@ -150,7 +180,7 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
   }
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel>
         <ModalHeader
           title={isReschedule ? "Reagendar" : "Novo Agendamento"}
@@ -164,7 +194,15 @@ export function ScheduleFormModal({ item, mode, onClose, onSuccess }: Props) {
             doctorOptions={doctorOptions}
             slotOptions={slotOptions}
             minDate={todayIso}
-            onFieldChange={(name, value) => setForm((p) => ({ ...p, [name]: value }))}
+            disablePatient={isReschedule}
+            onFieldChange={(name, value) => {
+              setForm((current) => {
+                if (name === "doctorId" && value !== current.doctorId) {
+                  return { ...current, doctorId: value, slotTime: "" }
+                }
+                return { ...current, [name]: value }
+              })
+            }}
             onDateChange={(selectedDate) => {
               if (isDateDisabled(selectedDate)) {
                 toast.error("Clínica fechada no domingo")

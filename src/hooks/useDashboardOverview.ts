@@ -19,6 +19,5 @@ export function useDashboardOverview(period: DashboardPeriod, referenceDate: str
       if (!res.ok) throw new Error("Erro ao carregar dashboard")
       return res.json()
     },
-    placeholderData: (prev) => prev,
   })
 }

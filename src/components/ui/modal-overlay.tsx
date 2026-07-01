@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 
 type ModalOverlayProps = React.PropsWithChildren<{
   className?: string
+  onClose?: () => void
 }>
 
 type ViewportTier = "phone" | "tablet" | "desktop"
@@ -178,8 +179,27 @@ export function ModalPanel({ children, className, size = "md" }: ModalPanelProps
   )
 }
 
-export function ModalOverlay({ children, className }: ModalOverlayProps) {
+export function ModalOverlay({ children, className, onClose }: ModalOverlayProps) {
   useLockBackgroundScroll()
+
+  useEffect(() => {
+    if (!onClose) return
+
+    const close = onClose
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") close()
+    }
+
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [onClose])
+
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose?.()
+    }
+  }
 
   const registerLayout = useCallback((_state: ModalLayoutState) => {}, [])
 
@@ -197,6 +217,8 @@ export function ModalOverlay({ children, className }: ModalOverlayProps) {
           "fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm sm:p-6 lg:p-4",
           className
         )}
+        onClick={onClose ? handleBackdropClick : undefined}
+        role="presentation"
       >
         {children}
       </div>

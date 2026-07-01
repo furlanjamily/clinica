@@ -1,15 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { CalendarDays, Stethoscope, UserPlus } from "lucide-react"
+import { CalendarDays, MessageCircle, UserPlus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
+import { useChatSync } from "@/hooks/useChatSync"
+import { UnreadCounter } from "@/components/chat/UnreadCounter"
 import { ScheduleFormModal } from "@/components/schedule/ScheduleFormModal"
 import { PatientFormModal } from "@/components/patient/PatientFormModal"
-import { DoctorFormModal } from "@/components/doctor/DoctorFormModal"
 
-type QuickAction = "schedule" | "patient" | "doctor"
+type QuickAction = "schedule" | "patient" | "chat"
 
 const ACTIONS: {
   id: QuickAction
@@ -18,17 +19,19 @@ const ACTIONS: {
 }[] = [
     { id: "schedule", label: "Agenda", icon: CalendarDays },
     { id: "patient", label: "Pacientes", icon: UserPlus },
-    { id: "doctor", label: "Médico", icon: Stethoscope },
+    { id: "chat", label: "Chat", icon: MessageCircle },
   ]
 
 function QuickActionButton({
   label,
   icon: Icon,
   onClick,
+  badge,
 }: {
   label: string
   icon: typeof CalendarDays
   onClick: () => void
+  badge?: number
 }) {
   return (
     <button
@@ -42,6 +45,12 @@ function QuickActionButton({
         strokeWidth={2}
         className="text-gray-600 transition-colors duration-200 group-hover:text-primary sm:h-[18px] sm:w-[18px]"
       />
+      {badge != null && badge > 0 ? (
+        <UnreadCounter
+          count={badge}
+          className="absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[9px] leading-none shadow-sm"
+        />
+      ) : null}
       <span className="pointer-events-none absolute -bottom-7 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900/90 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 lg:block">
         {label}
       </span>
@@ -51,12 +60,14 @@ function QuickActionButton({
 
 export function HeaderQuickActions({ className }: { className?: string }) {
   const { canViewAgenda, canManageClinic } = useAuth()
+  const { unreadCount: chatUnreadCount } = useChatSync()
   const router = useRouter()
   const [active, setActive] = useState<QuickAction | null>(null)
 
   const visibleActions = ACTIONS.filter(({ id }) => {
     if (id === "schedule") return canViewAgenda
-    return canManageClinic
+    if (id === "patient") return canManageClinic
+    return true
   })
 
   if (visibleActions.length === 0) return null
@@ -78,7 +89,14 @@ export function HeaderQuickActions({ className }: { className?: string }) {
             key={id}
             label={label}
             icon={icon}
-            onClick={() => setActive(id)}
+            onClick={() => {
+              if (id === "chat") {
+                router.push("/chat")
+                return
+              }
+              setActive(id)
+            }}
+            badge={id === "chat" ? chatUnreadCount : undefined}
           />
         ))}
       </div>
@@ -96,13 +114,6 @@ export function HeaderQuickActions({ className }: { className?: string }) {
 
       {active === "patient" && (
         <PatientFormModal
-          onClose={() => setActive(null)}
-          onSuccess={handleSuccess}
-        />
-      )}
-
-      {active === "doctor" && (
-        <DoctorFormModal
           onClose={() => setActive(null)}
           onSuccess={handleSuccess}
         />

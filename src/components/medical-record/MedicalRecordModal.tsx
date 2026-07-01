@@ -73,7 +73,7 @@ export function MedicalRecordModal({
   }
 
   return (
-    <ModalOverlay>
+    <ModalOverlay onClose={onClose}>
       <ModalPanel size="lg">
 
         <ModalHeader
