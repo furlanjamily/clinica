@@ -56,6 +56,7 @@ export type Patient = {
   education?: string | null
   religion?: string | null
   profession?: string | null
+  image?: string | null
 }
 
 export type Doctor = {

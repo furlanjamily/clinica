@@ -37,6 +37,7 @@ export type PatientDTO = {
   education: string | null
   religion: string | null
   profession: string | null
+  image: string | null
 }
 
 /** Banco -> contrato da UI (sex -> gender, Date -> "YYYY-MM-DD"). */
@@ -63,6 +64,7 @@ export function toPatientDTO(p: PrismaPatient): PatientDTO {
     education: p.education,
     religion: p.religion,
     profession: p.profession,
+    image: p.image,
   }
 }
 

@@ -83,6 +83,8 @@ type DataTableProps<T> = {
   emptyMessage?: string
   /** Largura mínima da tabela para o scroll horizontal (ex.: "min-w-[600px]") */
   minWidthClassName?: string
+  /** Classes extras no `<table>` (ex.: "w-full table-fixed") */
+  tableClassName?: string
   className?: string
   /** Linhas do tbody (modo children) */
   children?: ReactNode
@@ -98,6 +100,7 @@ export function DataTable<T>({
   isEmpty,
   emptyMessage = "nenhum registro",
   minWidthClassName,
+  tableClassName,
   className,
   children,
   pagination,
@@ -144,7 +147,8 @@ export function DataTable<T>({
       <div className={tableScrollClass}>
         <table
           className={cn(
-            "w-max min-w-full border-separate border-spacing-0",
+            "border-separate border-spacing-0",
+            tableClassName ?? "w-full min-w-full",
             empty && "h-full",
             minWidthClassName
           )}

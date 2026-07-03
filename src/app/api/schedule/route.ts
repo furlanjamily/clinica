@@ -57,6 +57,7 @@ export async function GET(req: Request) {
               id: true,
               name: true,
               phone: true,
+              image: true,
             },
           },
           doctor: {
@@ -98,6 +99,7 @@ export async function GET(req: Request) {
           id: true,
           name: true,
           phone: true,
+          image: true,
         },
         orderBy: { name: "asc" },
       }),

@@ -19,7 +19,7 @@ export type AppointmentRowInput = {
   endedAt?: Date | null
   accumulatedMs?: number | null
   pausedAt?: Date | null
-  patient?: { id: number; name: string; phone?: string | null } | null
+  patient?: { id: number; name: string; phone?: string | null; image?: string | null } | null
   medicalRecord?: unknown | null
   transaction?: {
     id: number
@@ -31,7 +31,14 @@ export type AppointmentRowInput = {
 }
 
 function resolvePatient(row: AppointmentRowInput): AppointmentPatient {
-  if (row.patient) return { id: row.patient.id, name: row.patient.name, phone: row.patient.phone }
+  if (row.patient) {
+    return {
+      id: row.patient.id,
+      name: row.patient.name,
+      phone: row.patient.phone,
+      image: row.patient.image,
+    }
+  }
   return {
     id: row.patientId ?? 0,
     name: (row.patientNameSnapshot ?? "").trim() || "Patient",

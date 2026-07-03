@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, memo, useMemo } from "react"
-import Image from "next/image"
 import { toast } from "sonner"
 import { Pause, Play, FileText, Download, Pencil } from "lucide-react"
 
@@ -18,7 +17,8 @@ import { getPatientName } from "@/lib/schedule/appointment-utils"
 import { flattenAppointmentsByDay } from "@/lib/schedule/group-by-day"
 import { formatDuration } from "@/lib/time/format-duration"
 import { downloadMedicalRecordPdf } from "@/lib/medical-record/download-pdf"
-import { AVATAR_PLACEHOLDER_URL } from "@/lib/constants"
+
+import { Avatar } from "@/components/common/Avatar"
 
 import { MedicalRecordModal } from "@/components/medical-record/MedicalRecordModal"
 import { GlobalFilters, FilterField } from "@/components/ui/table/GlobalFilters"
@@ -217,12 +217,12 @@ export function AttendanceTableComponent({
                       </dl>
                     </div>
                     <div className="shrink-0">
-                      <Image
-                        src={AVATAR_PLACEHOLDER_URL}
-                        alt="Avatar"
-                        width={64}
-                        height={64}
-                        className="h-16 w-16 rounded-xl object-cover"
+                      <Avatar
+                        name={patientName}
+                        image={item.patient?.image}
+                        size={64}
+                        className="rounded-xl"
+                        alt={`Foto de ${patientName}`}
                       />
                     </div>
                   </div>

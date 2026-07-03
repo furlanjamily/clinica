@@ -4,6 +4,7 @@ export type AppointmentPatient = {
   id: number
   name: string
   phone?: string | null
+  image?: string | null
 }
 
 export type Appointment = {

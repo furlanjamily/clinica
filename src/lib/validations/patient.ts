@@ -29,6 +29,11 @@ export const CreatePatientSchema = PatientSchema
 
 export const UpdatePatientSchema = PatientSchema.partial().extend({
   id: z.number().int().positive(),
+  image: z.string().url().nullable().optional(),
+})
+
+export const PatientAvatarUploadSchema = z.object({
+  patientId: z.coerce.number().int().positive(),
 })
 
 export const DeletePatientSchema = z.object({

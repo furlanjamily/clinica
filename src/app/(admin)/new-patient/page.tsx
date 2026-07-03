@@ -12,6 +12,7 @@ import { FilterField, GlobalFilters } from "@/components/ui/table/GlobalFilters"
 import { Collapse } from "@/components/ui/Collapse"
 import { useTableFilters } from "@/hooks/useTableFilters"
 import { PatientFormModal } from "@/components/patient/PatientFormModal"
+import { Avatar } from "@/components/common/Avatar"
 
 function PatientsTable({
   patients,
@@ -26,7 +27,7 @@ function PatientsTable({
     <DataTable<Patient>
       headers={[
         { label: "ID", sort: (p) => p.id },
-        { label: "Nome", sort: (p) => p.name },
+        { label: "Paciente", sort: (p) => p.name },
         { label: "CPF", sort: (p) => p.cpf || null },
         { label: "Telefone", sort: (p) => p.phone || null },
         { label: "E-mail", sort: (p) => p.email || null },
@@ -39,7 +40,12 @@ function PatientsTable({
       renderRow={(p) => (
         <tr key={p.id} className="transition-colors hover:bg-gray-50/80">
           <Td className="font-medium">{p.id}</Td>
-          <Td className="font-medium">{p.name}</Td>
+          <Td>
+            <div className="flex items-center gap-3">
+              <Avatar name={p.name} image={p.image} size="sm" alt={`Foto de ${p.name}`} />
+              <span className="font-medium">{p.name}</span>
+            </div>
+          </Td>
           <Td className="text-gray-600">{p.cpf ?? "—"}</Td>
           <Td className="text-gray-600">{p.phone ?? "—"}</Td>
           <Td className="text-gray-600">{p.email ?? "—"}</Td>
@@ -148,7 +154,7 @@ export default function PatientsPage() {
   )
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
+    <div className="flex w-full h-full min-h-0 min-w-0 max-w-full flex-col">
       <Header title="Pacientes">
         <Button size="md" onClick={openCreate}>
           <Plus size={16} /> <span className="hidden sm:inline">Novo paciente</span>
@@ -170,7 +176,7 @@ export default function PatientsPage() {
           {isPending ? (
             <TableCard>
               <div className="p-2 sm:p-3">
-                <TableSkeleton cols={5} rows={6} />
+                <TableSkeleton cols={7} rows={6} />
               </div>
             </TableCard>
           ) : (

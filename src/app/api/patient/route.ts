@@ -40,8 +40,14 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     await requireSession()
-    const { id, ...data } = parseWith(UpdatePatientSchema, await req.json())
-    const patient = await db.patient.update({ where: { id }, data: patientInputToDb(data) })
+    const { id, image, ...data } = parseWith(UpdatePatientSchema, await req.json())
+    const patient = await db.patient.update({
+      where: { id },
+      data: {
+        ...patientInputToDb(data),
+        ...(image !== undefined ? { image } : {}),
+      },
+    })
     return NextResponse.json(toPatientDTO(patient))
   } catch (error) {
     return handleApiError(error)
