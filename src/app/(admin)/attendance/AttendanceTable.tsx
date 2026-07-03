@@ -33,7 +33,9 @@ import {
   attendanceMobileRootClass,
   attendanceTopSectionClass,
   attendanceHistorySectionClass,
+  attendanceFilterTableClass,
   attendanceHistoryPanelClass,
+  filterTableFiltersClass,
 } from "@/lib/layout/filter-table-layout"
 import { cn } from "@/lib/utils"
 
@@ -153,8 +155,8 @@ export function AttendanceTableComponent({
           atendimento em andamento
         </p>
 
-        <div className="flex flex-col gap-3 max-md:overflow-visible sm:flex-row sm:items-stretch lg:min-h-0 lg:overflow-y-auto">
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_1fr]">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
             {data.length === 0 ? (
               <div className="flex min-w-0 items-center justify-center rounded-3xl border border-gray-200 bg-white p-4 text-center sm:p-5">
                 <p className="text-sm leading-relaxed text-accent">Nenhum atendimento em andamento no momento...</p>
@@ -164,90 +166,80 @@ export function AttendanceTableComponent({
                 const hasClinicalChart = !!item.clinicalChart
                 const patientName = getPatientName(item)
                 return (
-                  <div key={item.id} className="flex min-w-0 items-center justify-between rounded-3xl border border-gray-200 bg-white p-4 text-left sm:p-5">
-                    <dl className="flex min-w-0 flex-wrap items-center gap-x-8 gap-y-2 text-sm text-gray-600">
-
-                      <p className="min-w-0 max-w-full truncate text-lg font-semibold leading-tight text-gray-900" title={patientName}>
-                        {patientName}
-                      </p>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                          Id Agendamento
-                        </dt>
-                        <dd className="mt-1 font-medium text-gray-800">{item.id}</dd>
-                      </div>
-
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                          Data
-                        </dt>
-                        <dd className="mt-1 font-medium text-gray-800">{item.date}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                          Horário
-                        </dt>
-                        <dd className="mt-1 font-medium text-gray-800">às {item.slotTime}</dd>
-                      </div>
-                      {item.professionalName && (
-                        <div>
-                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                            Médico
+                  <div
+                    key={item.id}
+                    className="flex min-w-0 items-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5"
+                  >
+                    <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
+                      <dl className="flex w-max min-w-full flex-nowrap items-center gap-x-6 text-sm text-gray-600 sm:gap-x-8">
+                        <p
+                          className="whitespace-nowrap text-lg font-semibold leading-tight text-gray-900"
+                          title={patientName}
+                        >
+                          {patientName}
+                        </p>
+                        <div className="shrink-0">
+                          <dt className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            Id Agendamento
                           </dt>
-                          <dd className="mt-1 truncate font-medium text-gray-800">
-                            {item.professionalName}
+                          <dd className="mt-1 whitespace-nowrap font-medium text-gray-800">{item.id}</dd>
+                        </div>
+                        <div className="shrink-0">
+                          <dt className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            Data
+                          </dt>
+                          <dd className="mt-1 whitespace-nowrap font-medium text-gray-800">{item.date}</dd>
+                        </div>
+                        <div className="shrink-0">
+                          <dt className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            Horário
+                          </dt>
+                          <dd className="mt-1 whitespace-nowrap font-medium text-gray-800">às {item.slotTime}</dd>
+                        </div>
+                        {item.professionalName && (
+                          <div className="shrink-0">
+                            <dt className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                              Médico
+                            </dt>
+                            <dd className="mt-1 whitespace-nowrap font-medium text-gray-800">
+                              {item.professionalName}
+                            </dd>
+                          </div>
+                        )}
+                        <div className="shrink-0">
+                          <dt className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            Prontuário
+                          </dt>
+                          <dd className="mt-1 whitespace-nowrap font-medium text-gray-800">
+                            {hasClinicalChart ? "Preenchido" : "Pendente"}
                           </dd>
                         </div>
-                      )}
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                          Prontuário
-                        </dt>
-                        <dd className="mt-1 font-medium text-gray-800">
-                          {hasClinicalChart ? "Preenchido" : "Pendente"}
-                        </dd>
-                      </div>
-                    </dl>
-                    <div>
+                      </dl>
+                    </div>
+                    <div className="shrink-0">
                       <Image
                         src={AVATAR_PLACEHOLDER_URL}
                         alt="Avatar"
-                        width={24}
-                        height={24}
-                        className="w-16 h-16 rounded-xl object-cover"
+                        width={64}
+                        height={64}
+                        className="h-16 w-16 rounded-xl object-cover"
                       />
                     </div>
                   </div>
                 )
               })
             )}
-
-            <div className="flex gap-3 rounded-3xl border border-gray-200 bg-white p-2">
-              <Collapse label="Filtros" unboundedPanel>
-                <GlobalFilters
-                  values={filters}
-                  onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
-                  filters={FILTER_CONFIG}
-                />
-              </Collapse>
-            </div>
-
-            <div className="flex flex-1 flex-wrap items-center justify-between gap-3">
-              <ScheduleNavigator
-                date={date}
-                view={view}
-                onChangeDate={onChangeDate}
-                onChangeView={onChangeView}
-              />
-            </div>
           </div>
 
           {data.length > 0 && (
-            <div className="flex shrink-0 flex-col gap-3">
+            <div className="flex w-full flex-col gap-3 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:w-auto lg:shrink-0">
               {data.map((item) => {
                 const hasClinicalChart = !!item.clinicalChart
                 return (
-                  <div key={item.id} className="relative flex flex-col items-center justify-between gap-2 rounded-3xl border border-gray-200 bg-white p-3 sm:h-64 sm:w-64">
+                  <div
+                    key={item.id}
+                    className="relative flex w-full flex-col items-center justify-between gap-2 rounded-3xl border border-gray-200 bg-white p-3 lg:h-64 lg:w-64"
+                  >
                     <Button
                       size="icon"
                       className="absolute right-2.5 top-2.5 h-8 w-8 bg-white text-gray-900 hover:bg-white/90"
@@ -257,7 +249,7 @@ export function AttendanceTableComponent({
                       <FileText size={14} className="shrink-0" />
                     </Button>
 
-                    <div className="flex flex-1 items-center justify-center">
+                    <div className="flex flex-1 items-center justify-center py-2 lg:py-0">
                       <TimerCell item={item} />
                     </div>
 
@@ -302,22 +294,48 @@ export function AttendanceTableComponent({
               })}
             </div>
           )}
+
+          <div className="flex w-full min-w-0 justify-center lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:items-center lg:justify-start lg:self-stretch lg:px-3">
+            <ScheduleNavigator
+              date={date}
+              view={view}
+              onChangeDate={onChangeDate}
+              onChangeView={onChangeView}
+              className="max-lg:items-center max-lg:justify-center max-lg:[&>div:first-child]:justify-center"
+            />
+          </div>
         </div>
       </section>
 
       <section className={attendanceHistorySectionClass}>
         <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400">Histórico de atendimentos</p>
 
-        <div className={attendanceHistoryPanelClass}>
-          {loadingHistory ? (
-            <TableCard className="max-md:h-full md:h-full md:min-h-0">
-              <div className="p-2 sm:p-3">
-                <TableSkeleton cols={historyColCount} rows={4} />
-              </div>
-            </TableCard>
-          ) : (
-            <DataTable
-              className="max-md:h-full md:h-full md:min-h-0"
+        <div className={attendanceFilterTableClass}>
+          <div
+            className={cn(
+              "flex shrink-0 flex-col justify-center gap-3 rounded-3xl border border-gray-200 bg-white p-4 sm:p-5",
+              filterTableFiltersClass
+            )}
+          >
+            <Collapse label="Filtros" unboundedPanel>
+              <GlobalFilters
+                values={filters}
+                onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}
+                filters={FILTER_CONFIG}
+              />
+            </Collapse>
+          </div>
+
+          <div className={attendanceHistoryPanelClass}>
+            {loadingHistory ? (
+              <TableCard className="h-full min-h-0">
+                <div className="p-2 sm:p-3">
+                  <TableSkeleton cols={historyColCount} rows={4} />
+                </div>
+              </TableCard>
+            ) : (
+              <DataTable
+                className="h-full min-h-0"
               headers={["ID Agendamento", "Horário", "Paciente", ...(isSuperAdmin ? ["Médico"] : []), "Duração", { label: "Prontuário", align: "right" }]}
               isEmpty={filteredHistory.length === 0}
               emptyMessage="Nenhum atendimento encontrado neste período..."
@@ -391,6 +409,7 @@ export function AttendanceTableComponent({
               })}
             </DataTable>
           )}
+          </div>
         </div>
       </section>
 

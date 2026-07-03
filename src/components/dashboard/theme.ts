@@ -1,5 +1,5 @@
 export const dashboardColors = {
   completed: "#8538F0",
-  inProgress: "#0EA5E9",
+  inProgress: "#C4A8FF",
   pendingPattern: "#E5E7EB",
 } as const

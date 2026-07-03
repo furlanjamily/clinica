@@ -25,6 +25,7 @@ type Props = {
   view: ViewMode
   onChangeDate: (date: Date) => void
   onChangeView: (view: ViewMode) => void
+  className?: string
 }
 
 export function ScheduleNavigator({
@@ -32,6 +33,7 @@ export function ScheduleNavigator({
   view,
   onChangeDate,
   onChangeView,
+  className,
 }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -87,7 +89,10 @@ export function ScheduleNavigator({
 
   return (
     <div
-      className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full relative gap-3 md:gap-4"
+      className={cn(
+        "relative flex w-full flex-col items-start justify-between gap-3 sm:flex-row sm:items-center md:gap-4",
+        className
+      )}
       ref={ref}
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 md:gap-1">

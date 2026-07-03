@@ -71,7 +71,7 @@ function LegendDot({ variant }: { variant: "completed" | "inProgress" | "pending
   }
 
   const color =
-    variant === "completed" ? "bg-[#8538F0]" : "bg-[#0EA5E9]"
+    variant === "completed" ? "bg-[#8538F0]" : "bg-[#C4A8FF]"
   return <span className={cn("h-3 w-3 shrink-0 rounded-full", color)} />
 }
 

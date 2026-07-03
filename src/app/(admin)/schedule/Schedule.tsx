@@ -93,7 +93,7 @@ export default function Schedule({ data, onChangeData }: Props) {
             filterTableFiltersClass
           )}
         >
-          <Collapse label="Filtros" unboundedPanel>
+          <Collapse label="Filtros" unboundedPanel alwaysCollapsible>
             <GlobalFilters
               values={filters}
               onChange={(name, value) => handleFilterChange(name as keyof typeof filters, value)}

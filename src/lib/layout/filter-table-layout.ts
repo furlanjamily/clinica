@@ -48,35 +48,33 @@ export const adminShellMainScrollClass = cn(
   "[scrollbar-width:thin]"
 )
 
-/** Página de Atendimentos — mobile: scroll na página; tablet+: viewport fixo */
+/** Página de Atendimentos — scroll natural na página (como Financeiro) */
 export const attendancePageClass = cn(
-  filterTablePageClass,
-  "md:min-h-0 md:flex-1 md:overflow-hidden"
+  "flex min-w-0 max-w-full flex-col"
 )
 
 /** Layout da raiz de Atendimentos (conteúdo acima + histórico) */
 export const attendanceMobileRootClass = cn(
-  "flex min-w-0 flex-col gap-4 sm:gap-6",
-  "md:min-h-0 md:flex-1 md:overflow-hidden"
+  "flex min-w-0 flex-col gap-4 sm:gap-6"
 )
 
-/** Seção superior — mobile: fluxo natural; tablet+: altura limitada com scroll interno */
+/** Seção superior — informações do atendimento em andamento + schedule/timer */
 export const attendanceTopSectionClass = cn(
-  "flex shrink-0 flex-col gap-3",
-  "md:max-h-[38dvh] md:overflow-y-auto",
-  "lg:max-h-[42dvh]"
+  "flex shrink-0 flex-col gap-3"
 )
 
-/** Seção do histórico — mobile: empilha abaixo; tablet+: flex-1 no viewport */
-export const attendanceHistorySectionClass = cn(
-  "flex flex-col gap-3",
-  "max-md:shrink-0",
-  "md:min-h-0 md:flex-1"
+/** Seção do histórico */
+export const attendanceHistorySectionClass = "flex shrink-0 flex-col gap-3"
+
+/**
+ * Filtros + tabela do histórico (mesmo padrão do Financeiro).
+ * h-[100cqh] com scroll interno na tabela; a página rola naturalmente.
+ */
+export const attendanceFilterTableClass = cn(
+  "flex h-[100cqh] min-h-0 min-w-0 flex-col gap-3 overflow-hidden"
 )
 
-/** Painel do histórico — mobile: h-[100cqh]; tablet+: espaço restante sem tela extra */
+/** Área scrollável da tabela dentro do bloco filtros + histórico */
 export const attendanceHistoryPanelClass = cn(
-  "flex min-w-0 flex-col overflow-hidden",
-  "max-md:h-[100cqh] max-md:shrink-0",
-  "md:min-h-0 md:flex-1"
+  "flex min-h-0 flex-1 flex-col overflow-hidden"
 )

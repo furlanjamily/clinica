@@ -10,6 +10,8 @@ interface CollapseProps {
   className?: string
   /** Sem teto de altura no painel (evita área rolável própria nos filtros) */
   unboundedPanel?: boolean
+  /** Respeita aberto/fechado em todas as larguras (padrão: expandido no lg+) */
+  alwaysCollapsible?: boolean
 }
 
 export function Collapse({
@@ -18,6 +20,7 @@ export function Collapse({
   children,
   className,
   unboundedPanel = false,
+  alwaysCollapsible = false,
 }: CollapseProps) {
   const [open, setOpen] = useState(defaultOpen)
 
@@ -26,7 +29,7 @@ export function Collapse({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center gap-2 rounded-3xl py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 lg:hidden"
+        className={`flex w-full items-center gap-2 rounded-3xl py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 ${alwaysCollapsible ? "" : "lg:hidden"}`}
       >
         <ChevronDown
           size={16}
@@ -37,13 +40,15 @@ export function Collapse({
 
       <div
         className={`
-          lg:block lg:max-h-none lg:opacity-100 lg:mt-0
           overflow-hidden transition-all duration-200
+          ${!alwaysCollapsible ? "lg:block lg:max-h-none lg:opacity-100 lg:mt-0" : ""}
           ${open
             ? unboundedPanel
               ? "mt-3 max-h-none opacity-100"
               : "mt-3 max-h-[min(75vh,36rem)] opacity-100"
-            : "max-h-0 opacity-0 lg:max-h-none lg:opacity-100"}
+            : alwaysCollapsible
+              ? "max-h-0 opacity-0"
+              : "max-h-0 opacity-0 lg:max-h-none lg:opacity-100"}
         `}
       >
         {children}
