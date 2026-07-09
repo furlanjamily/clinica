@@ -37,16 +37,6 @@ export function SideBarSkeleton() {
         </ul>
       </div>
 
-      <div className="w-full px-3">
-        <div className="h-0.5 w-full bg-gray-100 animate-pulse" />
-      </div>
-
-      <div className="flex h-full w-full items-end">
-        <div className="flex w-full items-center gap-4 border-l-2 border-transparent pl-7">
-          <div className="h-6 w-6 shrink-0 rounded-md bg-gray-200 animate-pulse" />
-          <div className="hidden h-3.5 w-24 rounded bg-gray-200 animate-pulse md:block" />
-        </div>
-      </div>
     </div>
   )
 }
