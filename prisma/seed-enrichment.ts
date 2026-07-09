@@ -1,5 +1,9 @@
 import { addDays, format } from "date-fns"
-import type { PrismaClient } from "../src/generated/prisma/client"
+import type {
+  AppointmentStatus as DbAppointmentStatus,
+  Prisma,
+  PrismaClient,
+} from "../src/generated/prisma/client"
 import { AppointmentStatus } from "../src/lib/schedule/status"
 import { NOTIFICATION_TYPE } from "../src/lib/notification/constants"
 import { formatTaskReminderAction } from "../src/lib/notification/reminder-config"
@@ -129,7 +133,7 @@ const USER_TASK_TEMPLATES = [
   },
 ]
 
-const STATUS_FLOW: string[] = [
+const STATUS_FLOW: DbAppointmentStatus[] = [
   AppointmentStatus.Scheduled,
   AppointmentStatus.AwaitingConfirmation,
   AppointmentStatus.Confirmed,
@@ -285,13 +289,7 @@ export async function seedAppointmentStatusHistory(
     take: 180,
   })
 
-  const rows: Array<{
-    appointmentId: number
-    fromStatus: string | null
-    toStatus: string
-    changedById: string | null
-    changedAt: Date
-  }> = []
+  const rows: Prisma.AppointmentStatusHistoryCreateManyInput[] = []
 
   for (const appt of appointments) {
     const targetIdx = STATUS_FLOW.indexOf(appt.status)
