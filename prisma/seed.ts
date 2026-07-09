@@ -12,6 +12,17 @@ import {
 } from "../src/lib/datetime/appointment-time"
 import { AppointmentStatus } from "../src/lib/schedule/status"
 import { buildStandaloneFinanceSeed } from "./finance-demo-data"
+import {
+  enrichMedicalRecords,
+  linkProceduresToAppointments,
+  patchTodayPipelineAppointments,
+  seedAppointmentStatusHistory,
+  seedDailyMetricSnapshots,
+  seedExtraFinanceVariety,
+  seedProcedureCatalog,
+  seedRichNotifications,
+  seedUserTasks,
+} from "./seed-enrichment"
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não definido. Configure o .env antes de rodar o seed.")
@@ -75,6 +86,17 @@ const PATIENT_NAMES = [
   "Cristiane Lacerda", "Jorge Pinheiro", "Natália Borges", "Alexandre Paiva",
   "Monique Furtado", "Ricardo Amorim", "Tânia Mello", "Wesley Brandão",
   "Karina Holanda", "Douglas Pacheco", "Isabela Nascimento", "Leandro Cavalcante",
+  "João Pedro Alencar", "Maria Clara Santana", "Antônio Ferreira Neto", "Luiza Mendonça",
+  "Rafaela Pinheiro", "Eduardo Matos Jr.", "Camila Borges", "Felipe Araújo",
+  "Bruna Cavalcanti", "Guilherme Souza", "Débora Lima", "Matheus Oliveira",
+  "Aline Rodrigues", "Victor Nascimento", "Carolina Teles", "Renato Gomes",
+  "Patrícia Alves", "Luciano Barbosa", "Heloísa Costa", "Samuel Ribeiro",
+  "Marina Duarte", "Tiago Pacheco", "Lívia Martins", "Anderson Vieira",
+  "Raquel Fonseca", "Hugo Carvalho", "Jéssica Moura", "Diego Henrique",
+  "Sabrina Lopes", "Murilo Antunes", "Talita Freitas", "César Augusto",
+  "Viviane Cruz", "Rodolfo Peixoto", "Elisa Nunes", "Fabrício Melo",
+  "Gisele Tavares", "Ivan Siqueira", "Kelly Holanda", "Leandro Prado",
+  "Mônica Barros", "Nelson Cardoso", "Olívia Duque", "Paulo César",
 ]
 
 const CITY_STATE_SAMPLES = [
@@ -116,6 +138,7 @@ type StatusPipeline =
   | "today_pago"
   | "today_em_atendimento"
   | "today_agendado"
+  | "today_aguardando_pagamento"
 
 function pickPipeline(dateStr: string, seed: number): StatusPipeline {
   const todayStr = format(TODAY, "yyyy-MM-dd")
@@ -131,7 +154,7 @@ function pickPipeline(dateStr: string, seed: number): StatusPipeline {
     if (r === 2) return "past_concluido_retorno"
     return "past_concluido_consulta"
   }
-  const r = seed % 8
+  const r = seed % 10
   const order: StatusPipeline[] = [
     "today_agendado",
     "today_confirmado",
@@ -141,6 +164,8 @@ function pickPipeline(dateStr: string, seed: number): StatusPipeline {
     "today_confirmado",
     "today_agendado",
     "today_pago",
+    "today_aguardando_pagamento",
+    "today_registrar",
   ]
   return order[r]
 }
@@ -312,6 +337,13 @@ async function createDemoAppointment(opts: {
     return counter + 1
   }
 
+  if (pipeline === "today_aguardando_pagamento") {
+    await prisma.appointment.create({
+      data: { ...baseAg, status: AppointmentStatus.AwaitingPayment },
+    })
+    return counter + 1
+  }
+
   if (
     pipeline === "past_concluido_consulta" ||
     pipeline === "past_concluido_retorno" ||
@@ -394,6 +426,13 @@ async function createDemoAppointment(opts: {
 async function main() {
   console.log("Removendo dados clínicos e lançamentos (mantendo usuários NextAuth)...")
 
+  await prisma.notificationRecipient.deleteMany()
+  await prisma.notification.deleteMany()
+  await prisma.userTask.deleteMany()
+  await prisma.dailyMetricSnapshot.deleteMany()
+  await prisma.prescriptionItem.deleteMany()
+  await prisma.prescription.deleteMany()
+  await prisma.attachment.deleteMany()
   await prisma.appointmentStatusHistory.deleteMany()
   await prisma.appointmentProcedure.deleteMany()
   await prisma.transaction.deleteMany()
@@ -547,11 +586,22 @@ async function main() {
 
   console.log(`Dr.Teste: +${testeExtra} agendamentos adicionais.`)
 
+  console.log("Catálogo de procedimentos e vínculos com consultas...")
+  const procedures = await seedProcedureCatalog(prisma)
+  const procedureLinks = await linkProceduresToAppointments(
+    prisma,
+    procedures.map((p) => p.id)
+  )
+  console.log(`Procedimentos: ${procedures.length} cadastrados, ${procedureLinks} vínculos.`)
+
   console.log("Lançamentos financeiros avulsos (últimos 12 meses)...")
 
   const standaloneTx = buildStandaloneFinanceSeed(TODAY)
 
   await prisma.transaction.createMany({ data: standaloneTx })
+
+  const extraFinanceCount = await seedExtraFinanceVariety(prisma, TODAY)
+  console.log(`Financeiro extra: +${extraFinanceCount} lançamentos (pendentes, vencidos, cancelados).`)
 
   console.log("Criando usuários vinculados aos médicos...")
   const doctorPasswordHash = hashSync(DEFAULT_DOCTOR_USER_PASSWORD, 10)
@@ -597,10 +647,46 @@ async function main() {
     await prisma.user.delete({ where: { id: legacyMedico1.id } })
   }
 
+  console.log("Enriquecendo prontuários (prescrições, anexos, histórico de status)...")
+  const { rxCount, attachCount } = await enrichMedicalRecords(prisma)
+  const demoUser = await prisma.user.findFirst({
+    where: { email: demoEmail },
+    select: { id: true },
+  })
+  const historyCount = await seedAppointmentStatusHistory(prisma, demoUser?.id ?? null)
+  console.log(`Prontuários: ${rxCount} prescrições, ${attachCount} anexos, ${historyCount} eventos de status.`)
+
+  const staffUsers = await prisma.user.findMany({
+    where: { active: true },
+    select: { id: true, email: true, role: true },
+    orderBy: { createdAt: "asc" },
+  })
+  const taskUserIds = staffUsers
+    .filter((u) => u.role === "SUPER_ADMIN" || u.role === "MEDICO" || u.role === "ADMIN")
+    .map((u) => u.id)
+
+  const taskCount = await seedUserTasks(prisma, taskUserIds)
+  console.log(`Tarefas do dashboard: ${taskCount} lembretes criados.`)
+
+  const notificationRecipients = staffUsers
+    .filter((u) => u.role === "SUPER_ADMIN" || u.role === "MEDICO")
+    .map((u) => u.id)
+  const creatorId = demoUser?.id ?? notificationRecipients[0]
+  if (creatorId) {
+    const notifCount = await seedRichNotifications(prisma, notificationRecipients, creatorId)
+    console.log(`Notificações: ${notifCount} exemplos (todos os tipos).`)
+  }
+
   console.log("Semeando conversas demo do chat (recepção ↔ médicos)...")
   const { seedChatDemo } = await import("./chat-demo-seed")
   const { threadCount } = await seedChatDemo(prisma)
   console.log(`Chat: ${threadCount} conversas demo criadas.`)
+
+  await patchTodayPipelineAppointments(prisma)
+
+  console.log("Gerando snapshots de métricas diárias (últimos 120 dias úteis)...")
+  const metricsCount = await seedDailyMetricSnapshots(prisma, TODAY)
+  console.log(`Métricas: ${metricsCount} dias registrados.`)
 
   console.log("Garantindo no máximo um atendimento em andamento por médico...")
   const inProgressRows = await prisma.appointment.findMany({
@@ -625,8 +711,10 @@ async function main() {
 
   console.log(
     `Concluído: ${doctors.length} médicos, ${patients.length} pacientes, ~${apptCounter} agendamentos, ` +
-      `${standaloneTx.length} transações avulsas + vínculos em consultas concluídas. ` +
-      `Super Admin: ${demoEmail} (Dr.Teste) / senha demo · demais médicos: medico.N@clinicademo.local / ${DEFAULT_DOCTOR_USER_PASSWORD}`
+      `${standaloneTx.length + extraFinanceCount} transações financeiras, ${procedures.length} procedimentos, ` +
+      `${taskCount} tarefas, chat e notificações demo. ` +
+      `Super Admin: ${demoEmail} (Dr.Teste) / senha demo · demais médicos: medico.N@clinicademo.local / ${DEFAULT_DOCTOR_USER_PASSWORD} · ` +
+      `recepção: recepcao@clinicademo.local / Recepcao123!`
   )
 }
 

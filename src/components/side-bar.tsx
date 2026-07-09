@@ -3,8 +3,6 @@
 import {
   IconCalendarWeek,
   IconCurrencyDollar,
-  IconPlus,
-  IconSettings,
   IconUserPlus,
   IconStethoscope,
   IconUsers,
@@ -59,15 +57,15 @@ function SideBarContent({ onCreate }: Props) {
   const clinicLinks: LinkItem[] = canManageClinic
     ? isAdmin
       ? [
-          { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
-          { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
-          { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
-        ]
+        { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
+        { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
+        { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
+      ]
       : [
-          { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
-          { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
-          { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
-        ]
+        { name: "Pacientes", href: "/new-patient", icon: <IconUserPlus size={24} /> },
+        { name: "Médicos", href: "/doctors", icon: <IconReportMedical size={24} /> },
+        { name: "Financeiro", href: "/finance", icon: <IconCurrencyDollar size={24} /> },
+      ]
     : []
 
   const links: LinkItem[] = [
@@ -116,24 +114,6 @@ function SideBarContent({ onCreate }: Props) {
         <div className="w-full space-y-4">
           <span className="pl-6 text-[10px] font-bold text-accent">Menu</span>
           <LinkSideBar links={links} pageActive={pathname} />
-        </div>
-
-        <div className="w-full px-3">
-          <div className="flex h-0.5 w-full bg-accent-foreground/50" />
-        </div>
-
-        <div className="flex w-full h-full items-end">
-          <Link
-            href="/settings"
-            className={`flex text-xs font-bold border-l-2 items-center pl-7 gap-4 transition-all
-              ${pathname === "/settings"
-                ? "text-primary border-primary"
-                : "text-accent border-transparent hover:text-primary/50"
-              }`}
-          >
-            <IconSettings size={24} />
-            <span className="hidden md:inline">Configurações</span>
-          </Link>
         </div>
       </div>
 

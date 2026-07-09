@@ -1,0 +1,21 @@
+/** Catálogo de procedimentos/serviços da clínica demo. */
+export const PROCEDURE_CATALOG = [
+  { name: "Consulta psiquiátrica inicial", defaultPrice: 280 },
+  { name: "Consulta psiquiátrica de retorno", defaultPrice: 180 },
+  { name: "Consulta psicológica individual", defaultPrice: 200 },
+  { name: "Consulta psicológica de retorno", defaultPrice: 120 },
+  { name: "Avaliação neuropsicológica", defaultPrice: 450 },
+  { name: "Avaliação psicológica completa", defaultPrice: 380 },
+  { name: "Terapia de casal", defaultPrice: 320 },
+  { name: "Terapia familiar", defaultPrice: 350 },
+  { name: "Sessão TCC individual", defaultPrice: 210 },
+  { name: "Grupo terapêutico — ansiedade", defaultPrice: 150 },
+  { name: "Grupo terapêutico — depressão", defaultPrice: 150 },
+  { name: "Aplicação de escala clínica", defaultPrice: 80 },
+  { name: "Emissão de laudo psicológico", defaultPrice: 420 },
+  { name: "Emissão de relatório para convênio", defaultPrice: 90 },
+  { name: "Teleconsulta psiquiátrica", defaultPrice: 160 },
+  { name: "Teleconsulta psicológica", defaultPrice: 140 },
+  { name: "Orientação parental", defaultPrice: 250 },
+  { name: "Interconsulta multidisciplinar", defaultPrice: 300 },
+] as const
